@@ -30,7 +30,8 @@ const User = sequelize.define('User', {
   },
   role: {                                      // Rôle : user ou admin
     type: DataTypes.ENUM('user', 'admin'),
-    defaultValue: 'user'
+    defaultValue: 'user',
+    allowNull: false
   },
   avatarUrl: {                                 // Photo de profil
     type: DataTypes.STRING,

@@ -12,7 +12,7 @@ const User = sequelize.define('User', {
   },
   name: {                                      // Nom complet
     type: DataTypes.STRING,
-    allowNull: true                            // Peut être vide
+    allowNull: false                          // Peut être vide
   },
   email: {                                     // Email
     type: DataTypes.STRING,
@@ -31,6 +31,7 @@ const User = sequelize.define('User', {
   role: {                                      // Rôle : user ou admin
     type: DataTypes.ENUM('user', 'admin'),
     defaultValue: 'user'
+    allowNull: false
   },
   avatarUrl: {                                 // Photo de profil
     type: DataTypes.STRING,

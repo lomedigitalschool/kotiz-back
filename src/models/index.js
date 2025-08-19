@@ -9,6 +9,7 @@ const UserPaymentMethod = require('./UserPaymentMethod');
 const PaymentMethod = require('./PaymentMethod');
 const Log = require('./Log');
 
+
 // ====================
 // 🔗 Associations
 // ====================
@@ -43,6 +44,10 @@ Notification.belongsTo(User, { foreignKey: 'userId' });
 
 // --- Logs ---
 Log.belongsTo(User, { foreignKey: 'userId' });
+
+//---PaymentMethods---
+PaymentMethod.hasMany(UserPaymentMethod, { foreignKey: 'paymentMethodId' });
+PaymentMethod.hasMany(Transaction, { foreignKey: 'paymentMethodId' });
 
 // ====================
 // 📤 Export

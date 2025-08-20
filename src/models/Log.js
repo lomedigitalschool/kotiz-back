@@ -1,30 +1,42 @@
-// 1. Import Sequelize
+/**
+ * 📋 Modèle Log - Journalisation des actions utilisateur
+ * 
+ * Ce modèle enregistre toutes les actions importantes des utilisateurs
+ * pour l'audit, la sécurité et le débogage.
+ * 
+ * Relations:
+ * - belongsTo: User
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle Log
+// Définition du modèle Log pour l'audit et la traçabilité
 const Log = sequelize.define('Log', {
-  id: {                               // Identifiant unique
+  // Identifiant unique du log
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  action: {                           // Action effectuée (ex: création, modification, suppression)
+  // Action effectuée (ex: 'cagnotte_created', 'contribution_made')
+  action: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  entityType: {                       // Type d'entité affectée (User, Cagnotte, etc.)
+  // Type d'entité concernée (Cagnotte, Contribution, etc.)
+  entityType: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  ipAddress: {                        // Adresse IP de l'utilisateur ayant effectué l'action
+  // Adresse IP de l'utilisateur (sécurité)
+  ipAddress: {
     type: DataTypes.STRING,
     allowNull: true
   }
 }, {
-  timestamps: true,                   // createdAt
-  tableName: 'logs'
+  timestamps: true,  // Horodatage crucial pour l'audit
+  tableName: 'logs'  // Table des journaux d'activité
 });
 
 module.exports = Log;
-// Note: updatedAt is not included as logs typically do not change after creation

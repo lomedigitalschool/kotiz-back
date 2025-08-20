@@ -1,33 +1,47 @@
-// 1. Import Sequelize
+/**
+ * 📱 Modèle PaymentMethod - Gestion des méthodes de paiement
+ * 
+ * Ce modèle définit les méthodes de paiement disponibles dans l'application.
+ * Supporte Mobile Money, cartes bancaires et virements.
+ * 
+ * Relations:
+ * - hasMany: UserPaymentMethods, Transactions
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle PaymentMethod
+// Définition du modèle PaymentMethod pour les moyens de paiement
 const PaymentMethod = sequelize.define('PaymentMethod', {
-  id: {                                         // Identifiant unique
+  // Identifiant unique de la méthode de paiement
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  name: {                                       // Nom du moyen de paiement
+  // Nom affiché de la méthode (ex: "MTN Mobile Money")
+  name: {
     type: DataTypes.STRING,
-    allowNull: false                            // Obligatoire (ex: "MTN Mobile Money")
+    allowNull: false
   },
-  type: {                                       // Type : mobile_money, card, bank
+  // Type de méthode de paiement
+  type: {
     type: DataTypes.ENUM('mobile_money', 'card', 'bank'),
     allowNull: false
   },
-  provider: {                                   // Fournisseur (MTN, Moov, Visa…)
+  // Fournisseur du service (MTN, Orange, Visa, etc.)
+  provider: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  isActive: {                                   // Disponible ou désactivé ?
+  // Statut d'activation de la méthode
+  isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   }
 }, {
-  timestamps: true,                             // createdAt & updatedAt
-  tableName: 'payment_methods'
+  timestamps: true,             // Horodatage pour gestion des méthodes
+  tableName: 'payment_methods'  // Table des méthodes de paiement
 });
 
 module.exports = PaymentMethod;

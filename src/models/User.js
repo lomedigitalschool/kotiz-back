@@ -1,53 +1,71 @@
-// Modèle User avec Sequelize
-// 1. Import des outils Sequelize
+/**
+ * 👤 Modèle User - Gestion des utilisateurs
+ * 
+ * Ce modèle définit la structure des utilisateurs de l'application Kotiz.
+ * Il gère les comptes utilisateurs et administrateurs avec authentification sécurisée.
+ * 
+ * Relations:
+ * - hasMany: Cagnottes, Contributions, Notifications, UserPaymentMethods, Logs
+ * - hasOne: Kyc (vérification d'identité)
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle User
+// Définition du modèle User avec validation et sécurité
 const User = sequelize.define('User', {
-  id: {                                        // Identifiant unique
-    type: DataTypes.INTEGER,                   // Type entier
-    primaryKey: true,                          // Clé primaire
-    autoIncrement: true                        // Auto-incrément
+  // Identifiant unique auto-incrémenté
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
   },
-  name: {                                      // Nom complet
+  // Nom complet de l'utilisateur (obligatoire)
+  name: {
     type: DataTypes.STRING,
-    allowNull: false                           // obligatoire
-  },
-  email: {                                     // Email
-    type: DataTypes.STRING,
-    unique: true,                              // Unique
     allowNull: false
   },
-  phone: {                                     // Téléphone
+  // Email unique pour l'authentification
+  email: {
     type: DataTypes.STRING,
-    unique: true,                              // Unique
+    unique: true,
+    allowNull: false
+  },
+  // Numéro de téléphone unique (optionnel)
+  phone: {
+    type: DataTypes.STRING,
+    unique: true,
     allowNull: true
   },
-  passwordHash: {                              // Mot de passe (haché)
+  // Mot de passe haché avec bcrypt (sécurité)
+  passwordHash: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  role: {                                      // Rôle : user ou admin
+  // Rôle utilisateur: 'user' ou 'admin'
+  role: {
     type: DataTypes.ENUM('user', 'admin'),
     defaultValue: 'user',
     allowNull: false
   },
-  avatarUrl: {                                 // Photo de profil
+  // URL de l'avatar (photo de profil)
+  avatarUrl: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  isVerified: {                                // Email/téléphone vérifié
+  // Statut de vérification du compte
+  isVerified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
-  lastLogin: {                                 // Dernière connexion
+  // Date de dernière connexion
+  lastLogin: {
     type: DataTypes.DATE,
     allowNull: true
   }
 }, {
-  timestamps: true,                            // createdAt & updatedAt automatiques
-  tableName: 'users'                           // Nom exact de la table
+  timestamps: true,      // Ajoute createdAt et updatedAt automatiquement
+  tableName: 'users'     // Nom explicite de la table en base
 });
 
 module.exports = User;

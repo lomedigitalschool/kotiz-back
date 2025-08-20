@@ -1,66 +1,92 @@
-// 1. Import des outils Sequelize
+/**
+ * 🎯 Modèle Cagnotte - Gestion des cagnottes de collecte
+ * 
+ * Ce modèle gère les cagnottes créées par les utilisateurs pour collecter des fonds.
+ * Chaque cagnotte peut être publique ou privée, avec validation des montants.
+ * 
+ * Relations:
+ * - belongsTo: User (propriétaire)
+ * - hasMany: Contributions
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle Cagnotte
+// Définition du modèle Cagnotte avec validation financière
 const Cagnotte = sequelize.define('Cagnotte', {
-  id: {                                         // Identifiant unique
+  // Identifiant unique de la cagnotte
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  title: {                                      // Titre de la cagnotte
+  // Titre de la cagnotte (obligatoire)
+  title: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  description: {                                // Description
+  // Description détaillée de la cagnotte
+  description: {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  goalAmount: {                                 // Objectif en argent
-    type: DataTypes.DECIMAL(12, 2),             // Exemple : 10000.50
-    allowNull: false
+  // Montant objectif à collecter (validation > 0)
+  goalAmount: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    validate: {
+      min: 1  // Montant minimum de 1 unité
+    }
   },
-  currency: {                                   // Devise utilisée
-    type: DataTypes.STRING,
-    allowNull: false
+  // Devise de la cagnotte (XOF par défaut pour l'Afrique de l'Ouest)
+  currency: {
+    type: DataTypes.ENUM('XOF', 'EUR', 'USD'),
+    allowNull: false,
+    defaultValue: 'XOF'
   },
-  deadline: {                                   // Date limite
+  // Date limite de collecte (optionnelle)
+  deadline: {
     type: DataTypes.DATE,
     allowNull: true
   },
-  type: {                                       // Type : public ou privé
+  // Type de cagnotte: publique ou privée
+  type: {
     type: DataTypes.ENUM('public', 'private'),
     defaultValue: 'public'
   },
-  imageUrl: {                                   // Illustration
+  // Image illustrative de la cagnotte
+  imageUrl: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  participantLimit: {                           // Nombre max de participants
+  // Limite du nombre de participants (optionnel)
+  participantLimit: {
     type: DataTypes.INTEGER,
     allowNull: true
   },
-  status: {                                     // Statut de la cagnotte
+  // Statut de la cagnotte dans son cycle de vie
+  status: {
     type: DataTypes.ENUM('pending', 'active', 'closed'),
     defaultValue: 'pending'
   },
-  shareLink: {                                  // Lien de partage
+  // Lien de partage unique pour la cagnotte
+  shareLink: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  qrCodeUrl: {                                  // QR code associé
+  // URL du QR code pour accès rapide
+  qrCodeUrl: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  isApproved: {                                 // Validation par l’admin
+  // Statut d'approbation par l'administrateur
+  isApproved: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   }
 }, {
-  timestamps: true,                             // createdAt & updatedAt
-  tableName: 'cagnottes'
+  timestamps: true,        // Horodatage automatique
+  tableName: 'cagnottes'   // Table dédiée aux cagnottes
 });
 
 module.exports = Cagnotte;
-// Export du modèle Cagnotte

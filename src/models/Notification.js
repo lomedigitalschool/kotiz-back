@@ -1,33 +1,47 @@
-// 1. Import Sequelize
+/**
+ * 🔔 Modèle Notification - Gestion des notifications utilisateur
+ * 
+ * Ce modèle gère les notifications envoyées aux utilisateurs.
+ * Supporte différents types et statuts de lecture.
+ * 
+ * Relations:
+ * - belongsTo: User
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle Notification
+// Définition du modèle Notification pour la communication
 const Notification = sequelize.define('Notification', {
-  id: {                                           // Identifiant unique
+  // Identifiant unique de la notification
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  title: {                                       // Titre de la notification
+  // Titre de la notification
+  title: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  message: {                                     // Contenu de la notification
+  // Contenu détaillé de la notification
+  message: {
     type: DataTypes.TEXT,
     allowNull: false
   },
-  type: {                                        // Type de notification
+  // Type de notification pour l'affichage (couleur, icône)
+  type: {
     type: DataTypes.ENUM('info', 'success', 'warning', 'error'),
     defaultValue: 'info'
   },
-  status: {                                      // Statut : lue ou non
+  // Statut de lecture par l'utilisateur
+  status: {
     type: DataTypes.ENUM('unread', 'read'),
     defaultValue: 'unread'
   }
 }, {
-  timestamps: true,                              // createdAt & updatedAt
-  tableName: 'notifications'
+  timestamps: true,           // Horodatage pour tri chronologique
+  tableName: 'notifications'  // Table des notifications
 });
 
 module.exports = Notification;

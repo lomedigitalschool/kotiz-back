@@ -1,34 +1,51 @@
-// Modèle Contribution avec Sequelize
-// 1. Import Sequelize
+/**
+ * 💰 Modèle Contribution - Gestion des contributions aux cagnottes
+ * 
+ * Ce modèle gère les contributions financières des utilisateurs aux cagnottes.
+ * Supporte les contributions anonymes et avec message personnalisé.
+ * 
+ * Relations:
+ * - belongsTo: Cagnotte, User (optionnel pour anonymes)
+ * - hasOne: Transaction
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle Contribution
+// Définition du modèle Contribution avec validation des montants
 const Contribution = sequelize.define('Contribution', {
-  id: {                                           // Identifiant unique
+  // Identifiant unique de la contribution
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  amount: {                                       // Montant de la contribution
+  // Montant de la contribution (validation > 0)
+  amount: {
     type: DataTypes.DECIMAL(12, 2),
-    allowNull: false
+    allowNull: false,
+    validate: {
+      min: 1  // Contribution minimum de 1 unité
+    }
   },
-  anonymous: {                                    // Contribution anonyme ?
+  // Contribution anonyme (masque l'identité du contributeur)
+  anonymous: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
-  message: {                                      // Message du donateur
+  // Message personnalisé du contributeur (optionnel)
+  message: {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  paymentReference: {                             // Référence de paiement (ex: MOMO ID)
+  // Référence de paiement du fournisseur (Mobile Money, etc.)
+  paymentReference: {
     type: DataTypes.STRING,
     allowNull: true
   }
 }, {
-  timestamps: true,                               // createdAt & updatedAt
-  tableName: 'contributions'
+  timestamps: true,           // Horodatage pour traçabilité
+  tableName: 'contributions'  // Table des contributions financières
 });
 
 module.exports = Contribution;

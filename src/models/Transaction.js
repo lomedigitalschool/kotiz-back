@@ -1,37 +1,56 @@
-// 1. Import Sequelize
+/**
+ * 💳 Modèle Transaction - Gestion des transactions financières
+ * 
+ * Ce modèle gère les transactions liées aux contributions.
+ * Il stocke les détails des paiements et les réponses des fournisseurs de paiement.
+ * 
+ * Relations:
+ * - belongsTo: Contribution, PaymentMethod
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle Transaction
+// Définition du modèle Transaction pour le suivi des paiements
 const Transaction = sequelize.define('Transaction', {
-  id: {                                           // Identifiant unique
+  // Identifiant unique de la transaction
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  amount: {                                       // Montant de la transaction
+  // Montant de la transaction (validation >= 0)
+  amount: {
     type: DataTypes.DECIMAL(12, 2),
-    allowNull: false
+    allowNull: false,
+    validate: {
+      min: 0  // Montant positif ou nul
+    }
   },
-  currency: {                                     // Devise utilisée (XOF, EUR…)
-    type: DataTypes.STRING,
-    allowNull: false
+  // Devise de la transaction
+  currency: {
+    type: DataTypes.ENUM('XOF', 'EUR', 'USD'),
+    allowNull: false,
+    defaultValue: 'XOF'
   },
-  status: {                                       // Statut de la transaction
+  // Statut de la transaction dans le processus de paiement
+  status: {
     type: DataTypes.ENUM('pending', 'completed', 'failed'),
     defaultValue: 'pending'
   },
-  providerReference: {                            // Référence renvoyée par l’opérateur (ex: MTN, Flooz, Visa)
+  // Référence unique du fournisseur de paiement
+  providerReference: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  providerResponse: {                             // Réponse brute (JSON, texte) du fournisseur de paiement
+  // Réponse complète du fournisseur (JSON sérialisé)
+  providerResponse: {
     type: DataTypes.TEXT,
     allowNull: true
   }
 }, {
-  timestamps: true,                               // createdAt & updatedAt
-  tableName: 'transactions'
+  timestamps: true,          // Horodatage pour audit financier
+  tableName: 'transactions'  // Table des transactions financières
 });
 
 module.exports = Transaction;

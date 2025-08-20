@@ -1,29 +1,42 @@
-// 1. Import Sequelize
+/**
+ * 🔗 Modèle UserPaymentMethod - Association utilisateurs et méthodes de paiement
+ * 
+ * Ce modèle gère l'association entre les utilisateurs et leurs méthodes de paiement.
+ * Stocke les numéros de compte et définit les méthodes par défaut.
+ * 
+ * Relations:
+ * - belongsTo: User, PaymentMethod
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// 2. Définition du modèle UserPaymentMethod
+// Table de liaison utilisateurs <-> méthodes de paiement
 const UserPaymentMethod = sequelize.define('UserPaymentMethod', {
-  id: {                                           // Identifiant unique
+  // Identifiant unique de l'association
+  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  accountNumber: {                                // Identifiant de compte (numéro momo, IBAN, n° carte)
+  // Numéro de compte/téléphone pour la méthode
+  accountNumber: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  isDefault: {                                    // Méthode par défaut ?
+  // Méthode de paiement par défaut de l'utilisateur
+  isDefault: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
-  status: {                                       // Statut de la méthode
+  // Statut de la méthode pour cet utilisateur
+  status: {
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active'
   }
 }, {
-  timestamps: true,                               // createdAt & updatedAt
-  tableName: 'user_payment_methods'
+  timestamps: true,                   // Horodatage des associations
+  tableName: 'user_payment_methods'  // Table de liaison
 });
 
 module.exports = UserPaymentMethod;

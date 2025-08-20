@@ -8,3 +8,7 @@ coverage/
 .nyc_output/
 .vscode/
 .idea/
+
+CHANGELOG.md
+SECURITY-FIXES.md
+PULL_REQUEST_SUMMARY.md

@@ -1,0 +1,14 @@
+node_modules/
+.env
+.DS_Store
+*.log
+dist/
+build/
+coverage/
+.nyc_output/
+.vscode/
+.idea/
+
+CHANGELOG.md
+SECURITY-FIXES.md
+PULL_REQUEST_SUMMARY.md

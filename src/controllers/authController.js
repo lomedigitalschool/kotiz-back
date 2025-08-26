@@ -92,7 +92,7 @@ exports.login = async (req, res) => {
     if (!user) return res.status(404).json({ error: "Utilisateur non trouvé" });
 
     // Vérifier le mot de passe
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) return res.status(401).json({ error: "Mot de passe incorrect" });
 
     // Générer un token
@@ -120,7 +120,7 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['password_hash'] }
+      attributes: { exclude: ['passwordHash'] }
     });
 
     res.json(user);

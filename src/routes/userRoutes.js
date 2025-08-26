@@ -1,12 +1,12 @@
 // Routes des utilisateurs
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController');
+const UserController = require('../controllers/userController');
 const { authenticate, isAdmin } = require('../middleware/auth');
 
-router.get('/', authenticate, isAdmin, userController.getAll); 
-router.get('/:id', authenticate, userController.getOne);
-router.put('/:id', authenticate, userController.update);
-router.delete('/:id', authenticate, isAdmin, userController.remove);
+router.get('/', authenticate, isAdmin, UserController.getAll); 
+router.get('/:id', authenticate, UserController.getOne);
+router.put('/:id', authenticate, UserController.update);
+router.delete('/:id', authenticate, isAdmin, UserController.remove);
 
 module.exports = router;

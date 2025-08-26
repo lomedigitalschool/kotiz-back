@@ -1,10 +1,16 @@
 /**
  * 🛠️ Configuration AdminJS - Interface d'administration
  */
-
-const AdminJS = require('adminjs');
+const AdminJS = require('adminjs').default;
 const AdminJSExpress = require('@adminjs/express');
+const AdminJSSequelize = require('@adminjs/sequelize');
 const bcrypt = require('bcryptjs');
+
+// Enregistrement de l’adapter Sequelize
+AdminJS.registerAdapter({
+  Resource: AdminJSSequelize.Resource,
+  Database: AdminJSSequelize.Database,
+});
 
 // Import des modèles
 const { 
@@ -22,13 +28,13 @@ const {
 
 // Configuration AdminJS
 const adminOptions = {
-  databases: [sequelize],  // ✅ passe ton instance Sequelize ici
+  databases: [sequelize],  
   resources: [
     {
       resource: User,
       options: {
         properties: {
-          password_hash: { isVisible: false },
+          passwordHash: { isVisible: false }, // ⚠️ bien écrire comme dans ton model
         },
       },
     },
@@ -56,7 +62,7 @@ const admin = new AdminJS(adminOptions);
 const adminRouter = AdminJSExpress.buildAuthenticatedRouter(admin, {
   authenticate: async (email, password) => {
     const user = await User.findOne({ where: { email, role: 'admin' } });
-    if (user && await bcrypt.compare(password, user.password_hash)) {
+    if (user && await bcrypt.compare(password, user.passwordHash)) {
       return user;
     }
     return null;

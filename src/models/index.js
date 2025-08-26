@@ -1,87 +1,39 @@
-/**
- * 🔗 Index des modèles - Configuration des relations Sequelize
- * 
- * Ce fichier centralise tous les modèles et définit leurs relations.
- * Il exporte une instance configurée de tous les modèles avec leurs associations.
- * 
- * Architecture relationnelle:
- * - User (1:N) pull, Contribution, Notification, UserPaymentMethod, Log
- * - User (1:1) Kyc
- * - pull (1:N) Contribution
- * - Contribution (1:1) Transaction
- * - PaymentMethod (1:N) UserPaymentMethod, Transaction
- */
-
-// Import de la connexion à la base de données
 const sequelize = require('../config/database');
 
-// Import de tous les modèles
-const User = require('./User');
-const pull = require('./pull');
-const Contribution = require('./Contribution');
-const Transaction = require('./Transaction');
-const Notification = require('./Notification');
-const UserPaymentMethod = require('./UserPaymentMethod');
-const PaymentMethod = require('./PaymentMethod');
-const Log = require('./Log');
-const Kyc = require('./Kyc');
+const initUser = require('./User');
+const initPull = require('./Pull');
+const initContribution = require('./Contribution');
+const initTransaction = require('./Transaction');
+const initPaymentMethod = require('./PaymentMethod');
+const initUserPaymentMethod = require('./UserPaymentMethod');
+const initKyc = require('./Kyc');
+const initNotification = require('./Notification');
+const initLog = require('./Log');
 
+// Init modèles
+const User = initUser(sequelize);
+const Pull = initPull(sequelize);
+const Contribution = initContribution(sequelize);
+const Transaction = initTransaction(sequelize);
+const PaymentMethod = initPaymentMethod(sequelize);
+const UserPaymentMethod = initUserPaymentMethod(sequelize);
+const Kyc = initKyc(sequelize);
+const Notification = initNotification(sequelize);
+const Log = initLog(sequelize);
 
-// ====================
-// 🔗 Définition des associations entre modèles
-// ====================
+// Associations
+Object.values({ User, Pull, Contribution, Transaction, PaymentMethod, UserPaymentMethod, Kyc, Notification, Log })
+  .forEach(model => { if (model.associate) model.associate({ User, Pull, Contribution, Transaction, PaymentMethod, UserPaymentMethod, Kyc, Notification, Log }); });
 
-// --- Relations User (utilisateur central du système) ---
-User.hasMany(pull, { foreignKey: 'userId' });              // Un utilisateur peut créer plusieurs pulls
-User.hasMany(Contribution, { foreignKey: 'userId' });          // Un utilisateur peut faire plusieurs contributions
-User.hasMany(Notification, { foreignKey: 'userId' });          // Un utilisateur reçoit plusieurs notifications
-User.hasMany(UserPaymentMethod, { foreignKey: 'userId' });     // Un utilisateur a plusieurs méthodes de paiement
-User.hasMany(Log, { foreignKey: 'userId' });                   // Un utilisateur génère plusieurs logs
-User.hasOne(Kyc, { foreignKey: 'userId' });                    // Un utilisateur a un seul dossier KYC
-
-// --- Relations pull (collectes de fonds) ---
-pull.belongsTo(User, { as: 'owner', foreignKey: 'userId' }); // Chaque pull a un propriétaire
-pull.hasMany(Contribution, { foreignKey: 'pullId' });    // Une pull reçoit plusieurs contributions
-
-// --- Relations Contribution (dons financiers) ---
-Contribution.belongsTo(pull, { foreignKey: 'pullId' });           // Chaque contribution appartient à une pull
-Contribution.belongsTo(User, { foreignKey: 'userId', allowNull: true });    // Contribution peut être anonyme (userId null)
-Contribution.hasOne(Transaction, { foreignKey: 'contributionId' });         // Chaque contribution a une transaction
-
-// --- Relations Transaction (paiements) ---
-Transaction.belongsTo(Contribution, { foreignKey: 'contributionId' });    // Chaque transaction est liée à une contribution
-Transaction.belongsTo(PaymentMethod, { foreignKey: 'paymentMethodId' });   // Chaque transaction utilise une méthode de paiement
-
-// --- Relations UserPaymentMethod (liaison utilisateur-paiement) ---
-UserPaymentMethod.belongsTo(User, { foreignKey: 'userId' });                    // Association appartient à un utilisateur
-UserPaymentMethod.belongsTo(PaymentMethod, { foreignKey: 'paymentMethodId' });   // Association utilise une méthode
-PaymentMethod.hasMany(UserPaymentMethod, { foreignKey: 'paymentMethodId' });     // Une méthode peut être utilisée par plusieurs utilisateurs
-
-// --- Relations Notification (système de messages) ---
-Notification.belongsTo(User, { foreignKey: 'userId' });  // Chaque notification est destinée à un utilisateur
-
-// --- Relations Log (audit et traçabilité) ---
-Log.belongsTo(User, { foreignKey: 'userId' });  // Chaque log est associé à un utilisateur
-
-// --- Relations KYC (vérification d'identité) ---
-Kyc.belongsTo(User, { as: 'utilisateur', foreignKey: 'userId' });  // Chaque dossier KYC appartient à un utilisateur
-
-// --- Relations PaymentMethod (méthodes de paiement) ---
-PaymentMethod.hasMany(UserPaymentMethod, { foreignKey: 'paymentMethodId' }); // Une méthode peut être associée à plusieurs utilisateurs
-PaymentMethod.hasMany(Transaction, { foreignKey: 'paymentMethodId' });       // Une méthode peut traiter plusieurs transactions
-
-// ====================
-// 📤 Export de tous les modèles configurés
-// ====================
 module.exports = {
   sequelize,
   User,
-  pull,
+  Pull,
   Contribution,
   Transaction,
-  Notification,
-  UserPaymentMethod,
   PaymentMethod,
-  Log,
-  Kyc
+  UserPaymentMethod,
+  Kyc,
+  Notification,
+  Log
 };

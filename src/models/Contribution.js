@@ -1,51 +1,29 @@
-/**
- * 💰 Modèle Contribution - Gestion des contributions aux pulls
- * 
- * Ce modèle gère les contributions financières des utilisateurs aux pulls.
- * Supporte les contributions anonymes et avec message personnalisé.
- * 
- * Relations:
- * - belongsTo: pull, User (optionnel pour anonymes)
- * - hasOne: Transaction
- */
+const { Model, DataTypes } = require('sequelize');
 
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-
-// Définition du modèle Contribution avec validation des montants
-const Contribution = sequelize.define('Contribution', {
-  // Identifiant unique de la contribution
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  // Montant de la contribution (validation > 0)
-  amount: {
-    type: DataTypes.DECIMAL(12, 2),
-    allowNull: false,
-    validate: {
-      min: 1  // Contribution minimum de 1 unité
-    }
-  },
-  // Contribution anonyme (masque l'identité du contributeur)
-  anonymous: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  // Message personnalisé du contributeur (optionnel)
-  message: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  // Référence de paiement du fournisseur (Mobile Money, etc.)
-  paymentReference: {
-    type: DataTypes.STRING,
-    allowNull: true
+class Contribution extends Model {
+  static associate(models) {
+    Contribution.belongsTo(models.User, { foreignKey: 'userId', as: 'contributor' });
+    Contribution.belongsTo(models.Pull, { foreignKey: 'pullId', as: 'pull' });
+    Contribution.hasOne(models.Transaction, { foreignKey: 'contributionId', as: 'transaction' });
   }
-}, {
-  timestamps: true,           // Horodatage pour traçabilité
-  tableName: 'contributions'  // Table des contributions financières
-});
+}
 
-module.exports = Contribution;
+function initContribution(sequelize) {
+  Contribution.init({
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    userId: { type: DataTypes.INTEGER, allowNull: false },
+    pullId: { type: DataTypes.INTEGER, allowNull: false },
+    amount: { type: DataTypes.DECIMAL(12,2), allowNull: false, validate: { min: 0 } },
+    currency: { type: DataTypes.ENUM('XOF','EUR','USD'), defaultValue: 'XOF' },
+    status: { type: DataTypes.ENUM('pending','completed','failed'), defaultValue: 'pending' }
+  }, {
+    sequelize,
+    modelName: 'Contribution',
+    tableName: 'contributions',
+    timestamps: true
+  });
+
+  return Contribution;
+}
+
+module.exports = initContribution;

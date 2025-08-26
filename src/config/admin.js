@@ -16,7 +16,7 @@ AdminJS.registerAdapter({
 const { 
   sequelize, 
   User, 
-  pull, 
+  Pull, 
   Contribution, 
   Transaction, 
   PaymentMethod, 
@@ -38,7 +38,7 @@ const adminOptions = {
         },
       },
     },
-    pull,
+    Pull,
     Contribution,
     Transaction,
     PaymentMethod,

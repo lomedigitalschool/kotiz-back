@@ -37,10 +37,17 @@ module.exports = {
         onDelete: 'SET NULL',
         allowNull: true
       },
+<<<<<<< HEAD
+      cagnotteId: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'cagnottes',
+=======
       pullId: {
         type: Sequelize.INTEGER,
         references: {
           model: 'pulls',
+>>>>>>> 44ab4540fad1424416fa9dbdaf603e099b6c8893
           key: 'id'
         },
         onUpdate: 'CASCADE',

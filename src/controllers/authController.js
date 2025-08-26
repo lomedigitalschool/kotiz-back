@@ -29,7 +29,7 @@ exports.register = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password: hashedPassword,
+      passwordHash: hashedPassword,
       role: 'user' // par défaut
     });
 
@@ -54,7 +54,7 @@ exports.login = async (req, res) => {
     if (!user) return res.status(404).json({ error: "Utilisateur non trouvé" });
 
     // Vérifier le mot de passe
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) return res.status(401).json({ error: "Mot de passe incorrect" });
 
     // Générer un token

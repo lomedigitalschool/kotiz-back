@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const {
   sequelize,
   User,
-  Cagnotte,
+  pull,
   Contribution,
   Transaction,
   PaymentMethod,
@@ -84,9 +84,9 @@ async function testModels() {
     
     console.log('✅ Méthodes de paiement associées aux utilisateurs');
     
-    // 4. Créer des cagnottes
-    console.log('\n🎯 Création des cagnottes...');
-    const cagnotte1 = await Cagnotte.create({
+    // 4. Créer des pulls
+    console.log('\n🎯 Création des pulls...');
+    const pull1 = await pull.create({
       title: 'Voyage scolaire 2024',
       description: 'Collecte pour financer le voyage scolaire des élèves de terminale',
       goalAmount: 500000,
@@ -98,7 +98,7 @@ async function testModels() {
       isApproved: true
     });
     
-    const cagnotte2 = await Cagnotte.create({
+    const pull2 = await pull.create({
       title: 'Mariage de Paul et Sophie',
       description: 'Participation aux frais de mariage',
       goalAmount: 200000,
@@ -111,7 +111,7 @@ async function testModels() {
       participantLimit: 50
     });
     
-    console.log('✅ Cagnottes créées:', { cagnotte1: cagnotte1.id, cagnotte2: cagnotte2.id });
+    console.log('✅ pulls créées:', { pull1: pull1.id, pull2: pull2.id });
     
     // 5. Créer des contributions
     console.log('\n💰 Création des contributions...');
@@ -119,7 +119,7 @@ async function testModels() {
       amount: 25000,
       anonymous: false,
       message: 'Bon voyage les enfants !',
-      cagnotteId: cagnotte1.id,
+      pullId: pull1.id,
       userId: user2.id,
       paymentReference: 'MOMO_REF_001'
     });
@@ -128,7 +128,7 @@ async function testModels() {
       amount: 15000,
       anonymous: true,
       message: 'Félicitations pour votre union',
-      cagnotteId: cagnotte2.id,
+      pullId: pull2.id,
       userId: user1.id,
       paymentReference: 'MOMO_REF_002'
     });
@@ -137,7 +137,7 @@ async function testModels() {
       amount: 10000,
       anonymous: false,
       message: null,
-      cagnotteId: cagnotte1.id,
+      pullId: pull1.id,
       userId: null, // Contribution anonyme sans compte
       paymentReference: 'MOMO_REF_003'
     });
@@ -173,15 +173,15 @@ async function testModels() {
     await Notification.create({
       userId: user1.id,
       title: 'Nouvelle contribution reçue',
-      message: 'Votre cagnotte "Voyage scolaire 2024" a reçu une contribution de 25,000 XOF',
+      message: 'Votre pull "Voyage scolaire 2024" a reçu une contribution de 25,000 XOF',
       type: 'success',
       status: 'unread'
     });
     
     await Notification.create({
       userId: user2.id,
-      title: 'Cagnotte en attente',
-      message: 'Votre cagnotte "Mariage de Paul et Sophie" est en attente d\'approbation',
+      title: 'pull en attente',
+      message: 'Votre pull "Mariage de Paul et Sophie" est en attente d\'approbation',
       type: 'warning',
       status: 'unread'
     });
@@ -192,8 +192,8 @@ async function testModels() {
     console.log('\n📝 Création des logs...');
     await Log.create({
       userId: user1.id,
-      action: 'cagnotte_created',
-      entityType: 'Cagnotte',
+      action: 'pull_created',
+      entityType: 'pull',
       ipAddress: '192.168.1.100'
     });
     
@@ -209,7 +209,7 @@ async function testModels() {
     // 9. Test des relations - Récupérer les données avec associations
     console.log('\n🔗 Test des relations...');
     
-    const cagnotteWithContributions = await Cagnotte.findByPk(cagnotte1.id, {
+    const pullWithContributions = await pull.findByPk(pull1.id, {
       include: [
         { model: User, as: 'owner' },
         { 
@@ -222,34 +222,34 @@ async function testModels() {
       ]
     });
     
-    console.log('✅ Cagnotte avec relations récupérée:');
-    console.log(`   - Titre: ${cagnotteWithContributions.title}`);
-    console.log(`   - Propriétaire: ${cagnotteWithContributions.owner.name}`);
-    console.log(`   - Nombre de contributions: ${cagnotteWithContributions.Contributions.length}`);
+    console.log('✅ pull avec relations récupérée:');
+    console.log(`   - Titre: ${pullWithContributions.title}`);
+    console.log(`   - Propriétaire: ${pullWithContributions.owner.name}`);
+    console.log(`   - Nombre de contributions: ${pullWithContributions.Contributions.length}`);
     
-    const userWithCagnottes = await User.findByPk(user1.id, {
+    const userWithpulls = await User.findByPk(user1.id, {
       include: [
-        { model: Cagnotte },
+        { model: pull },
         { model: Contribution },
         { model: Notification }
       ]
     });
     
     console.log('\n✅ Utilisateur avec relations récupéré:');
-    console.log(`   - Nom: ${userWithCagnottes.name}`);
-    console.log(`   - Cagnottes créées: ${userWithCagnottes.Cagnottes.length}`);
-    console.log(`   - Contributions faites: ${userWithCagnottes.Contributions.length}`);
-    console.log(`   - Notifications: ${userWithCagnottes.Notifications.length}`);
+    console.log(`   - Nom: ${userWithpulls.name}`);
+    console.log(`   - pulls créées: ${userWithpulls.pulls.length}`);
+    console.log(`   - Contributions faites: ${userWithpulls.Contributions.length}`);
+    console.log(`   - Notifications: ${userWithpulls.Notifications.length}`);
     
     // 10. Statistiques
     console.log('\n📊 Statistiques:');
     const totalUsers = await User.count();
-    const totalCagnottes = await Cagnotte.count();
+    const totalpulls = await pull.count();
     const totalContributions = await Contribution.count();
     const totalAmount = await Contribution.sum('amount');
     
     console.log(`   - Utilisateurs: ${totalUsers}`);
-    console.log(`   - Cagnottes: ${totalCagnottes}`);
+    console.log(`   - pulls: ${totalpulls}`);
     console.log(`   - Contributions: ${totalContributions}`);
     console.log(`   - Montant total collecté: ${totalAmount} XOF`);
     

@@ -32,7 +32,7 @@ async function runMigrations() {
     const migrations = [
       { name: '001-create-users', ...require('../migrations/001-create-users') },
       { name: '002-create-payment-methods', ...require('../migrations/002-create-payment-methods') },
-      { name: '003-create-cagnottes', ...require('../migrations/003-create-cagnottes') },
+      { name: '003-create-pulls', ...require('../migrations/003-create-pulls') },
       { name: '004-create-contributions', ...require('../migrations/004-create-contributions') },
       { name: '005-create-transactions', ...require('../migrations/005-create-transactions') },
       { name: '006-create-user-payment-methods', ...require('../migrations/006-create-user-payment-methods') },

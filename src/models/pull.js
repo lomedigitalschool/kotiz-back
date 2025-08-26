@@ -1,8 +1,8 @@
 /**
- * 🎯 Modèle Cagnotte - Gestion des cagnottes de collecte
+ * 🎯 Modèle pull - Gestion des pulls de collecte
  * 
- * Ce modèle gère les cagnottes créées par les utilisateurs pour collecter des fonds.
- * Chaque cagnotte peut être publique ou privée, avec validation des montants.
+ * Ce modèle gère les pulls créées par les utilisateurs pour collecter des fonds.
+ * Chaque pull peut être publique ou privée, avec validation des montants.
  * 
  * Relations:
  * - belongsTo: User (propriétaire)
@@ -12,20 +12,20 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Définition du modèle Cagnotte avec validation financière
-const Cagnotte = sequelize.define('Cagnotte', {
-  // Identifiant unique de la cagnotte
+// Définition du modèle pull avec validation financière
+const pull = sequelize.define('pull', {
+  // Identifiant unique de la pull
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  // Titre de la cagnotte (obligatoire)
+  // Titre de la pull (obligatoire)
   title: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  // Description détaillée de la cagnotte
+  // Description détaillée de la pull
   description: {
     type: DataTypes.TEXT,
     allowNull: true
@@ -38,7 +38,7 @@ const Cagnotte = sequelize.define('Cagnotte', {
       min: 1  // Montant minimum de 1 unité
     }
   },
-  // Devise de la cagnotte (XOF par défaut pour l'Afrique de l'Ouest)
+  // Devise de la pull (XOF par défaut pour l'Afrique de l'Ouest)
   currency: {
     type: DataTypes.ENUM('XOF', 'EUR', 'USD'),
     allowNull: false,
@@ -49,12 +49,12 @@ const Cagnotte = sequelize.define('Cagnotte', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  // Type de cagnotte: publique ou privée
+  // Type de pull: publique ou privée
   type: {
     type: DataTypes.ENUM('public', 'private'),
     defaultValue: 'public'
   },
-  // Image illustrative de la cagnotte
+  // Image illustrative de la pull
   imageUrl: {
     type: DataTypes.STRING,
     allowNull: true
@@ -64,12 +64,12 @@ const Cagnotte = sequelize.define('Cagnotte', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
-  // Statut de la cagnotte dans son cycle de vie
+  // Statut de la pull dans son cycle de vie
   status: {
     type: DataTypes.ENUM('pending', 'active', 'closed'),
     defaultValue: 'pending'
   },
-  // Lien de partage unique pour la cagnotte
+  // Lien de partage unique pour la pull
   shareLink: {
     type: DataTypes.STRING,
     allowNull: true
@@ -86,7 +86,7 @@ const Cagnotte = sequelize.define('Cagnotte', {
   }
 }, {
   timestamps: true,        // Horodatage automatique
-  tableName: 'cagnottes'   // Table dédiée aux cagnottes
+  tableName: 'pulls'   // Table dédiée aux pulls
 });
 
-module.exports = Cagnotte;
+module.exports = pull;

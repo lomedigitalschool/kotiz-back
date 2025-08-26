@@ -19,12 +19,12 @@ const Log = sequelize.define('Log', {
     primaryKey: true,
     autoIncrement: true
   },
-  // Action effectuée (ex: 'cagnotte_created', 'contribution_made')
+  // Action effectuée (ex: 'pull_created', 'contribution_made')
   action: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  // Type d'entité concernée (Cagnotte, Contribution, etc.)
+  // Type d'entité concernée (pull, Contribution, etc.)
   entityType: {
     type: DataTypes.STRING,
     allowNull: false

@@ -9,7 +9,7 @@ const adminController = require('../controllers/adminController');
 // Dashboard global
 
 // Route GET /api/v1/admin/dashboard
-// Permet à l'admin de voir un résumé global (nb users, cagnottes, transactions, total collecté)
+// Permet à l'admin de voir un résumé global (nb users, pulls, transactions, total collecté)
 router.get('/dashboard', adminController.getDashboard);
 
 
@@ -29,19 +29,19 @@ router.put('/users/:id/block', adminController.blockUser);
 router.delete('/users/:id', adminController.deleteUser);
 
 
-// Gestion cagnottes
+// Gestion pulls
 
-// GET /api/v1/admin/cagnottes
-// Récupérer toutes les cagnottes (peu importe leur créateur)
-router.get('/cagnottes', adminController.getAllCagnottes);
+// GET /api/v1/admin/pulls
+// Récupérer toutes les pulls (peu importe leur créateur)
+router.get('/pulls', adminController.getAllpulls);
 
-// PUT /api/v1/admin/cagnottes/:id/validate
-// Valider une cagnotte (isValidated = true)
-router.put('/cagnottes/:id/validate', adminController.validateCagnotte);
+// PUT /api/v1/admin/pulls/:id/validate
+// Valider une pull (isValidated = true)
+router.put('/pulls/:id/validate', adminController.validatepull);
 
-// DELETE /api/v1/admin/cagnottes/:id
-// Supprimer une cagnotte
-router.delete('/cagnottes/:id', adminController.deleteCagnotte);
+// DELETE /api/v1/admin/pulls/:id
+// Supprimer une pull
+router.delete('/pulls/:id', adminController.deletepull);
 
 // Logs & Transactions
 

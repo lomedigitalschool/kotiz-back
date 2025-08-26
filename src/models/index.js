@@ -5,9 +5,9 @@
  * Il exporte une instance configurée de tous les modèles avec leurs associations.
  * 
  * Architecture relationnelle:
- * - User (1:N) Cagnotte, Contribution, Notification, UserPaymentMethod, Log
+ * - User (1:N) pull, Contribution, Notification, UserPaymentMethod, Log
  * - User (1:1) Kyc
- * - Cagnotte (1:N) Contribution
+ * - pull (1:N) Contribution
  * - Contribution (1:1) Transaction
  * - PaymentMethod (1:N) UserPaymentMethod, Transaction
  */
@@ -17,7 +17,7 @@ const sequelize = require('../config/database');
 
 // Import de tous les modèles
 const User = require('./User');
-const Cagnotte = require('./Cagnotte');
+const pull = require('./pull');
 const Contribution = require('./Contribution');
 const Transaction = require('./Transaction');
 const Notification = require('./Notification');
@@ -32,19 +32,19 @@ const Kyc = require('./Kyc');
 // ====================
 
 // --- Relations User (utilisateur central du système) ---
-User.hasMany(Cagnotte, { foreignKey: 'userId' });              // Un utilisateur peut créer plusieurs cagnottes
+User.hasMany(pull, { foreignKey: 'userId' });              // Un utilisateur peut créer plusieurs pulls
 User.hasMany(Contribution, { foreignKey: 'userId' });          // Un utilisateur peut faire plusieurs contributions
 User.hasMany(Notification, { foreignKey: 'userId' });          // Un utilisateur reçoit plusieurs notifications
 User.hasMany(UserPaymentMethod, { foreignKey: 'userId' });     // Un utilisateur a plusieurs méthodes de paiement
 User.hasMany(Log, { foreignKey: 'userId' });                   // Un utilisateur génère plusieurs logs
 User.hasOne(Kyc, { foreignKey: 'userId' });                    // Un utilisateur a un seul dossier KYC
 
-// --- Relations Cagnotte (collectes de fonds) ---
-Cagnotte.belongsTo(User, { as: 'owner', foreignKey: 'userId' }); // Chaque cagnotte a un propriétaire
-Cagnotte.hasMany(Contribution, { foreignKey: 'cagnotteId' });    // Une cagnotte reçoit plusieurs contributions
+// --- Relations pull (collectes de fonds) ---
+pull.belongsTo(User, { as: 'owner', foreignKey: 'userId' }); // Chaque pull a un propriétaire
+pull.hasMany(Contribution, { foreignKey: 'pullId' });    // Une pull reçoit plusieurs contributions
 
 // --- Relations Contribution (dons financiers) ---
-Contribution.belongsTo(Cagnotte, { foreignKey: 'cagnotteId' });           // Chaque contribution appartient à une cagnotte
+Contribution.belongsTo(pull, { foreignKey: 'pullId' });           // Chaque contribution appartient à une pull
 Contribution.belongsTo(User, { foreignKey: 'userId', allowNull: true });    // Contribution peut être anonyme (userId null)
 Contribution.hasOne(Transaction, { foreignKey: 'contributionId' });         // Chaque contribution a une transaction
 
@@ -76,7 +76,7 @@ PaymentMethod.hasMany(Transaction, { foreignKey: 'paymentMethodId' });       // 
 module.exports = {
   sequelize,
   User,
-  Cagnotte,
+  pull,
   Contribution,
   Transaction,
   Notification,

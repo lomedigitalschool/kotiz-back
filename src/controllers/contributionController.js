@@ -1,16 +1,16 @@
 // Contrôleur des contributions
-const { Contribution, Cagnotte } = require('../models');
+const { Contribution, pull } = require('../models');
 
 exports.create = async (req, res) => {
   try {
-    const { cagnotteId, amount, message } = req.body;
+    const { pullId, amount, message } = req.body;
 
-    const cagnotte = await Cagnotte.findByPk(cagnotteId);
-    if (!cagnotte) return res.status(404).json({ message: "Cagnotte introuvable" });
+    const pull = await pull.findByPk(pullId);
+    if (!pull) return res.status(404).json({ message: "pull introuvable" });
 
     const contribution = await Contribution.create({
       userId: req.user.id,
-      cagnotteId,
+      pullId,
       amount,
       message
     });

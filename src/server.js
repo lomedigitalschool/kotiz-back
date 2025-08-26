@@ -15,7 +15,7 @@ const { authenticate, isAdmin } = require('./middleware/auth');
 // Import des routes
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
-const cagnotteRoutes = require('./routes/cagnotteRoutes');
+const pullRoutes = require('./routes/pullRoutes');
 const contributionRoutes = require('./routes/contributionRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
@@ -60,8 +60,8 @@ app.use('/api/v1/auth', authRoutes);
 // Utilisateurs (protégé)
 app.use('/api/v1/users', authenticate, userRoutes);
 
-// Cagnottes (protégé)
-app.use('/api/v1/cagnottes', authenticate, cagnotteRoutes);
+// pulls (protégé)
+app.use('/api/v1/pulls', authenticate, pullRoutes);
 
 // Contributions (protégé)
 app.use('/api/v1/contributions', authenticate, contributionRoutes);

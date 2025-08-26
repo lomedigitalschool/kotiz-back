@@ -1,5 +1,5 @@
 // On importe les modèles Sequelize nécessaires
-const { User, Cagnotte, Log, Transaction } = require('../models');
+const { User, pull, Log, Transaction } = require('../models');
 
 //  Dashboard global
 
@@ -8,8 +8,8 @@ exports.getDashboard = async (req, res) => {
     // Compter le nombre total d'utilisateurs
     const usersCount = await User.count();
 
-    // Compter le nombre de cagnottes
-    const cagnottesCount = await Cagnotte.count();
+    // Compter le nombre de pulls
+    const pullsCount = await pull.count();
 
     // Compter le nombre de transactions
     const transactionsCount = await Transaction.count();
@@ -20,7 +20,7 @@ exports.getDashboard = async (req, res) => {
     // Réponse envoyée au client
     res.json({
       usersCount,
-      cagnottesCount,
+      pullsCount,
       transactionsCount,
       totalCollected: totalCollected || 0
     });
@@ -74,41 +74,41 @@ exports.deleteUser = async (req, res) => {
 };
 
 
-//  Gestion cagnottes
+//  Gestion pulls
 
-exports.getAllCagnottes = async (req, res) => {
+exports.getAllpulls = async (req, res) => {
   try {
-    // Récupérer toutes les cagnottes
-    const cagnottes = await Cagnotte.findAll();
-    res.json(cagnottes);
+    // Récupérer toutes les pulls
+    const pulls = await pull.findAll();
+    res.json(pulls);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.validateCagnotte = async (req, res) => {
+exports.validatepull = async (req, res) => {
   try {
-    // Récupérer la cagnotte par ID
-    const cagnotte = await Cagnotte.findByPk(req.params.id);
+    // Récupérer la pull par ID
+    const pull = await pull.findByPk(req.params.id);
 
     // Si non trouvée → 404
-    if (!cagnotte) return res.status(404).json({ message: "Cagnotte non trouvée" });
+    if (!pull) return res.status(404).json({ message: "pull non trouvée" });
 
     // Mettre isValidated = true
-    cagnotte.isValidated = true;
-    await cagnotte.save();
+    pull.isValidated = true;
+    await pull.save();
 
-    res.json({ message: "Cagnotte validée", cagnotte });
+    res.json({ message: "pull validée", pull });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.deleteCagnotte = async (req, res) => {
+exports.deletepull = async (req, res) => {
   try {
-    // Supprimer la cagnotte par son ID
-    await Cagnotte.destroy({ where: { id: req.params.id } });
-    res.json({ message: "Cagnotte supprimée" });
+    // Supprimer la pull par son ID
+    await pull.destroy({ where: { id: req.params.id } });
+    res.json({ message: "pull supprimée" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

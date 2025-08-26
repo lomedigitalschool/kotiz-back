@@ -12,8 +12,8 @@
   "dependencies": {
     "@adminjs/design-system": "^4.1.1",
     "@adminjs/express": "^5.1.0",
-    "@adminjs/sequelize": "^3.0.0",
-    "adminjs": "^6.8.7",
+    "@adminjs/sequelize": "^2.1.5",
+    "adminjs": "^7.8.17",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",

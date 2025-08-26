@@ -1,11 +1,11 @@
 /**
- * 💰 Modèle Contribution - Gestion des contributions aux cagnottes
+ * 💰 Modèle Contribution - Gestion des contributions aux pulls
  * 
- * Ce modèle gère les contributions financières des utilisateurs aux cagnottes.
+ * Ce modèle gère les contributions financières des utilisateurs aux pulls.
  * Supporte les contributions anonymes et avec message personnalisé.
  * 
  * Relations:
- * - belongsTo: Cagnotte, User (optionnel pour anonymes)
+ * - belongsTo: pull, User (optionnel pour anonymes)
  * - hasOne: Transaction
  */
 

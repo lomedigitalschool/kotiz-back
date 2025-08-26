@@ -5,7 +5,7 @@
  * Il gère les comptes utilisateurs et administrateurs avec authentification sécurisée.
  * 
  * Relations:
- * - hasMany: Cagnottes, Contributions, Notifications, UserPaymentMethods, Logs
+ * - hasMany: pulls, Contributions, Notifications, UserPaymentMethods, Logs
  * - hasOne: Kyc (vérification d'identité)
  */
 

@@ -12,7 +12,7 @@ const { admin, adminRouter } = require('./config/admin');
 // Middlewares maison (auth)
 const { authenticate, isAdmin } = require('./middleware/auth');
 
-// Import des routes
+// Import des routes API
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const pullRoutes = require('./routes/pullRoutes');
@@ -26,10 +26,28 @@ const app = express();
 app.use(express.json());
 
 // 4️⃣ Sécurité globale
-app.use(helmet());
 app.use(cors({ origin: '*', credentials: true }));
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+
+// Limitation des requêtes (rate limiter)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 100, // 100 requêtes par IP
+});
 app.use(limiter);
+
+// Helmet (⚠️ adapté pour AdminJS avec CSP custom)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "script-src": ["'self'", "'unsafe-inline'", "https:"],
+        "style-src": ["'self'", "'unsafe-inline'", "https:"],
+        "img-src": ["'self'", "data:", "https:"],
+      },
+    },
+  })
+);
 
 // 5️⃣ Définir le port
 const PORT = process.env.PORT || 3000;
@@ -53,32 +71,33 @@ app.use('/api/v1/transactions', authenticate, transactionRoutes);
 app.use('/api/v1/notifications', authenticate, notificationRoutes);
 app.use('/api/v1/admin', authenticate, isAdmin, adminRoutes);
 
-// 9️⃣ Interface d'administration AdminJS
+// 8️⃣ Interface d'administration AdminJS (⚠️ après Helmet et autres middlewares)
 app.use(admin.options.rootPath, adminRouter);
 
-// 🔟 Root simple
+// 9️⃣ Route racine
 app.get('/', (req, res) =>
-  res.send('🚀 API Kotiz OK - Admin: /admin')
+  res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin')
 );
 
-// 1️⃣1️⃣ Lancer le serveur après connexion Sequelize
+// 🔟 Lancer le serveur après connexion Sequelize
 (async () => {
   try {
     console.log('⏳ Tentative de connexion à la BDD...');
     await sequelize.authenticate();
     console.log('✅ Connexion PostgreSQL réussie !');
 
-    // ⚠️ En DEV : DROP + RECREATE toutes les tables
+    // ⚠️ En DEV : recrée toutes les tables
     await sequelize.sync({ force: true });
     console.log('✅ Tables recréées (force: true).');
 
-    // Recréer l'administrateur par défaut
+    // Création de l'administrateur par défaut
     const { createAdmin } = require('./scripts/create-admin');
     await createAdmin();
 
-    // Démarrer l’API
+    // Démarrage serveur
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+      console.log(`🔑 AdminJS dispo sur http://localhost:${PORT}/admin`);
     });
   } catch (error) {
     console.error('❌ Erreur connexion/synchro BDD :', error);

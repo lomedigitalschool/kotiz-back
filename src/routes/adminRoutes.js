@@ -1,58 +1,26 @@
-// On importe express pour créer un router
-const express = require('express');
-// On crée un objet router qui contiendra toutes les routes admin
-const router = express.Router();
+// src/routes/adminRoutes.js
 
-// On importe le controller admin (la logique métier)
+const express = require('express');
+const router = express.Router();
 const adminController = require('../controllers/adminController');
 
-// Dashboard global
-
-// Route GET /api/v1/admin/dashboard
-// Permet à l'admin de voir un résumé global (nb users, pulls, transactions, total collecté)
+// Dashboard
 router.get('/dashboard', adminController.getDashboard);
 
-
-// Gestion utilisateurs
-
-
-// GET /api/v1/admin/users
-// Récupérer la liste de tous les utilisateurs
+// Utilisateurs
 router.get('/users', adminController.getAllUsers);
-
-// PUT /api/v1/admin/users/:id/block
-// Bloquer un utilisateur spécifique (isBlocked = true)
 router.put('/users/:id/block', adminController.blockUser);
-
-// DELETE /api/v1/admin/users/:id
-// Supprimer un utilisateur par son ID
 router.delete('/users/:id', adminController.deleteUser);
 
+// Pulls
+router.get('/pulls', adminController.getAllPulls);
+router.put('/pulls/:id/validate', adminController.validatePull);
+router.delete('/pulls/:id', adminController.deletePull);
 
-// Gestion pulls
-
-// GET /api/v1/admin/pulls
-// Récupérer toutes les pulls (peu importe leur créateur)
-router.get('/pulls', adminController.getAllpulls);
-
-// PUT /api/v1/admin/pulls/:id/validate
-// Valider une pull (isValidated = true)
-router.put('/pulls/:id/validate', adminController.validatepull);
-
-// DELETE /api/v1/admin/pulls/:id
-// Supprimer une pull
-router.delete('/pulls/:id', adminController.deletepull);
-
-// Logs & Transactions
-
-
-// GET /api/v1/admin/logs
-// Récupérer les logs système (erreurs, événements)
+// Logs
 router.get('/logs', adminController.getLogs);
 
-// GET /api/v1/admin/transactions/export
-// Exporter toutes les transactions (JSON ou CSV plus tard)
+// Transactions
 router.get('/transactions/export', adminController.exportTransactions);
 
-// On exporte le router pour l'utiliser dans server.js
 module.exports = router;

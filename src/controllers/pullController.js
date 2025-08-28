@@ -1,37 +1,37 @@
-const { pull, Contribution } = require('../models');
+const { Pull, Contribution } = require('../models');
 
 exports.create = async (req, res) => {
   try {
-    const pull = await pull.create({
+    const newPull = await Pull.create({
       ...req.body,
       userId: req.user.id
     });
-    res.status(201).json(pull);
+    res.status(201).json(newPull);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
 exports.getAll = async (req, res) => {
-  const pulls = await pull.findAll({ include: [Contribution] });
+  const pulls = await Pull.findAll({ include: [Contribution] });
   res.json(pulls);
 };
 
 exports.getOne = async (req, res) => {
-  const pull = await pull.findByPk(req.params.id, { include: [Contribution] });
-  if (!pull) return res.status(404).json({ message: "pull introuvable" });
-  res.json(pull);
+  const singlePull = await Pull.findByPk(req.params.id, { include: [Contribution] });
+  if (!singlePull) return res.status(404).json({ message: "Pull introuvable" });
+  res.json(singlePull);
 };
 
 exports.update = async (req, res) => {
-  const pull = await pull.findByPk(req.params.id);
-  if (!pull) return res.status(404).json({ message: "pull introuvable" });
+  const singlePull = await Pull.findByPk(req.params.id);
+  if (!singlePull) return res.status(404).json({ message: "Pull introuvable" });
 
-  await pull.update(req.body);
-  res.json({ message: "pull mise à jour", pull });
+  await singlePull.update(req.body);
+  res.json({ message: "Pull mise à jour", pull: singlePull });
 };
 
 exports.remove = async (req, res) => {
-  await pull.destroy({ where: { id: req.params.id } });
-  res.json({ message: "pull supprimée" });
+  await Pull.destroy({ where: { id: req.params.id } });
+  res.json({ message: "Pull supprimée" });
 };

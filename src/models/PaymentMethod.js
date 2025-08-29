@@ -1,47 +1,25 @@
-/**
- * 📱 Modèle PaymentMethod - Gestion des méthodes de paiement
- * 
- * Ce modèle définit les méthodes de paiement disponibles dans l'application.
- * Supporte Mobile Money, cartes bancaires et virements.
- * 
- * Relations:
- * - hasMany: UserPaymentMethods, Transactions
- */
+const { Model, DataTypes } = require('sequelize');
 
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-
-// Définition du modèle PaymentMethod pour les moyens de paiement
-const PaymentMethod = sequelize.define('PaymentMethod', {
-  // Identifiant unique de la méthode de paiement
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  // Nom affiché de la méthode (ex: "MTN Mobile Money")
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  // Type de méthode de paiement
-  type: {
-    type: DataTypes.ENUM('mobile_money', 'card', 'bank'),
-    allowNull: false
-  },
-  // Fournisseur du service (MTN, Orange, Visa, etc.)
-  provider: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  // Statut d'activation de la méthode
-  isActive: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
+class PaymentMethod extends Model {
+  static associate(models) {
+    PaymentMethod.hasMany(models.Transaction, { foreignKey: 'paymentMethodId', as: 'transactions' });
+    PaymentMethod.hasMany(models.UserPaymentMethod, { foreignKey: 'paymentMethodId', as: 'userMethods' });
   }
-}, {
-  timestamps: true,             // Horodatage pour gestion des méthodes
-  tableName: 'payment_methods'  // Table des méthodes de paiement
-});
+}
 
-module.exports = PaymentMethod;
+function initPaymentMethod(sequelize) {
+  PaymentMethod.init({
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.STRING, allowNull: false },
+    provider: { type: DataTypes.STRING, allowNull: true }
+  }, {
+    sequelize,
+    modelName: 'PaymentMethod',
+    tableName: 'payment_methods',
+    timestamps: true
+  });
+
+  return PaymentMethod;
+}
+
+module.exports = initPaymentMethod;

@@ -1,56 +1,32 @@
-/**
- * 💳 Modèle Transaction - Gestion des transactions financières
- * 
- * Ce modèle gère les transactions liées aux contributions.
- * Il stocke les détails des paiements et les réponses des fournisseurs de paiement.
- * 
- * Relations:
- * - belongsTo: Contribution, PaymentMethod
- */
+const { Model, DataTypes } = require('sequelize');
 
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-
-// Définition du modèle Transaction pour le suivi des paiements
-const Transaction = sequelize.define('Transaction', {
-  // Identifiant unique de la transaction
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  // Montant de la transaction (validation >= 0)
-  amount: {
-    type: DataTypes.DECIMAL(12, 2),
-    allowNull: false,
-    validate: {
-      min: 0  // Montant positif ou nul
-    }
-  },
-  // Devise de la transaction
-  currency: {
-    type: DataTypes.ENUM('XOF', 'EUR', 'USD'),
-    allowNull: false,
-    defaultValue: 'XOF'
-  },
-  // Statut de la transaction dans le processus de paiement
-  status: {
-    type: DataTypes.ENUM('pending', 'completed', 'failed'),
-    defaultValue: 'pending'
-  },
-  // Référence unique du fournisseur de paiement
-  providerReference: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  // Réponse complète du fournisseur (JSON sérialisé)
-  providerResponse: {
-    type: DataTypes.TEXT,
-    allowNull: true
+class Transaction extends Model {
+  static associate(models) {
+    Transaction.belongsTo(models.Contribution, { foreignKey: 'contributionId', as: 'contribution' });
+    Transaction.belongsTo(models.PaymentMethod, { foreignKey: 'paymentMethodId', as: 'paymentMethod' });
   }
-}, {
-  timestamps: true,          // Horodatage pour audit financier
-  tableName: 'transactions'  // Table des transactions financières
-});
+}
 
-module.exports = Transaction;
+function initTransaction(sequelize) {
+  Transaction.init({
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    contributionId: { type: DataTypes.INTEGER, allowNull: false },
+    paymentMethodId: { type: DataTypes.INTEGER, allowNull: true },
+    transactionReference: { type: DataTypes.STRING, allowNull: false, unique: true },
+    amount: { type: DataTypes.DECIMAL(12,2), allowNull: false, validate: { min: 0 } },
+    currency: { type: DataTypes.ENUM('XOF','EUR','USD'), defaultValue: 'XOF' },
+    status: { type: DataTypes.ENUM('pending','completed','failed'), defaultValue: 'pending' },
+    providerReference: { type: DataTypes.STRING, allowNull: true },
+    providerResponse: { type: DataTypes.JSON, allowNull: true },
+    metadata: { type: DataTypes.JSON, allowNull: true }
+  }, {
+    sequelize,
+    modelName: 'Transaction',
+    tableName: 'transactions',
+    timestamps: true
+  });
+
+  return Transaction;
+}
+
+module.exports = initTransaction;

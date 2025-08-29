@@ -26,7 +26,12 @@ const app = express();
 app.use(express.json());
 
 // 4️⃣ Sécurité globale
-app.use(cors({ origin: '*', credentials: true }));
+app.use(cors({ 
+    origin: 'http://localhost:5173', // URL de votre frontend Vite
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Limitation des requêtes (rate limiter)
 const limiter = rateLimit({

@@ -3,7 +3,7 @@ const { Model, DataTypes } = require('sequelize');
 class Contribution extends Model {
   static associate(models) {
     Contribution.belongsTo(models.User, { foreignKey: 'userId', as: 'contributor' });
-    Contribution.belongsTo(models.Pull, { foreignKey: 'pullId', as: 'pull' });
+    Contribution.belongsTo(models.Pull, { foreignKey: 'pullId', as: 'Pull' });
     Contribution.hasOne(models.Transaction, { foreignKey: 'contributionId', as: 'transaction' });
   }
 }

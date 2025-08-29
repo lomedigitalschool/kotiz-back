@@ -11,29 +11,22 @@ const initNotification = require('./Notification');
 const initLog = require('./Log');
 
 // Init modèles
-const User = initUser(sequelize);
-const Pull = initPull(sequelize);
-const Contribution = initContribution(sequelize);
-const Transaction = initTransaction(sequelize);
-const PaymentMethod = initPaymentMethod(sequelize);
-const UserPaymentMethod = initUserPaymentMethod(sequelize);
-const Kyc = initKyc(sequelize);
-const Notification = initNotification(sequelize);
-const Log = initLog(sequelize);
+const db = {};
+db.User = initUser(sequelize);
+db.Pull = initPull(sequelize);
+db.Contribution = initContribution(sequelize);
+db.Transaction = initTransaction(sequelize);
+db.PaymentMethod = initPaymentMethod(sequelize);
+db.UserPaymentMethod = initUserPaymentMethod(sequelize);
+db.Kyc = initKyc(sequelize);
+db.Notification = initNotification(sequelize);
+db.Log = initLog(sequelize);
 
 // Associations
-Object.values({ User, Pull, Contribution, Transaction, PaymentMethod, UserPaymentMethod, Kyc, Notification, Log })
-  .forEach(model => { if (model.associate) model.associate({ User, Pull, Contribution, Transaction, PaymentMethod, UserPaymentMethod, Kyc, Notification, Log }); });
+Object.values(db).forEach(model => {
+  if (model.associate) model.associate(db);
+});
 
-module.exports = {
-  sequelize,
-  User,
-  Pull,
-  Contribution,
-  Transaction,
-  PaymentMethod,
-  UserPaymentMethod,
-  Kyc,
-  Notification,
-  Log
-};
+db.sequelize = sequelize;
+
+module.exports = db;

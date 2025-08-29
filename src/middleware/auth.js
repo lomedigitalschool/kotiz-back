@@ -1,20 +1,25 @@
-// Middleware d'authentification
 const jwt = require('jsonwebtoken');
+const { User } = require('../models'); // <-- importe ton modèle User
 
 // Vérifie que l’utilisateur est connecté
-exports.authenticate = (req, res, next) => {
-  // Récupérer le token depuis l’en-tête Authorization
+exports.authenticate = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return res.status(401).json({ error: "Token manquant" });
 
-  const token = authHeader.split(' ')[1]; // "Bearer <token>"
+  const token = authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ error: "Token invalide" });
 
   try {
-    // Vérifier et décoder le token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // on stocke les infos utilisateur dans req.user
-    next(); // continuer
+
+    // 🔎 on va chercher l’utilisateur en DB
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      return res.status(401).json({ error: "Utilisateur introuvable" });
+    }
+
+    req.user = user; // 
+    next();
   } catch (err) {
     res.status(403).json({ error: "Token expiré ou invalide" });
   }
@@ -22,7 +27,7 @@ exports.authenticate = (req, res, next) => {
 
 // Vérifie que l’utilisateur est admin
 exports.isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
+  if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ error: "Accès réservé aux administrateurs" });
   }
   next();

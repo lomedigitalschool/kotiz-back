@@ -8,11 +8,47 @@ class Kyc extends Model {
 
 function initKyc(sequelize) {
   Kyc.init({
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: false },
-    documentType: { type: DataTypes.STRING, allowNull: false },
-    documentUrl: { type: DataTypes.STRING, allowNull: false },
-    status: { type: DataTypes.ENUM('pending','verified','rejected'), defaultValue: 'pending' }
+    id: { 
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true 
+    },
+    typePiece: {
+      type: DataTypes.ENUM('CNI', 'PASSPORT', 'PERMIS_CONDUIRE'),
+      allowNull: false
+    },
+    numeroPiece: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
+    },
+    dateExpiration: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
+    photoRecto: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    photoVerso: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    statutVerification: {
+      type: DataTypes.ENUM('EN_ATTENTE', 'APPROUVE', 'REFUSE'),
+      defaultValue: 'EN_ATTENTE'
+    },
+    commentaireAdmin: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    }
   }, {
     sequelize,
     modelName: 'Kyc',

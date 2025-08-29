@@ -1,42 +1,28 @@
-/**
- * 🔗 Modèle UserPaymentMethod - Association utilisateurs et méthodes de paiement
- * 
- * Ce modèle gère l'association entre les utilisateurs et leurs méthodes de paiement.
- * Stocke les numéros de compte et définit les méthodes par défaut.
- * 
- * Relations:
- * - belongsTo: User, PaymentMethod
- */
+const { Model, DataTypes } = require('sequelize');
 
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-
-// Table de liaison utilisateurs <-> méthodes de paiement
-const UserPaymentMethod = sequelize.define('UserPaymentMethod', {
-  // Identifiant unique de l'association
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  // Numéro de compte/téléphone pour la méthode
-  accountNumber: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  // Méthode de paiement par défaut de l'utilisateur
-  isDefault: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  // Statut de la méthode pour cet utilisateur
-  status: {
-    type: DataTypes.ENUM('active', 'inactive'),
-    defaultValue: 'active'
+class UserPaymentMethod extends Model {
+  static associate(models) {
+    UserPaymentMethod.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+    UserPaymentMethod.belongsTo(models.PaymentMethod, { foreignKey: 'paymentMethodId', as: 'paymentMethod' });
   }
-}, {
-  timestamps: true,                   // Horodatage des associations
-  tableName: 'user_payment_methods'  // Table de liaison
-});
+}
 
-module.exports = UserPaymentMethod;
+function initUserPaymentMethod(sequelize) {
+  UserPaymentMethod.init({
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    userId: { type: DataTypes.INTEGER, allowNull: false },
+    paymentMethodId: { type: DataTypes.INTEGER, allowNull: false },
+    accountNumber: { type: DataTypes.STRING, allowNull: false },
+    isDefault: { type: DataTypes.BOOLEAN, defaultValue: false },
+    status: { type: DataTypes.ENUM('active','inactive'), defaultValue: 'active' }
+  }, {
+    sequelize,
+    modelName: 'UserPaymentMethod',
+    tableName: 'user_payment_methods',
+    timestamps: true
+  });
+
+  return UserPaymentMethod;
+}
+
+module.exports = initUserPaymentMethod;

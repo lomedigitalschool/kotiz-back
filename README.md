@@ -41,7 +41,7 @@ src/
 ├── migrations/          # Migrations automatiques (10 fichiers)
 ├── models/              # 9 modèles Sequelize avec relations
 │   ├── User.js          # Utilisateurs (user/admin)
-│   ├── Cagnotte.js      # Cagnottes avec validation
+│   ├── pull.js      # pulls avec validation
 │   ├── Contribution.js  # Contributions
 │   ├── Transaction.js   # Transactions financières
 │   ├── PaymentMethod.js # Méthodes de paiement
@@ -67,7 +67,7 @@ src/
 ### 👑 Administration (AdminJS)
 - `GET /admin` - **Dashboard complet** (admin uniquement)
   - 👤 Gestion des utilisateurs (user/admin)
-  - 🎯 Approbation des cagnottes
+  - 🎯 Approbation des pulls
   - 💰 Suivi des contributions
   - 💳 Gestion des méthodes de paiement
   - 🔔 Notifications système
@@ -81,25 +81,25 @@ src/
 - `GET /api/auth/profile` - Profil utilisateur
 
 ### 📱 API Mobile/Web (À implémenter)
-- `GET /api/cagnottes` - Cagnottes publiques
-- `POST /api/cagnottes` - Créer une cagnotte
+- `GET /api/pulls` - pulls publiques
+- `POST /api/pulls` - Créer une pull
 - `POST /api/contributions` - Faire une contribution
 - `GET /api/payment-methods` - Méthodes de paiement disponibles
 
 ## 🛡️ Fonctionnalités de Sécurité
 
 ### ✅ Validations Implémentées
-- **Montants financiers** : Validation > 0 pour contributions/cagnottes
+- **Montants financiers** : Validation > 0 pour contributions/pulls
 - **Devises** : Limitées à XOF, EUR, USD (ENUM)
 - **Mots de passe** : Hachage bcrypt automatique
 - **KYC** : Validation des documents d'identité
 - **Authentification AdminJS** : Accès admin uniquement
 
 ### 🔗 Relations Testées
-- User ↔ Cagnottes (1:N)
+- User ↔ pulls (1:N)
 - User ↔ Contributions (1:N)
 - User ↔ KYC (1:1)
-- Cagnotte ↔ Contributions (1:N)
+- pull ↔ Contributions (1:N)
 - Contribution ↔ Transaction (1:1)
 - Transaction ↔ PaymentMethod (N:1)
 

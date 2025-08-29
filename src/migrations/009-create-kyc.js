@@ -37,6 +37,11 @@ module.exports = {
         type: Sequelize.TEXT,
         allowNull: true
       },
+      typeSubmission: {
+            type: DataTypes.ENUM('PREMIERE_SOUMISSION', 'NOUVELLE_TENTATIVE', 'RENOUVELLEMENT', 'CORRECTION'),
+            allowNull: false,
+            defaultValue: 'PREMIERE_SOUMISSION'
+          },
       userId: {
         type: Sequelize.INTEGER,
         references: {

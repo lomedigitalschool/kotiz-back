@@ -10,9 +10,9 @@
  * - Masquage des champs sensibles (mots de passe)
  * - Interface personnalisée avec branding Kotiz
  */
-
-const AdminJS = require('adminjs');
-const AdminJSExpress = require('@adminjs/express');
+const AdminJS = require('adminjs').default;
+//const AdminJSExpress = require('@adminjs/express');
+const { buildAuthenticatedRouter } = require('@adminjs/express');
 const AdminJSSequelize = require('@adminjs/sequelize');
 const bcrypt = require('bcryptjs');
 
@@ -48,14 +48,14 @@ const adminOptions = {
     logo: false,                   // Pas de logo personnalisé
     softwareBrothers: false,       // Masquer le branding AdminJS
   },
+
 };
 
 // Création de l'instance AdminJS
 const admin = new AdminJS(adminOptions);
 
-// Configuration du routeur avec authentification sécurisée
-const adminRouter = AdminJSExpress.buildAuthenticatedRouter(admin, {
-  // Fonction d'authentification (admin uniquement)
+// Routeur avec authentification sécurisée
+const adminRouter = buildAuthenticatedRouter(admin, {
   authenticate: async (email, password) => {
     // Recherche d'un utilisateur admin avec cet email
     const user = await User.findOne({ where: { email, role: 'admin' } });
@@ -70,13 +70,12 @@ const adminRouter = AdminJSExpress.buildAuthenticatedRouter(admin, {
   // Configuration des cookies de session
   cookieName: 'adminjs',
   cookiePassword: process.env.SESSION_SECRET || 'session-secret-kotiz',
-
-  // Ajout des options pour express-session
-  sessionOptions: {
-    resave: false,
-    saveUninitialized: false,
-  },
+}, null, {
+  resave: false,
+  saveUninitialized: true,
+  secret: process.env.SESSION_SECRET || 'session-secret-kotiz',
 });
 
-// Export de l'instance AdminJS et du routeur authentifié
+
+
 module.exports = { admin, adminRouter };

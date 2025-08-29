@@ -15,11 +15,15 @@ npm install
 ```bash
 cp .env.example .env
 ```
-Modifier `.env` avec vos paramètres PostgreSQL.
+Modifier `.env` avec vos paramètres PostgreSQL et les configurations suivantes :
+- `DATABASE_URL` : URL de connexion PostgreSQL
+- `JWT_SECRET` : Clé secrète pour les tokens JWT
+- `UPLOAD_DIR` : Dossier pour les uploads KYC
 
 3. **Base de données**
 - Créer une base PostgreSQL nommée `kotiz`
 - Les migrations s'exécutent **automatiquement** au démarrage
+- Les méthodes de paiement sont automatiquement créées
 
 4. **Démarrage**
 ```bash
@@ -35,69 +39,134 @@ npm start
 
 ```
 src/
-├── config/
-│   ├── database.js      # Configuration PostgreSQL
-│   └── admin.js         # Configuration AdminJS
-├── migrations/          # Migrations automatiques (10 fichiers)
-├── models/              # 9 modèles Sequelize avec relations
-│   ├── User.js          # Utilisateurs (user/admin)
-│   ├── Cagnotte.js      # Cagnottes avec validation
-│   ├── Contribution.js  # Contributions
-│   ├── Transaction.js   # Transactions financières
-│   ├── PaymentMethod.js # Méthodes de paiement
-│   ├── UserPaymentMethod.js # Association users ↔ payments
-│   ├── Notification.js  # Notifications système
-│   ├── Log.js          # Journalisation
-│   ├── Kyc.js          # Vérification d'identité
-│   └── index.js        # Relations entre modèles
+├── config/             # Configurations
+│   ├── database.js     # Configuration PostgreSQL
+│   ├── admin.js        # Configuration AdminJS
+│   └── migration.js    # Configuration des migrations
+├── controllers/        # Logique métier
+│   ├── authController.js
+│   ├── userController.js
+│   ├── cagnotteController.js
+│   ├── contributionController.js
+│   ├── kycController.js
+│   ├── transactionController.js
+│   └── notificationController.js
+├── middleware/         # Middlewares
+│   ├── auth.js         # Authentification JWT
+│   ├── validation.js   # Validation des données
+│   └── errorHandler.js # Gestion des erreurs
+├── migrations/         # Migrations automatiques
+├── models/            # Modèles Sequelize
+│   ├── User.js
+│   ├── Cagnotte.js
+│   ├── Contribution.js
+│   ├── Transaction.js
+│   ├── PaymentMethod.js
+│   ├── UserPaymentMethod.js
+│   ├── Notification.js
+│   ├── Log.js
+│   ├── Kyc.js
+│   └── index.js
+├── routes/            # Routes API
+│   ├── authRoutes.js
+│   ├── userRoutes.js
+│   ├── cagnotteRoutes.js
+│   ├── contributionRoutes.js
+│   ├── transactionRoutes.js
+│   └── notificationRoutes.js
 ├── utils/
-│   └── migrator.js     # Migrations automatiques
-├── scripts/
-│   └── create-admin.js # Création admin automatique
-└── server.js           # Point d'entrée avec AdminJS
+│   └── migrator.js    # Migrations automatiques
+└── server.js          # Point d'entrée avec AdminJS
 ```
 
 ## 🌐 API Endpoints
 
-### 🛠️ Utilitaires
-- `GET /health` - Santé de l'API et base de données
-- `GET /test-models` - Test de création des modèles
-- `GET /test-relations` - Test des relations entre modèles
+### � Authentification
+- `POST /api/auth/register` - Inscription utilisateur
+- `POST /api/auth/login` - Connexion utilisateur
+- `GET /api/auth/profile` - Profil utilisateur authentifié
+- `PUT /api/auth/profile` - Mise à jour du profil
+
+### 👤 Utilisateurs
+- `GET /api/users` - Liste des utilisateurs
+- `GET /api/users/:id` - Détails d'un utilisateur
+- `PUT /api/users/:id` - Mise à jour d'un utilisateur
+- `DELETE /api/users/:id` - Suppression d'un utilisateur
+
+### � Cagnottes
+- `GET /api/cagnottes` - Liste des cagnottes
+- `POST /api/cagnottes` - Créer une cagnotte
+- `GET /api/cagnottes/:id` - Détails d'une cagnotte
+- `PUT /api/cagnottes/:id` - Modifier une cagnotte
+- `DELETE /api/cagnottes/:id` - Supprimer une cagnotte
+
+### 💸 Contributions
+- `POST /api/contributions` - Faire une contribution
+- `GET /api/contributions` - Liste des contributions
+- `GET /api/contributions/:id` - Détails d'une contribution
+
+### ✅ KYC (Know Your Customer)
+- `POST /api/kyc/submit` - Soumettre des documents KYC
+- `GET /api/kyc/status` - Vérifier le statut KYC
+- `PUT /api/kyc/:id/review` - Réviser un dossier KYC (admin)
+
+### � Transactions
+- `GET /api/transactions` - Liste des transactions
+- `GET /api/transactions/:id` - Détails d'une transaction
+- `POST /api/transactions` - Créer une transaction
+- `PUT /api/transactions/:id` - Mettre à jour une transaction
+
+### � Notifications
+- `GET /api/notifications` - Liste des notifications
+- `PUT /api/notifications/:id` - Marquer comme lue
+- `DELETE /api/notifications/:id` - Supprimer une notification
 
 ### 👑 Administration (AdminJS)
 - `GET /admin` - **Dashboard complet** (admin uniquement)
-  - 👤 Gestion des utilisateurs (user/admin)
-  - 🎯 Approbation des cagnottes
-  - 💰 Suivi des contributions
-  - 💳 Gestion des méthodes de paiement
-  - 🔔 Notifications système
-  - 📊 Logs d'activité
+  - 👤 Gestion des utilisateurs
+  - 💰 Gestion des cagnottes
+  - 💸 Suivi des transactions
   - ✅ Validation KYC
-  - 💸 Transactions financières
+  - � Logs d'activité
+  - 🔔 Gestion des notifications
 
-### 🔐 Authentification (À implémenter)
-- `POST /api/auth/register` - Inscription
-- `POST /api/auth/login` - Connexion
-- `GET /api/auth/profile` - Profil utilisateur
+## 🛡️ Sécurité & Validation
 
-### 📱 API Mobile/Web (À implémenter)
-- `GET /api/cagnottes` - Cagnottes publiques
-- `POST /api/cagnottes` - Créer une cagnotte
-- `POST /api/contributions` - Faire une contribution
-- `GET /api/payment-methods` - Méthodes de paiement disponibles
+### ✅ Sécurité Implémentée
+- **JWT** : Authentification par tokens
+- **Bcrypt** : Hachage sécurisé des mots de passe
+- **CSP** : Content Security Policy pour AdminJS
+- **Validation** : Middleware de validation des données
+- **KYC** : Vérification d'identité avec upload de documents
 
-## 🛡️ Fonctionnalités de Sécurité
+### 🔒 Validation des Données
+- Montants financiers > 0
+- Devises : XOF, EUR, USD uniquement
+- Formats d'emails valides
+- Validation des fichiers uploadés
+- Vérification des permissions
 
-### ✅ Validations Implémentées
-- **Montants financiers** : Validation > 0 pour contributions/cagnottes
-- **Devises** : Limitées à XOF, EUR, USD (ENUM)
-- **Mots de passe** : Hachage bcrypt automatique
-- **KYC** : Validation des documents d'identité
-- **Authentification AdminJS** : Accès admin uniquement
+## 📊 Tests & Documentation
 
-### 🔗 Relations Testées
-- User ↔ Cagnottes (1:N)
-- User ↔ Contributions (1:N)
+### 🧪 Tests API
+- Collection Postman complète fournie
+- Tests d'intégration automatisés
+- Validation des endpoints
+- Scénarios de test pour chaque route
+
+### 📖 Documentation
+- Documentation API complète
+- Exemples de requêtes et réponses
+- Guide d'utilisation du dashboard admin
+- Instructions de déploiement
+
+## � Contribution
+
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/AmazingFeature`)
+3. Commit les changements (`git commit -m 'Add AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
 - User ↔ KYC (1:1)
 - Cagnotte ↔ Contributions (1:N)
 - Contribution ↔ Transaction (1:1)

@@ -20,15 +20,32 @@ const contributionRoutes = require('./routes/contributionRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const kycRoutes = require('./routes/kycRoutes');
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();
 app.use(express.json());
 
-// 4️⃣ Sécurité globale
-app.use(helmet()); // Protection headers
-app.use(cors({ origin: '*', credentials: true })); // Autoriser front & mobile (adapter origin en prod)
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }); // 100 req / 15 min
+// 4️⃣ Sécurité globale avec configuration pour AdminJS
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(cors({ origin: '*', credentials: true }));
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use(limiter);
 
 // 5️⃣ Définir le port
@@ -75,11 +92,21 @@ app.use('/api/v1/notifications', authenticate, notificationRoutes);
 // Admin (protégé + rôle admin)
 app.use('/api/v1/admin', authenticate, isAdmin, adminRoutes);
 
-// 8️⃣ Tes endpoints de test (⚠️ à retirer en production)
-//app.get('/test-models', require('./tests/test-models'));
-//app.get('/test-relations', require('./tests/test-relations'));
+// Configuration pour les fichiers uploadés
+app.use('/uploads', express.static('uploads'));
+// Routes KYC
+app.use('/api/v1/users', kycRoutes);
 
 // 9️⃣ Interface d'administration AdminJS
+// Middleware spécifique pour AdminJS
+app.use(admin.options.rootPath, (req, res, next) => {
+  // Configuration spécifique pour AdminJS
+  res.removeHeader('Content-Security-Policy');
+  res.removeHeader('Cross-Origin-Embedder-Policy');
+  next();
+});
+
+// Monter AdminJS
 app.use(admin.options.rootPath, adminRouter);
 
 // 🔟 Test simple pour voir si le serveur répond
@@ -94,9 +121,25 @@ app.get('/', (req, res) =>
     await sequelize.authenticate();
     console.log('✅ Connexion PostgreSQL réussie !');
 
-    // Exécuter les migrations automatiquement
-    const { runMigrations } = require('./utils/migrator');
-    await runMigrations();
+    // ⚠️ En DEV : DROP + RECREATE toutes les tables
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync({ alter: true });
+      console.log('✅ Tables recréées (alter: true).');
+    } else {
+      // En production : exécuter les migrations
+      const { Umzug, SequelizeStorage } = require('umzug');
+
+      const umzug = new Umzug({
+        migrations: { glob: 'src/migrations/*.js' },
+        context: sequelize.getQueryInterface(),
+        storage: new SequelizeStorage({ sequelize }),
+        logger: console,
+      });
+
+      // Exécuter les migrations en attente
+      await umzug.up();
+      console.log('✅ Migrations appliquées avec succès.');
+    }
 
     // Créer l'administrateur par défaut
     const { createAdmin } = require('./scripts/create-admin');

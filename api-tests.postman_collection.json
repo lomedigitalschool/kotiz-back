@@ -1,0 +1,395 @@
+{
+  "info": {
+    "name": "Kotiz API",
+    "description": "API complète pour Kotiz - Backend pour Web et Mobile",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.environment.set('base_url', 'http://localhost:3000/api/v1');"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "description": "Authentication et gestion des utilisateurs",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"name\": \"Test User\",\n\t\"email\": \"test@example.com\",\n\t\"phone\": \"+33612345678\",\n\t\"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('token', jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"identifier\": \"test@example.com\",\n\t\"password\": \"password123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. KYC",
+      "description": "Vérification d'identité des utilisateurs",
+      "item": [
+        {
+          "name": "Submit KYC",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/users/kyc",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "typePiece",
+                  "value": "CNI",
+                  "type": "text"
+                },
+                {
+                  "key": "numeroPiece",
+                  "value": "123456789",
+                  "type": "text"
+                },
+                {
+                  "key": "dateExpiration",
+                  "value": "2025-12-31",
+                  "type": "text"
+                },
+                {
+                  "key": "photoRecto",
+                  "type": "file",
+                  "src": "./test-files/recto.jpg"
+                },
+                {
+                  "key": "photoVerso",
+                  "type": "file",
+                  "src": "./test-files/verso.jpg"
+                },
+                {
+                  "key": "typeSubmission",
+                  "value": "PREMIERE_SOUMISSION",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get KYC Status",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/users/kyc/status",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Pulls (Cagnottes)",
+      "description": "Gestion des collectes de fonds",
+      "item": [
+        {
+          "name": "Create Pull",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('pull_id', jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/pulls",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"title\": \"Anniversaire de Paul\",\n\t\"description\": \"Organisons une belle fête !\",\n\t\"goalAmount\": 1000,\n\t\"currency\": \"XOF\",\n\t\"deadline\": \"2025-12-31\",\n\t\"type\": \"public\",\n\t\"imageUrl\": \"https://example.com/image.jpg\",\n\t\"participantLimit\": 50,\n\t\"status\": \"active\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Pulls List",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/pulls",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Pull Details",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/pulls/{{pull_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Contributions",
+      "description": "Gestion des contributions aux collectes",
+      "item": [
+        {
+          "name": "Make Contribution",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('contribution_id', jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/contributions",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"pullId\": \"{{pull_id}}\",\n\t\"amount\": 50,\n\t\"currency\": \"XOF\",\n\t\"anonymous\": false,\n\t\"message\": \"Bon anniversaire !\",\n\t\"paymentReference\": \"PAYMENT_REF_123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Contributions",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/contributions/me",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Transactions",
+      "description": "Suivi des transactions",
+      "item": [
+        {
+          "name": "Get My Transactions",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/transactions/me",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Transaction Details",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/transactions/{{transaction_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Notifications",
+      "description": "Gestion des notifications",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/notifications",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Mark as Read",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/notifications/{{notification_id}}/read",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Admin",
+      "description": "Fonctionnalités d'administration",
+      "item": [
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('admin_token', jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"identifier\": \"admin@kotiz.com\",\n\t\"password\": \"admin123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/admin/dashboard",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Review KYC",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/admin/kyc/{{kyc_id}}/review",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"status\": \"APPROUVE\",\n\t\"commentaire\": \"Documents valides\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api/v1"
+    }
+  ]
+}

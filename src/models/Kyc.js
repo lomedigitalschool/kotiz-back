@@ -13,6 +13,11 @@ function initKyc(sequelize) {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true 
     },
+    typeSubmission: {
+      type: DataTypes.ENUM('PREMIERE_SOUMISSION', 'NOUVELLE_TENTATIVE', 'RENOUVELLEMENT', 'CORRECTION'),
+      allowNull: false,
+      defaultValue: 'PREMIERE_SOUMISSION'
+    },
     typePiece: {
       type: DataTypes.ENUM('CNI', 'PASSPORT', 'PERMIS_CONDUIRE'),
       allowNull: false
@@ -41,6 +46,15 @@ function initKyc(sequelize) {
     commentaireAdmin: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    submissionDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
     },
     userId: {
       type: DataTypes.INTEGER,

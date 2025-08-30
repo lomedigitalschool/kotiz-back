@@ -3,14 +3,49 @@ const { Pull, Contribution } = require('../models');
 // Créer un nouveau Pull
 exports.create = async (req, res) => {
   try {
-    const newPull = await Pull.create({
-      ...req.body,
-      userId: req.user.id // req.user vient du middleware authenticate
+    console.log('Données reçues:', req.body);
+    console.log('Fichiers reçus:', req.file);
+    console.log('Utilisateur:', req.user);
+
+    // Validation des données requises
+    if (!req.body.title || !req.body.goalAmount) {
+      return res.status(400).json({
+        error: "Le titre et le montant cible sont requis"
+      });
+    }
+
+    // Conversion des types de données
+    const pullData = {
+      title: req.body.title,
+      description: req.body.description || null,
+      goalAmount: parseFloat(req.body.goalAmount),
+      currency: req.body.currency || 'XOF',
+      deadline: req.body.deadline ? new Date(req.body.deadline) : null,
+      type: req.body.type || 'public',
+      participantLimit: req.body.participantLimit ? parseInt(req.body.participantLimit) : null,
+      status: 'active', // Les nouvelles cagnottes sont actives par défaut
+      userId: req.user.id
+    };
+
+    // Gestion de l'image si elle existe
+    if (req.file) {
+      pullData.imageUrl = `/uploads/${req.file.filename}`; // URL accessible depuis le frontend
+    }
+
+    console.log('Données à sauvegarder:', pullData);
+
+    const newPull = await Pull.create(pullData);
+    res.status(201).json({
+      success: true,
+      message: "Cagnotte créée avec succès",
+      pull: newPull
     });
-    res.status(201).json(newPull);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('Erreur lors de la création du pull:', err);
+    res.status(500).json({
+      error: "Erreur lors de la création de la cagnotte",
+      details: err.message
+    });
   }
 };
 

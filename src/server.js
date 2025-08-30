@@ -20,18 +20,23 @@ const contributionRoutes = require('./routes/contributionRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const kycRoutes = require('./routes/kycRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();
 app.use(express.json());
 
 // 4️⃣ Sécurité globale
-app.use(cors({ 
-    origin: 'http://localhost:5173', // URL de votre frontend Vite
+app.use(cors({
+    origin: 'http://localhost:3000', // URL de votre frontend Vite
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Servir les fichiers statiques (images uploadées)
+app.use('/uploads', express.static('uploads'));
 
 // Limitation des requêtes (rate limiter)
 const limiter = rateLimit({
@@ -55,7 +60,7 @@ app.use(
 );
 
 // 5️⃣ Définir le port
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 // 6️⃣ Endpoint de test /health
 app.get('/health', async (req, res) => {
@@ -75,6 +80,10 @@ app.use('/api/v1/contributions', authenticate, contributionRoutes);
 app.use('/api/v1/transactions', authenticate, transactionRoutes);
 app.use('/api/v1/notifications', authenticate, notificationRoutes);
 app.use('/api/v1/admin', authenticate, isAdmin, adminRoutes);
+app.use('/api/v1/kyc', kycRoutes);
+
+// 🔧 ROUTES WEBHOOK (sans authentification pour les services externes)
+app.use('/api/v1/webhooks', webhookRoutes);
 
 // 8️⃣ Interface d'administration AdminJS (⚠️ après Helmet et autres middlewares)
 app.use(admin.options.rootPath, adminRouter);
@@ -91,9 +100,9 @@ app.get('/', (req, res) =>
     await sequelize.authenticate();
     console.log('✅ Connexion PostgreSQL réussie !');
 
-    // ⚠️ En DEV : recrée toutes les tables
-    await sequelize.sync({ force: true });
-    console.log('✅ Tables recréées (force: true).');
+    // ⚠️ En DEV : synchronise les tables sans perdre les données
+    await sequelize.sync({ alter: true });
+    console.log('✅ Tables synchronisées (alter: true) - données préservées.');
 
     // Création de l'administrateur par défaut
     const { createAdmin } = require('./scripts/create-admin');

@@ -1,153 +1,318 @@
-# 🚀 Kotiz Backend
+e''''# Kotiz Backend API
 
-Backend API pour l'application Kotiz développée par Lome Digital School.
+API backend pour l'application Kotiz développée par Lome Digital School avec système KYC multi-soumissions.
 
-## ⚡ Installation Rapide
+## 🚀 Fonctionnalités
+
+### Système d'authentification
+- Inscription et connexion utilisateur
+- Authentification JWT
+- Gestion des profils utilisateur
+
+### Système KYC Multi-Soumissions
+- **Première soumission** : Vérification initiale
+- **Nouvelle tentative** : Après un refus
+- **Renouvellement** : Après expiration
+- **Correction** : Modification d'informations
+- Upload de documents (recto/verso)
+- Historique complet des soumissions
+- Interface d'administration pour validation
+
+### Gestion des Cagnottes
+- Création de cagnottes publiques/privées
+- Contributions avec messages
+- Suivi des objectifs
+- Upload d'images
+
+### Administration
+- Interface AdminJS intégrée
+- Gestion des utilisateurs et KYC
+- Statistiques et rapports
+
+## 📋 Installation
+
+### Prérequis
+- Node.js (v16+)
+- PostgreSQL
+- npm ou yarn
+
+### Configuration
 
 1. **Cloner le repository**
 ```bash
 git clone https://github.com/lomedigitalschool/kotiz-back.git
 cd kotiz-back
+```
+
+2. **Installer les dépendances**
+```bash
 npm install
 ```
 
-2. **Configuration**
+3. **Configuration de la base de données**
 ```bash
+# Copier le fichier d'environnement
 cp .env.example .env
+
+# Configurer les variables dans .env
+DB_NAME=kotiz_db
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
 ```
-Modifier `.env` avec vos paramètres PostgreSQL.
 
-3. **Base de données**
-- Créer une base PostgreSQL nommée `kotiz`
-- Les migrations s'exécutent **automatiquement** au démarrage
-
-4. **Démarrage**
+4. **Lancer l'application**
 ```bash
+# Développement
+npm run dev
+
+# Production
 npm start
 ```
 
-5. **Dashboard Admin** (créé automatiquement)
-   - URL: `http://localhost:3000/admin`
-   - Email: `admin@kotiz.com`
-   - Mot de passe: `admin123`
+## 🏗️ Architecture
 
-## 📁 Structure du projet
-
+### Structure des dossiers
 ```
 src/
-├── config/
-│   ├── database.js      # Configuration PostgreSQL
-│   └── admin.js         # Configuration AdminJS
-├── migrations/          # Migrations automatiques (10 fichiers)
-├── models/              # 9 modèles Sequelize avec relations
-│   ├── User.js          # Utilisateurs (user/admin)
-│   ├── pull.js      # pulls avec validation
-│   ├── Contribution.js  # Contributions
-│   ├── Transaction.js   # Transactions financières
-│   ├── PaymentMethod.js # Méthodes de paiement
-│   ├── UserPaymentMethod.js # Association users ↔ payments
-│   ├── Notification.js  # Notifications système
-│   ├── Log.js          # Journalisation
-│   ├── Kyc.js          # Vérification d'identité
-│   └── index.js        # Relations entre modèles
-├── utils/
-│   └── migrator.js     # Migrations automatiques
-├── scripts/
-│   └── create-admin.js # Création admin automatique
-└── server.js           # Point d'entrée avec AdminJS
+├── config/          # Configuration (DB, AdminJS)
+├── controllers/     # Logique métier
+├── middleware/      # Middlewares (auth, multer, validation)
+├── migrations/      # Migrations de base de données
+├── models/          # Modèles Sequelize
+├── routes/          # Routes API
+├── scripts/         # Scripts utilitaires
+└── utils/           # Fonctions utilitaires
 ```
 
-## 🌐 API Endpoints
+### Modèles de données
 
-### 🛠️ Utilitaires
-- `GET /health` - Santé de l'API et base de données
-- `GET /test-models` - Test de création des modèles
-- `GET /test-relations` - Test des relations entre modèles
+#### User (Utilisateur)
+```javascript
+{
+  id: INTEGER (PK),
+  name: STRING,
+  email: STRING (unique),
+  phone: STRING (unique),
+  passwordHash: STRING,
+  role: ENUM('user', 'admin'),
+  avatarUrl: STRING,
+  isVerified: BOOLEAN,
+  lastLogin: DATE
+}
+```
 
-### 👑 Administration (AdminJS)
-- `GET /admin` - **Dashboard complet** (admin uniquement)
-  - 👤 Gestion des utilisateurs (user/admin)
-  - 🎯 Approbation des pulls
-  - 💰 Suivi des contributions
-  - 💳 Gestion des méthodes de paiement
-  - 🔔 Notifications système
-  - 📊 Logs d'activité
-  - ✅ Validation KYC
-  - 💸 Transactions financières
+#### KYC (Vérification d'identité)
+```javascript
+{
+  id: UUID (PK),
+  userId: INTEGER (FK),
+  typeSubmission: ENUM('PREMIERE_SOUMISSION', 'NOUVELLE_TENTATIVE', 'RENOUVELLEMENT', 'CORRECTION'),
+  typePiece: ENUM('CNI', 'PASSPORT', 'PERMIS_CONDUIRE'),
+  numeroPiece: STRING,
+  dateExpiration: DATE,
+  photoRecto: STRING,
+  photoVerso: STRING,
+  statutVerification: ENUM('EN_ATTENTE', 'APPROUVE', 'REFUSE'),
+  commentaireAdmin: TEXT,
+  submissionDate: DATE,
+  isActive: BOOLEAN
+}
+```
 
-### 🔐 Authentification (À implémenter)
-- `POST /api/auth/register` - Inscription
-- `POST /api/auth/login` - Connexion
-- `GET /api/auth/profile` - Profil utilisateur
+#### Pull (Cagnotte)
+```javascript
+{
+  id: UUID (PK),
+  userId: INTEGER (FK),
+  title: STRING,
+  description: TEXT,
+  goalAmount: DECIMAL,
+  currentAmount: DECIMAL,
+  currency: STRING,
+  deadline: DATE,
+  type: ENUM('public', 'private'),
+  status: ENUM('active', 'completed', 'cancelled'),
+  imageUrl: STRING
+}
+```
 
-### 📱 API Mobile/Web (À implémenter)
-- `GET /api/pulls` - pulls publiques
-- `POST /api/pulls` - Créer une pull
-- `POST /api/contributions` - Faire une contribution
-- `GET /api/payment-methods` - Méthodes de paiement disponibles
+## 🔌 API Endpoints
 
-## 🛡️ Fonctionnalités de Sécurité
+### Authentication
+- `POST /api/v1/auth/register` - Inscription
+- `POST /api/v1/auth/login` - Connexion
+- `GET /api/v1/auth/me` - Profil utilisateur
 
-### ✅ Validations Implémentées
-- **Montants financiers** : Validation > 0 pour contributions/pulls
-- **Devises** : Limitées à XOF, EUR, USD (ENUM)
-- **Mots de passe** : Hachage bcrypt automatique
-- **KYC** : Validation des documents d'identité
-- **Authentification AdminJS** : Accès admin uniquement
+### KYC Management
+- `POST /api/v1/kyc/submit` - Soumettre documents KYC
+- `GET /api/v1/kyc/history` - Historique des soumissions
+- `GET /api/v1/kyc/status` - Statut KYC actuel
+- `PUT /api/v1/kyc/:id/status` - Mettre à jour statut (Admin)
+- `GET /api/v1/kyc/admin/all` - Toutes les soumissions (Admin)
 
-### 🔗 Relations Testées
-- User ↔ pulls (1:N)
-- User ↔ Contributions (1:N)
-- User ↔ KYC (1:1)
-- pull ↔ Contributions (1:N)
-- Contribution ↔ Transaction (1:1)
-- Transaction ↔ PaymentMethod (N:1)
+### Cagnottes
+- `POST /api/v1/pulls` - Créer une cagnotte
+- `GET /api/v1/pulls` - Lister les cagnottes
+- `GET /api/v1/pulls/:id` - Détails d'une cagnotte
+- `PUT /api/v1/pulls/:id` - Modifier une cagnotte
+- `DELETE /api/v1/pulls/:id` - Supprimer une cagnotte
 
-## 🧪 Tests Automatisés
+### Contributions
+- `POST /api/v1/contributions` - Faire une contribution
+- `GET /api/v1/contributions/user` - Contributions de l'utilisateur
+- `GET /api/v1/contributions/pull/:id` - Contributions d'une cagnotte
 
+### Users
+- `GET /api/v1/users/profile` - Profil utilisateur
+- `PUT /api/v1/users/profile` - Mettre à jour le profil
+
+## 📁 Upload de fichiers
+
+### Configuration Multer
+- **Dossier de stockage** : `uploads/kyc/{userId}/{timestamp}/`
+- **Types acceptés** : JPG, PNG, PDF
+- **Taille maximale** : 5MB par fichier
+- **Fichiers par soumission** : 2 (recto + verso)
+
+### Structure des uploads
+```
+uploads/
+└── kyc/
+    └── {userId}/
+        └── {timestamp}/
+            ├── photoRecto-{unique}.jpg
+            └── photoVerso-{unique}.jpg
+```
+
+## 🔐 Sécurité
+
+### Authentification
+- JWT avec expiration
+- Middleware d'authentification sur routes protégées
+- Vérification des rôles (user/admin)
+
+### Upload de fichiers
+- Validation des types MIME
+- Limitation de taille
+- Noms de fichiers sécurisés
+- Stockage organisé par utilisateur
+
+### Base de données
+- Hachage des mots de passe (bcrypt)
+- Validation des données d'entrée
+- Protection contre l'injection SQL (Sequelize ORM)
+
+## 🛠️ Développement
+
+### Scripts disponibles
 ```bash
-# Test de santé
-curl http://localhost:3000/health
-
-# Test des modèles
-curl http://localhost:3000/test-models
-
-# Test des relations
-curl http://localhost:3000/test-relations
+npm run dev          # Développement avec nodemon
+npm start           # Production
+npm test            # Tests unitaires
+npm run create-admin # Créer un administrateur
 ```
 
-## 💻 Technologies
+### Variables d'environnement
+```env
+# Base de données
+DB_NAME=kotiz_db
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
 
-- **Backend** : Node.js, Express.js
-- **Base de données** : PostgreSQL + Sequelize ORM
-- **Admin** : AdminJS avec authentification
-- **Sécurité** : bcryptjs, express-session
-- **Migrations** : Système automatique au démarrage
-- **Validation** : Sequelize validators + ENUM types
+# JWT
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=7d
+
+# Serveur
+PORT=3000
+NODE_ENV=development
+
+# AdminJS
+ADMIN_EMAIL=admin@kotiz.com
+ADMIN_PASSWORD=admin123
+```
+
+## 📊 Administration
+
+### Interface AdminJS
+- **URL** : `http://localhost:3000/admin`
+- **Identifiants par défaut** :
+  - Email : `admin@kotiz.com`
+  - Mot de passe : `admin123`
+
+### Fonctionnalités admin
+- Gestion des utilisateurs
+- Validation des soumissions KYC
+- Modération des cagnottes
+- Statistiques et rapports
+
+## 🧪 Tests
+
+### Collection Postman
+Importez le fichier `Kotiz_API_Collection.postman_collection.json` dans Postman pour tester tous les endpoints.
+
+### Variables Postman
+- `base_url` : `http://localhost:3000/api/v1`
+- `auth_token` : Token JWT obtenu après connexion
 
 ## 🚀 Déploiement
 
-### Variables d'environnement requises :
-```env
-PORT=3000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=kotiz
-DB_USER=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=your_jwt_secret
-ADMIN_EMAIL=admin@kotiz.com
-ADMIN_PASSWORD=admin123
-SESSION_SECRET=your_session_secret
+### Production
+1. Configurer les variables d'environnement
+2. Installer les dépendances : `npm ci`
+3. Lancer les migrations : `npm run migrate`
+4. Démarrer l'application : `npm start`
+
+### Docker (optionnel)
+```dockerfile
+FROM node:16-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
 ```
 
-### Production :
-- Migrations automatiques au démarrage
-- Admin créé automatiquement si inexistant
-- Dashboard AdminJS sécurisé
-- Validation des données financières
+## 📝 Changelog
 
+### Version 2.0.0
+- ✅ Système KYC multi-soumissions
+- ✅ Upload de fichiers avec Multer
+- ✅ Relations User-KYC (hasMany)
+- ✅ Configuration alter: true pour préserver les données
+- ✅ Interface d'administration KYC
+- ✅ Collection Postman complète
+
+### Version 1.0.0
+- ✅ Authentification JWT
+- ✅ Gestion des cagnottes
+- ✅ Système de contributions
+- ✅ Interface AdminJS
+
+## 🤝 Contribution
+
+1. Fork le projet
+2. Créer une branche feature (`git checkout -b feature/AmazingFeature`)
+3. Commit les changements (`git commit -m 'Add some AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
 
 ## 📄 Licence
 
-MIT
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+
+## 👥 Équipe
+
+Développé par **Lome Digital School**
+
+- 📧 Contact : contact@lomedigitalschool.com
+- 🌐 Site web : https://lomedigitalschool.com
+
+---
+
+**Kotiz** - Plateforme de cagnottes collaboratives avec vérification d'identité sécurisée.

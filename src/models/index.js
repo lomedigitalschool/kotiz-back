@@ -1,7 +1,7 @@
 const sequelize = require('../config/database');
 
 const initUser = require('./User');
-const initPull = require('./Pull');
+const initPull = require('./pull');
 const initContribution = require('./Contribution');
 const initTransaction = require('./Transaction');
 const initPaymentMethod = require('./PaymentMethod');

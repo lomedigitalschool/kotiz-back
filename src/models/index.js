@@ -9,6 +9,7 @@ const initUserPaymentMethod = require('./UserPaymentMethod');
 const initKyc = require('./Kyc');
 const initNotification = require('./Notification');
 const initLog = require('./Log');
+const initReport = require('./Report');
 
 // Init modèles
 const db = {};
@@ -21,6 +22,7 @@ db.UserPaymentMethod = initUserPaymentMethod(sequelize);
 db.Kyc = initKyc(sequelize);
 db.Notification = initNotification(sequelize);
 db.Log = initLog(sequelize);
+db.Report = initReport(sequelize);
 
 // Associations
 Object.values(db).forEach(model => {

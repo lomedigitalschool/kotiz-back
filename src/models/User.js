@@ -22,7 +22,10 @@ function initUser(sequelize) {
     role: { type: DataTypes.ENUM('user', 'admin'), defaultValue: 'user', allowNull: false },
     avatarUrl: { type: DataTypes.STRING, allowNull: true },
     isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
-    lastLogin: { type: DataTypes.DATE, allowNull: true }
+    isBlocked: { type: DataTypes.BOOLEAN, defaultValue: false },
+    lastLogin: { type: DataTypes.DATE, allowNull: true },
+    resetToken: { type: DataTypes.STRING, allowNull: true },
+    resetTokenExpiry: { type: DataTypes.DATE, allowNull: true }
   }, {
     sequelize,
     modelName: 'User',

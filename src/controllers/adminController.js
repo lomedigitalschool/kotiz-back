@@ -114,3 +114,80 @@ exports.exportTransactions = async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Réinitialiser le mot de passe d'un utilisateur
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.passwordHash = hashedPassword;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+    await user.save();
+
+    // Logger l'action
+    await Log.create({
+      userId: req.user?.id,
+      action: 'PASSWORD_RESET',
+      details: { targetUserId: id, adminId: req.user?.id }
+    });
+
+    res.json({ message: "Mot de passe réinitialisé avec succès" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Générer un token de réinitialisation
+exports.generateResetToken = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const crypto = require('crypto');
+
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 heure
+
+    user.resetToken = resetToken;
+    user.resetTokenExpiry = resetTokenExpiry;
+    await user.save();
+
+    res.json({
+      message: "Token de réinitialisation généré",
+      resetToken,
+      resetUrl: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Débloquer un utilisateur
+exports.unblockUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+
+    user.isBlocked = false;
+    await user.save();
+
+    await Log.create({
+      userId: req.user?.id,
+      action: 'USER_UNBLOCKED',
+      details: { targetUserId: req.params.id }
+    });
+
+    res.json({ message: "Utilisateur débloqué", user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -93,6 +93,48 @@ app.get('/', (req, res) =>
   res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin')
 );
 
+// 9️⃣1️⃣ Gestionnaire d'erreurs global amélioré
+app.use((err, req, res, next) => {
+  console.error('=== ERREUR GLOBALE ===');
+  console.error('Message:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('Type:', err.constructor.name);
+  console.error('URL:', req.url);
+  console.error('Method:', req.method);
+  console.error('Body:', JSON.stringify(req.body, null, 2));
+  console.error('===================');
+
+  // Gestion spécifique des erreurs Multer
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        error: 'Fichier trop volumineux',
+        message: 'La taille maximale autorisée est de 10MB pour les images de cagnottes'
+      });
+    }
+  }
+
+  // Gestion des erreurs de validation
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: 'Erreur de validation',
+      message: err.message
+    });
+  }
+
+  // Erreur par défaut
+  res.status(500).json({
+    error: 'Erreur interne du serveur',
+    message: err.message || 'Une erreur inattendue s\'est produite',
+    type: err.constructor.name
+  });
+});
+
+// Middleware pour les routes non trouvées
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route non trouvée' });
+});
+
 // 🔟 Lancer le serveur après connexion Sequelize
 (async () => {
   try {
@@ -101,8 +143,8 @@ app.get('/', (req, res) =>
     console.log('✅ Connexion PostgreSQL réussie !');
 
     // ⚠️ En DEV : synchronise les tables sans perdre les données
-    await sequelize.sync({ alter: true });
-    console.log('✅ Tables synchronisées (alter: true) - données préservées.');
+    await sequelize.sync({ force: true });
+    console.log('✅ Tables synchronisées (force: true) - données perdues.');
 
     // Création de l'administrateur par défaut
     const { createAdmin } = require('./scripts/create-admin');

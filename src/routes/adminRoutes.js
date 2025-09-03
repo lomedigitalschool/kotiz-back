@@ -23,4 +23,15 @@ router.get('/logs', adminController.getLogs);
 // Transactions
 router.get('/transactions/export', adminController.exportTransactions);
 
+// Gestion avancée des utilisateurs
+router.put('/users/:id/reset-password', adminController.resetUserPassword);
+router.post('/users/:id/generate-reset-token', adminController.generateResetToken);
+router.put('/users/:id/unblock', adminController.unblockUser);
+
+// Signalements
+const reportController = require('../controllers/reportController');
+router.get('/reports', reportController.getAllReports);
+router.put('/reports/:id/handle', reportController.handleReport);
+router.put('/reports/:id/block', reportController.blockReportedUser);
+
 module.exports = router;

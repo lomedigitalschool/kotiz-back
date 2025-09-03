@@ -15,11 +15,15 @@ const Moderation = () => {
       const baseUrl = window.location.origin;
 
       // Récupérer les cagnottes en attente de validation
-      const pullsRes = await fetch(`${baseUrl}/api/v1/admin/pulls/pending`);
+      const pullsRes = await fetch(`${baseUrl}/api/v1/admin/pulls/pending`, {
+        credentials: 'include'
+      });
       const pulls = pullsRes.ok ? await pullsRes.json() : [];
 
       // Récupérer les signalements
-      const reportsRes = await fetch(`${baseUrl}/api/v1/admin/reports`);
+      const reportsRes = await fetch(`${baseUrl}/api/v1/admin/reports`, {
+        credentials: 'include'
+      });
       const reports = reportsRes.ok ? await reportsRes.json() : [];
 
       setPendingPulls(pulls);

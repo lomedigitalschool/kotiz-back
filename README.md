@@ -1,4 +1,4 @@
-e''''# Kotiz Backend API
+# Kotiz Backend API
 
 API backend pour l'application Kotiz développée par Lome Digital School avec système KYC multi-soumissions.
 
@@ -277,22 +277,6 @@ COPY . .
 EXPOSE 3000
 CMD ["npm", "start"]
 ```
-
-## 📝 Changelog
-
-### Version 2.0.0
-- ✅ Système KYC multi-soumissions
-- ✅ Upload de fichiers avec Multer
-- ✅ Relations User-KYC (hasMany)
-- ✅ Configuration alter: true pour préserver les données
-- ✅ Interface d'administration KYC
-- ✅ Collection Postman complète
-
-### Version 1.0.0
-- ✅ Authentification JWT
-- ✅ Gestion des cagnottes
-- ✅ Système de contributions
-- ✅ Interface AdminJS
 
 ## 🤝 Contribution
 

@@ -13,12 +13,18 @@ router.post('/register', authController.register);
 router.post('/initiate-login', authController.initiateLogin);
 router.post('/login', authController.login);
 
+// Connexion normale sans OTP
+router.post('/login-normal', authController.normalLogin);
+
 // Gestion OTP
 router.post('/resend-otp', authController.resendOTP);
 
 // Réinitialisation de mot de passe avec OTP
 router.post('/request-password-reset', authController.requestPasswordReset);
 router.post('/reset-password', authController.resetPassword);
+
+// Déconnexion
+router.post('/logout', authenticate, authController.logout);
 
 // Profil utilisateur
 router.get('/me', authenticate, authController.me);

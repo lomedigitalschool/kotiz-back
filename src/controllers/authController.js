@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { Op } = require('sequelize');
 const smsService = require('../services/smsService');
+const { sendEmail } = require('../config/mailer');
+const emailContent = require('../config/emailContent');
 
 // Génération d'un token JWT
 function generateToken(user) {
@@ -61,6 +63,8 @@ exports.register = async (req, res) => {
   try {
     const { name, email, phone, password, otpCode } = req.body;
 
+    console.log('🔍 DEBUG REGISTER - Données reçues:', { name, email, phone, hasPassword: !!password });
+
     // Validation des champs requis (email ou téléphone requis)
     if (!name || !password) {
       return res.status(400).json({
@@ -92,7 +96,7 @@ exports.register = async (req, res) => {
       where: {
         [Op.or]: [
           email ? { email } : null,
-          { phone }
+          phone ? { phone } : null
         ].filter(Boolean)
       }
     });
@@ -108,17 +112,18 @@ exports.register = async (req, res) => {
     const user = await User.create({
       name,
       email: email || null,
-      phone,
+      phone: phone || null,
       passwordHash: hashedPassword,
       role: 'user',
-      isPhoneVerified: true, // Marquer le téléphone comme vérifié
-      phoneVerifiedAt: new Date()
+      isPhoneVerified: phone ? true : false, // Marquer le téléphone comme vérifié seulement si fourni
+      phoneVerifiedAt: phone ? new Date() : null
     });
 
     // Générer un token JWT
     const token = generateToken(user);
 
     console.log('✅ Utilisateur créé avec succès:', user.id);
+    console.log('🔑 Token généré pour user ID:', user.id);
 
     res.status(201).json({
       success: true,
@@ -133,6 +138,23 @@ exports.register = async (req, res) => {
         isPhoneVerified: user.isPhoneVerified
       }
     });
+
+    // Send confirmation email
+    if (user.email) {
+      try {
+        const subject = emailContent.subjects.registrationConfirmation;
+        const template = emailContent.templates.registrationConfirmation;
+        const variables = {
+          username: user.name,
+          link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard` // Link to dashboard or activation page
+        };
+        await sendEmail(user.email, subject, template, variables);
+        console.log('Confirmation email sent to:', user.email);
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+        // Don't fail the registration if email fails
+      }
+    }
 
   } catch (err) {
     console.error('❌ Erreur lors de l\'inscription:', err);
@@ -181,7 +203,7 @@ exports.initiateLogin = async (req, res) => {
         // Si l'envoi OTP échoue, permettre la connexion directe
         console.warn('⚠️ Échec envoi OTP, connexion directe autorisée');
         const token = generateToken(user);
-        
+
         return res.json({
           success: true,
           requiresOTP: false,
@@ -210,7 +232,7 @@ exports.initiateLogin = async (req, res) => {
     } else {
       // Pas de téléphone, connexion directe
       const token = generateToken(user);
-      
+
       res.json({
         success: true,
         requiresOTP: false,
@@ -232,33 +254,58 @@ exports.initiateLogin = async (req, res) => {
   }
 };
 
-// ====================
-// 🔑 CONNEXION ÉTAPE 2 - VÉRIFIER OTP ET FINALISER CONNEXION
-// ====================
+// // ====================
+// // 🔑 CONNEXION ÉTAPE 2 - VÉRIFIER OTP ET FINALISER CONNEXION
+// // ====================
 exports.login = async (req, res) => {
   try {
-    const { userId, otpCode } = req.body;
+    const { userId, otpCode, identifier, password } = req.body;
 
-    if (!userId || !otpCode) {
-      return res.status(400).json({ error: "ID utilisateur et code OTP requis" });
-    }
+    let user;
 
-    // Récupérer l'utilisateur
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ error: "Utilisateur non trouvé" });
-    }
+    if (!userId) {
+      // Mode connexion normale si userId non fourni
+      if (!identifier || !password) {
+        return res.status(400).json({ error: "Identifiant et mot de passe requis" });
+      }
 
-    // 🔧 POINT D'INTÉGRATION SMS - VÉRIFIER OTP DE CONNEXION
-    console.log('✅ Vérification OTP de connexion pour:', user.phone);
-    const otpVerification = await smsService.verifyOTP(user.phone, otpCode, 'login');
-
-    if (!otpVerification.success) {
-      return res.status(400).json({
-        error: otpVerification.error,
-        code: otpVerification.code,
-        attemptsLeft: otpVerification.attemptsLeft
+      // Rechercher par email ou téléphone
+      user = await User.findOne({
+        where: {
+          [Op.or]: [
+            { email: identifier },
+            { phone: identifier }
+          ]
+        }
       });
+
+      if (!user) {
+        return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+
+      // Vérifier le mot de passe
+      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      if (!isMatch) {
+        return res.status(401).json({ error: "Mot de passe incorrect" });
+      }
+    } else {
+      // Mode OTP avec userId
+      user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+
+      // 🔧 POINT D'INTÉGRATION SMS - VÉRIFIER OTP DE CONNEXION (TEMPORAIREMENT DÉSACTIVÉ)
+      // console.log('✅ Vérification OTP de connexion pour:', user.phone);
+      // const otpVerification = await smsService.verifyOTP(user.phone, otpCode, 'login');
+
+      // if (!otpVerification.success) {
+      //   return res.status(400).json({
+      //     error: otpVerification.error,
+      //     code: otpVerification.code,
+      //     attemptsLeft: otpVerification.attemptsLeft
+      //   });
+      // }
     }
 
     // Mettre à jour la dernière connexion
@@ -290,9 +337,9 @@ exports.login = async (req, res) => {
   }
 };
 
-// ====================
-// 🔄 RENVOYER UN CODE OTP
-// ====================
+// // ====================
+// // 🔄 RENVOYER UN CODE OTP
+// // ====================
 exports.resendOTP = async (req, res) => {
   try {
     const { phoneNumber, purpose = 'login' } = req.body;
@@ -433,6 +480,82 @@ exports.resetPassword = async (req, res) => {
 
   } catch (err) {
     console.error('❌ Erreur lors de la réinitialisation:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ====================
+// 🔑 CONNEXION NORMALE SANS OTP
+// ====================
+exports.normalLogin = async (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+
+    if (!identifier || !password) {
+      return res.status(400).json({ error: "Identifiant et mot de passe requis" });
+    }
+
+    // Rechercher par email ou téléphone
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [
+          { email: identifier },
+          { phone: identifier }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Utilisateur non trouvé" });
+    }
+
+    // Vérifier le mot de passe
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Mot de passe incorrect" });
+    }
+
+    // Mettre à jour la dernière connexion
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Générer un token
+    const token = generateToken(user);
+
+    console.log('✅ Connexion normale réussie pour:', user.id);
+
+    res.json({
+      success: true,
+      message: "Connexion réussie",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isPhoneVerified: user.isPhoneVerified
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Erreur lors de la connexion normale:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ====================
+// 🚪 Déconnexion
+// ====================
+exports.logout = async (req, res) => {
+  try {
+    // Pour JWT, la déconnexion se fait côté client en supprimant le token
+    // Ici on peut juste retourner un message de succès
+    res.json({
+      success: true,
+      message: "Déconnexion réussie"
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };

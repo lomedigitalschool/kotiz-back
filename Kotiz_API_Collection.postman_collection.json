@@ -416,6 +416,38 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Contribute to Cagnotte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000,\n  \"message\": \"Bon anniversaire !\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pulls/:pullId/contribute",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", ":pullId", "contribute"],
+              "variable": [
+                {
+                  "key": "pullId",
+                  "value": "cagnotte-id"
+                }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },

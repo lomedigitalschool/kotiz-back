@@ -12,13 +12,14 @@ exports.authenticate = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 🔎 on va chercher l’utilisateur en DB
+    // 🔎 on va chercher l'utilisateur en DB
     const user = await User.findByPk(decoded.id);
     if (!user) {
       return res.status(401).json({ error: "Utilisateur introuvable" });
     }
 
-    req.user = user; // 
+    console.log('🔐 AUTH MIDDLEWARE - Utilisateur authentifié:', user.id, user.name);
+    req.user = user; //
     next();
   } catch (err) {
     res.status(403).json({ error: "Token expiré ou invalide" });

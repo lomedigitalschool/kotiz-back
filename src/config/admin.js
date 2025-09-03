@@ -13,17 +13,19 @@ AdminJS.registerAdapter({
 });
 
 // Import des modèles
-const { 
-  sequelize, 
-  User, 
-  Pull, 
-  Contribution, 
-  Transaction, 
-  PaymentMethod, 
-  UserPaymentMethod, 
-  Notification, 
-  Log, 
-  Kyc 
+const { QueryTypes } = require('sequelize');
+const {
+  sequelize,
+  User,
+  Pull,
+  Contribution,
+  Transaction,
+  PaymentMethod,
+  UserPaymentMethod,
+  Notification,
+  Log,
+  Kyc,
+  Report
 } = require('../models');
 
 // Fonction pour calculer les métriques du dashboard
@@ -33,7 +35,13 @@ const getDashboardMetrics = async () => {
     const totalUsers = await User.count();
 
     // Montant total collecté (en centimes)
-    const totalCollected = await Contribution.sum('amount') || 0;
+    const [totalResult] = await sequelize.query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\'',
+      {
+        type: QueryTypes.SELECT
+      }
+    );
+    const totalCollected = parseFloat(totalResult.total) || 0;
 
     // Nombre de cagnottes actives
     const activeCagnottes = await Pull.count({
@@ -45,39 +53,33 @@ const getDashboardMetrics = async () => {
     currentMonth.setDate(1);
     currentMonth.setHours(0, 0, 0, 0);
 
-    const monthlyContributions = await Contribution.sum('amount', {
-      where: {
-        createdAt: {
-          [require('sequelize').Op.gte]: currentMonth
-        }
+    const [monthlyResult] = await sequelize.query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\' AND createdAt >= $1',
+      {
+        bind: [currentMonth],
+        type: QueryTypes.SELECT
       }
-    }) || 0;
+    );
+    const monthlyContributions = parseFloat(monthlyResult.total) || 0;
 
     // Nombre de contributions ce mois
-    const monthlyContributionCount = await Contribution.count({
-      where: {
-        createdAt: {
-          [require('sequelize').Op.gte]: currentMonth
-        }
+    const [countResult] = await sequelize.query(
+      'SELECT COUNT(*) as count FROM contributions WHERE status = \'completed\' AND createdAt >= $1',
+      {
+        bind: [currentMonth],
+        type: QueryTypes.SELECT
       }
-    });
+    );
+    const monthlyContributionCount = parseInt(countResult.count) || 0;
 
     // Top 5 cagnottes par montant collecté
-    const topCagnottes = await Pull.findAll({
-      attributes: [
-        'id',
-        'title',
-        [require('sequelize').fn('SUM', require('sequelize').col('Contributions.amount')), 'totalCollected']
-      ],
-      include: [{
-        model: Contribution,
-        attributes: []
-      }],
-      group: ['Pull.id', 'Pull.title'],
-      order: [[require('sequelize').fn('SUM', require('sequelize').col('Contributions.amount')), 'DESC']],
-      limit: 5,
-      raw: true
-    });
+    const [topCagnottesResult] = await sequelize.query(
+      'SELECT p.id, p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
+      {
+        type: QueryTypes.SELECT
+      }
+    );
+    const topCagnottes = Array.isArray(topCagnottesResult) ? topCagnottesResult : [];
 
     return {
       totalUsers,
@@ -129,6 +131,7 @@ const adminOptions = {
             ]
           },
           isVerified: { type: 'boolean' },
+          isBlocked: { type: 'boolean' },
           lastLogin: { type: 'datetime' },
           createdAt: { type: 'datetime', isVisible: { list: false, show: true } },
           updatedAt: { type: 'datetime', isVisible: { list: false, show: true } }
@@ -254,7 +257,47 @@ const adminOptions = {
     PaymentMethod,
     UserPaymentMethod,
     Notification,
-    Kyc
+    Kyc,
+    {
+      resource: Report,
+      options: {
+        properties: {
+          id: { isId: true, type: 'number' },
+          reporterId: { type: 'number', isVisible: { list: false, show: true } },
+          pullId: { type: 'number', isVisible: { list: false, show: true } },
+          contributionId: { type: 'number', isVisible: { list: false, show: true } },
+          type: {
+            type: 'string',
+            availableValues: [
+              { value: 'pull', label: 'Cagnotte' },
+              { value: 'contribution', label: 'Contribution' }
+            ]
+          },
+          reason: { type: 'string' },
+          description: { type: 'textarea' },
+          status: {
+            type: 'string',
+            availableValues: [
+              { value: 'pending', label: 'En attente' },
+              { value: 'resolved', label: 'Résolu' },
+              { value: 'dismissed', label: 'Rejeté' }
+            ]
+          },
+          adminResponse: { type: 'textarea' },
+          resolvedAt: { type: 'datetime' },
+          createdAt: { type: 'datetime' }
+        },
+        actions: {
+          new: { isAccessible: false },
+          edit: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
+          delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
+        },
+        navigation: {
+          name: 'Signalements',
+          icon: 'Flag'
+        }
+      },
+    }
   ],
   rootPath: '/admin',
   branding: {

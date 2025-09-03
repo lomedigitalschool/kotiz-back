@@ -83,10 +83,27 @@ const Cagnotte = sequelize.define('Cagnotte', {
   isApproved: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  // ID de l'utilisateur propriétaire
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   }
 }, {
   timestamps: true,        // Horodatage automatique
   tableName: 'cagnottes'   // Table dédiée aux cagnottes
 });
+
+// Associations
+Cagnotte.associate = (models) => {
+  Cagnotte.belongsTo(models.User, { foreignKey: 'userId', as: 'owner' });
+  Cagnotte.hasMany(models.Contribution, { foreignKey: 'cagnotteId', as: 'contributions' });
+};
+
+module.exports = Cagnotte;
 
 module.exports = Cagnotte;

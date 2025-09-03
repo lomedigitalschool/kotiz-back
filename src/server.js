@@ -143,8 +143,8 @@ app.use('*', (req, res) => {
     console.log('✅ Connexion PostgreSQL réussie !');
 
     // ⚠️ En DEV : synchronise les tables sans perdre les données
-    await sequelize.sync({ force: true });
-    console.log('✅ Tables synchronisées (force: true) - données perdues.');
+    await sequelize.sync({ alter: true });
+    console.log('✅ Tables synchronisées (alter: true) - données préservées.');
 
     // Création de l'administrateur par défaut
     const { createAdmin } = require('./scripts/create-admin');

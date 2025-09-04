@@ -1,45 +1,32 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const KycController = require('../controllers/kycController');
-const { authenticate, isAdmin } = require('../middleware/auth');
-const { uploadKycDocuments, handleMulterError } = require('../middleware/multerConfig');
+const KycController = require("../controllers/kycController");
+const verifyFirebaseToken = require("../middleware/firebaseAuth");
+const { isAdminFirebase } = require("../middleware/roleCheck");
+const { uploadKycDocuments, handleMulterError } = require("../middleware/multerConfig");
 
 /**
  * Routes pour la gestion des vérifications KYC
- * 
- * Toutes les routes nécessitent une authentification
- * Les routes admin nécessitent le rôle administrateur
+ * 🔒 Toutes protégées par Firebase Auth
  */
 
-// Routes utilisateur
-router.post('/submit', 
-  authenticate, 
-  uploadKycDocuments, 
-  handleMulterError, 
+// 📤 Soumettre des documents KYC
+router.post(
+  "/submit",
+  verifyFirebaseToken,
+  uploadKycDocuments,
+  handleMulterError,
   KycController.submitKyc
 );
 
-router.get('/history', 
-  authenticate, 
-  KycController.getKycHistory
-);
+// 📜 Historique des soumissions KYC de l’utilisateur connecté
+router.get("/history", verifyFirebaseToken, KycController.getKycHistory);
 
-router.get('/status', 
-  authenticate, 
-  KycController.getKycStatus
-);
+// ✅ Statut actuel de la vérification KYC
+router.get("/status", verifyFirebaseToken, KycController.getKycStatus);
 
-// Routes administrateur
-router.put('/:id/status', 
-  authenticate, 
-  isAdmin, 
-  KycController.updateKycStatus
-);
-
-router.get('/admin/all', 
-  authenticate, 
-  isAdmin, 
-  KycController.getAllKycSubmissions
-);
+// 🔐 Routes admin (réservées aux administrateurs)
+router.put("/:id/status", verifyFirebaseToken, isAdminFirebase, KycController.updateKycStatus);
+router.get("/admin/all", verifyFirebaseToken, isAdminFirebase, KycController.getAllKycSubmissions);
 
 module.exports = router;

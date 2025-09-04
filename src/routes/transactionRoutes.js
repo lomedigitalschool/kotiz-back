@@ -1,11 +1,11 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const userController = require('../controllers/userController');
-const { authenticate, isAdmin } = require('../middleware/auth');
+const transactionController = require("../controllers/transactionController");
+const verifyFirebaseToken = require("../middleware/firebaseAuth");
 
-router.get('/', authenticate, isAdmin, userController.getAll); 
-router.get('/:id', authenticate, userController.getOne);
-router.put('/:id', authenticate, userController.update);
-router.delete('/:id', authenticate, isAdmin, userController.remove);
+// ✅ Transactions
+router.get("/", verifyFirebaseToken, transactionController.getAll);
+router.get("/:id", verifyFirebaseToken, transactionController.getOne);
+router.post("/", verifyFirebaseToken, transactionController.create);
 
 module.exports = router;

@@ -1,26 +1,79 @@
-// src/routes/adminRoutes.js
-
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const adminController = require('../controllers/adminController');
+const adminController = require("../controllers/adminController");
 
-// Dashboard
-router.get('/dashboard', adminController.getDashboard);
+// 🔐 Middlewares Firebase
+const verifyFirebaseToken = require("../middleware/firebaseAuth"); // Vérifie le JWT Firebase
+const { isAdminFirebase } = require("../middleware/roleCheck");   // Vérifie le rôle en BDD
 
-// Utilisateurs
-router.get('/users', adminController.getAllUsers);
-router.put('/users/:id/block', adminController.blockUser);
-router.delete('/users/:id', adminController.deleteUser);
+/**
+ * Toutes les routes admin sont protégées par :
+ * 1️⃣ verifyFirebaseToken → l’utilisateur doit être connecté via Firebase
+ * 2️⃣ isAdminFirebase → l’utilisateur doit avoir le rôle "admin" en BDD
+ */
 
-// Pulls
-router.get('/pulls', adminController.getAllPulls);
-router.put('/pulls/:id/validate', adminController.validatePull);
-router.delete('/pulls/:id', adminController.deletePull);
+// 📊 Dashboard général
+router.get(
+  "/dashboard",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.getDashboard
+);
 
-// Logs
-router.get('/logs', adminController.getLogs);
+// 👥 Gestion des utilisateurs
+router.get(
+  "/users",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.getAllUsers
+);
+router.put(
+  "/users/:id/block",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.blockUser
+);
+router.delete(
+  "/users/:id",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.deleteUser
+);
 
-// Transactions
-router.get('/transactions/export', adminController.exportTransactions);
+// 💰 Gestion des Pulls
+router.get(
+  "/pulls",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.getAllPulls
+);
+router.put(
+  "/pulls/:id/validate",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.validatePull
+);
+router.delete(
+  "/pulls/:id",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.deletePull
+);
+
+// 📝 Logs système
+router.get(
+  "/logs",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.getLogs
+);
+
+// 💳 Transactions (export CSV/Excel)
+router.get(
+  "/transactions/export",
+  verifyFirebaseToken,
+  isAdminFirebase,
+  adminController.exportTransactions
+);
 
 module.exports = router;

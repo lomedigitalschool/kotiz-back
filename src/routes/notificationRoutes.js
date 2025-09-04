@@ -1,9 +1,12 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const notificationController = require('../controllers/notificationController');
-const { authenticate } = require('../middleware/auth');
+const notificationController = require("../controllers/notificationController");
+const verifyFirebaseToken = require("../middleware/firebaseAuth");
 
-router.get('/', authenticate, notificationController.getAll);
-router.put('/:id/read', authenticate, notificationController.markAsRead);
+// 📩 Récupérer toutes mes notifications
+router.get("/", verifyFirebaseToken, notificationController.getAll);
+
+// ✅ Marquer une notification comme lue
+router.put("/:id/read", verifyFirebaseToken, notificationController.markAsRead);
 
 module.exports = router;

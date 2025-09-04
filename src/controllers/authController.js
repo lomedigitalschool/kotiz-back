@@ -1,453 +1,194 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { User } = require('../models');
-const { Op } = require('sequelize');
-const smsService = require('../services/smsService');
+const bcrypt = require("bcrypt");
+const { User } = require("../models");
+const smsService = require("../services/smsService");
 
-// Génération d'un token JWT
-function generateToken(user) {
-  return jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET || "jwt-secret-kotiz",
-    { expiresIn: '7d' }
-  );
-}
+/**
+ * 🔄 Synchronisation Firebase → PostgreSQL
+ * Appelée après un login Firebase réussi côté frontend.
+ */
+exports.firebaseSync = async (req, res) => {
+  try {
+    const { uid, email, phone_number, name, picture } = req.user;
+
+    let user = await User.findOne({ where: { firebaseUid: uid } });
+
+    if (!user) {
+      user = await User.create({
+        name: name || "Utilisateur",
+        email: email || null,
+        phone: phone_number || null,
+        firebaseUid: uid,
+        avatarUrl: picture || null,
+        role: "user",
+        isPhoneVerified: !!phone_number, // Si téléphone fourni, marqué vérifié
+        phoneVerifiedAt: phone_number ? new Date() : null,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Utilisateur synchronisé avec succès",
+      user,
+    });
+  } catch (error) {
+    console.error("❌ Erreur firebaseSync:", error);
+    res.status(500).json({ error: "Erreur lors de la synchronisation utilisateur" });
+  }
+};
 
 // ====================
-// 📝 INSCRIPTION ÉTAPE 1 - ENVOYER OTP
+// 📝 INSCRIPTION AVEC OTP
 // ====================
 exports.sendRegistrationOTP = async (req, res) => {
   try {
     const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "Numéro de téléphone requis" });
 
-    if (!phone) {
-      return res.status(400).json({ error: "Numéro de téléphone requis" });
-    }
-
-    // Vérifier si le téléphone n'est pas déjà utilisé
     const existingUser = await User.findOne({ where: { phone } });
-    if (existingUser) {
-      return res.status(400).json({ error: "Ce numéro de téléphone est déjà utilisé" });
-    }
+    if (existingUser) return res.status(400).json({ error: "Ce numéro est déjà utilisé" });
 
-    // 🔧 POINT D'INTÉGRATION SMS - ENVOYER OTP D'INSCRIPTION
-    console.log('📱 Envoi OTP d\'inscription pour:', phone);
-    const otpResult = await smsService.sendOTP(phone, 'registration');
-
-    if (!otpResult.success) {
-      return res.status(500).json({
-        error: "Erreur lors de l'envoi du code de vérification",
-        details: otpResult.error
-      });
-    }
+    const otpResult = await smsService.sendOTP(phone, "registration");
+    if (!otpResult.success)
+      return res.status(500).json({ error: "Erreur envoi OTP", details: otpResult.error });
 
     res.json({
       success: true,
       message: "Code de vérification envoyé par SMS",
       phoneNumber: phone,
-      expiresIn: otpResult.expiresIn
+      expiresIn: otpResult.expiresIn,
     });
-
   } catch (err) {
-    console.error('❌ Erreur lors de l\'envoi OTP inscription:', err);
+    console.error("❌ sendRegistrationOTP:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// ====================
-// 📝 INSCRIPTION ÉTAPE 2 - VÉRIFIER OTP ET CRÉER COMPTE
-// ====================
-exports.register = async (req, res) => {
+exports.registerWithOTP = async (req, res) => {
   try {
-    const { name, email, phone, password, otpCode } = req.body;
+    const { name, phone, otpCode } = req.body;
+    if (!name || !phone || !otpCode)
+      return res.status(400).json({ error: "Nom, téléphone et OTP requis" });
 
-    // Validation des champs requis (email ou téléphone requis)
-    if (!name || !password) {
-      return res.status(400).json({
-        error: "Nom et mot de passe requis"
-      });
-    }
+    // Vérifier l'OTP
+    const otpVerification = await smsService.verifyOTP(phone, otpCode, "registration");
+    if (!otpVerification.success)
+      return res.status(400).json({ error: otpVerification.error, code: otpVerification.code });
 
-    // Au moins un email ou téléphone requis
-    if (!email && !phone) {
-      return res.status(400).json({
-        error: "Email ou numéro de téléphone requis"
-      });
-    }
-
-    // 🔧 POINT D'INTÉGRATION SMS - VÉRIFIER OTP (TEMPORAIREMENT DÉSACTIVÉ)
-    // console.log('✅ Vérification OTP d\'inscription pour:', phone);
-    // const otpVerification = await smsService.verifyOTP(phone, otpCode, 'registration');
-
-    // if (!otpVerification.success) {
-    //   return res.status(400).json({
-    //     error: otpVerification.error,
-    //     code: otpVerification.code,
-    //     attemptsLeft: otpVerification.attemptsLeft
-    //   });
-    // }
-
-    // Vérifier si email ou téléphone déjà utilisé (double vérification)
-    const existingUser = await User.findOne({
-      where: {
-        [Op.or]: [
-          email ? { email } : null,
-          { phone }
-        ].filter(Boolean)
-      }
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ error: "Email ou téléphone déjà utilisé" });
-    }
-
-    // Hasher le mot de passe
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Créer l'utilisateur avec téléphone vérifié
+    // Créer l'utilisateur
     const user = await User.create({
       name,
-      email: email || null,
       phone,
-      passwordHash: hashedPassword,
-      role: 'user',
-      isPhoneVerified: true, // Marquer le téléphone comme vérifié
-      phoneVerifiedAt: new Date()
+      role: "user",
+      isPhoneVerified: true,
+      phoneVerifiedAt: new Date(),
     });
 
-    // Générer un token JWT
-    const token = generateToken(user);
-
-    console.log('✅ Utilisateur créé avec succès:', user.id);
-
-    res.status(201).json({
-      success: true,
-      message: "Compte créé avec succès",
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        isPhoneVerified: user.isPhoneVerified
-      }
-    });
-
+    res.status(201).json({ success: true, message: "Compte créé avec succès", user });
   } catch (err) {
-    console.error('❌ Erreur lors de l\'inscription:', err);
+    console.error("❌ registerWithOTP:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
 // ====================
-// 🔑 CONNEXION ÉTAPE 1 - VÉRIFIER IDENTIFIANTS ET ENVOYER OTP
+// 🔑 LOGIN AVEC OTP
 // ====================
 exports.initiateLogin = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "Numéro de téléphone requis" });
 
-    if (!identifier || !password) {
-      return res.status(400).json({ error: "Identifiant et mot de passe requis" });
-    }
+    const user = await User.findOne({ where: { phone } });
+    if (!user) return res.status(404).json({ error: "Utilisateur non trouvé" });
 
-    // Rechercher par email ou téléphone
-    const user = await User.findOne({
-      where: {
-        [Op.or]: [
-          { email: identifier },
-          { phone: identifier }
-        ]
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "Utilisateur non trouvé" });
-    }
-
-    // Vérifier le mot de passe
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Mot de passe incorrect" });
-    }
-
-    // Si l'utilisateur a un téléphone, envoyer un OTP
-    if (user.phone) {
-      // 🔧 POINT D'INTÉGRATION SMS - ENVOYER OTP DE CONNEXION
-      console.log('📱 Envoi OTP de connexion pour:', user.phone);
-      const otpResult = await smsService.sendOTP(user.phone, 'login');
-
-      if (!otpResult.success) {
-        // Si l'envoi OTP échoue, permettre la connexion directe
-        console.warn('⚠️ Échec envoi OTP, connexion directe autorisée');
-        const token = generateToken(user);
-        
-        return res.json({
-          success: true,
-          requiresOTP: false,
-          message: "Connexion réussie (OTP non disponible)",
-          token,
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role
-          }
-        });
-      }
-
-      // OTP envoyé avec succès
-      res.json({
-        success: true,
-        requiresOTP: true,
-        message: "Code de vérification envoyé par SMS",
-        userId: user.id,
-        phoneNumber: user.phone,
-        expiresIn: otpResult.expiresIn
-      });
-
-    } else {
-      // Pas de téléphone, connexion directe
-      const token = generateToken(user);
-      
-      res.json({
-        success: true,
-        requiresOTP: false,
-        message: "Connexion réussie",
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role
-        }
-      });
-    }
-
-  } catch (err) {
-    console.error('❌ Erreur lors de l\'initiation de connexion:', err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// ====================
-// 🔑 CONNEXION ÉTAPE 2 - VÉRIFIER OTP ET FINALISER CONNEXION
-// ====================
-exports.login = async (req, res) => {
-  try {
-    const { userId, otpCode } = req.body;
-
-    if (!userId || !otpCode) {
-      return res.status(400).json({ error: "ID utilisateur et code OTP requis" });
-    }
-
-    // Récupérer l'utilisateur
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ error: "Utilisateur non trouvé" });
-    }
-
-    // 🔧 POINT D'INTÉGRATION SMS - VÉRIFIER OTP DE CONNEXION
-    console.log('✅ Vérification OTP de connexion pour:', user.phone);
-    const otpVerification = await smsService.verifyOTP(user.phone, otpCode, 'login');
-
-    if (!otpVerification.success) {
-      return res.status(400).json({
-        error: otpVerification.error,
-        code: otpVerification.code,
-        attemptsLeft: otpVerification.attemptsLeft
-      });
-    }
-
-    // Mettre à jour la dernière connexion
-    user.lastLogin = new Date();
-    await user.save();
-
-    // Générer un token
-    const token = generateToken(user);
-
-    console.log('✅ Connexion réussie pour:', user.id);
+    const otpResult = await smsService.sendOTP(phone, "login");
+    if (!otpResult.success)
+      return res.status(500).json({ error: "Erreur envoi OTP", details: otpResult.error });
 
     res.json({
       success: true,
-      message: "Connexion réussie",
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        isPhoneVerified: user.isPhoneVerified
-      }
+      message: "Code de vérification envoyé par SMS",
+      phoneNumber: phone,
+      expiresIn: otpResult.expiresIn,
     });
-
   } catch (err) {
-    console.error('❌ Erreur lors de la connexion:', err);
+    console.error("❌ initiateLogin:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// ====================
-// 🔄 RENVOYER UN CODE OTP
-// ====================
-exports.resendOTP = async (req, res) => {
+exports.loginWithOTP = async (req, res) => {
   try {
-    const { phoneNumber, purpose = 'login' } = req.body;
+    const { phone, otpCode } = req.body;
+    if (!phone || !otpCode)
+      return res.status(400).json({ error: "Téléphone et OTP requis" });
 
-    if (!phoneNumber) {
-      return res.status(400).json({ error: "Numéro de téléphone requis" });
-    }
+    const user = await User.findOne({ where: { phone } });
+    if (!user) return res.status(404).json({ error: "Utilisateur non trouvé" });
 
-    // 🔧 POINT D'INTÉGRATION SMS - RENVOYER OTP
-    console.log('🔄 Renvoi OTP pour:', phoneNumber, purpose);
-    const otpResult = await smsService.resendOTP(phoneNumber, purpose);
+    const otpVerification = await smsService.verifyOTP(phone, otpCode, "login");
+    if (!otpVerification.success)
+      return res.status(400).json({ error: otpVerification.error, code: otpVerification.code });
 
-    if (!otpResult.success) {
-      return res.status(500).json({
-        error: "Erreur lors du renvoi du code",
-        details: otpResult.error
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Nouveau code envoyé par SMS",
-      phoneNumber: phoneNumber,
-      expiresIn: otpResult.expiresIn
-    });
-
+    res.json({ success: true, message: "Connexion réussie", user });
   } catch (err) {
-    console.error('❌ Erreur lors du renvoi OTP:', err);
+    console.error("❌ loginWithOTP:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
 // ====================
-// 🔐 RÉINITIALISATION DE MOT DE PASSE AVEC OTP
+// 🔐 RÉINITIALISATION MOT DE PASSE AVEC OTP
 // ====================
 exports.requestPasswordReset = async (req, res) => {
   try {
-    const { identifier } = req.body; // email ou téléphone
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "Numéro requis" });
 
-    if (!identifier) {
-      return res.status(400).json({ error: "Email ou téléphone requis" });
-    }
-
-    // Rechercher l'utilisateur
-    const user = await User.findOne({
-      where: {
-        [Op.or]: [
-          { email: identifier },
-          { phone: identifier }
-        ]
-      }
-    });
-
-    if (!user) {
-      // Ne pas révéler si l'utilisateur existe ou non
+    const user = await User.findOne({ where: { phone } });
+    if (!user)
       return res.json({
         success: true,
-        message: "Si ce compte existe, un code de réinitialisation a été envoyé"
+        message: "Si ce compte existe, un code de réinitialisation a été envoyé",
       });
-    }
 
-    // Si l'utilisateur a un téléphone, envoyer OTP
-    if (user.phone) {
-      // 🔧 POINT D'INTÉGRATION SMS - ENVOYER OTP DE RÉINITIALISATION
-      console.log('📱 Envoi OTP de réinitialisation pour:', user.phone);
-      const otpResult = await smsService.sendOTP(user.phone, 'password_reset');
+    const otpResult = await smsService.sendOTP(phone, "password_reset");
+    if (!otpResult.success)
+      return res.status(500).json({ error: "Erreur envoi OTP", details: otpResult.error });
 
-      if (otpResult.success) {
-        res.json({
-          success: true,
-          message: "Code de réinitialisation envoyé par SMS",
-          phoneNumber: user.phone,
-          expiresIn: otpResult.expiresIn
-        });
-      } else {
-        res.status(500).json({
-          error: "Erreur lors de l'envoi du code de réinitialisation"
-        });
-      }
-    } else {
-      res.json({
-        success: true,
-        message: "Si ce compte existe, un code de réinitialisation a été envoyé"
-      });
-    }
-
+    res.json({
+      success: true,
+      message: "Code de réinitialisation envoyé par SMS",
+      phoneNumber: phone,
+      expiresIn: otpResult.expiresIn,
+    });
   } catch (err) {
-    console.error('❌ Erreur lors de la demande de réinitialisation:', err);
+    console.error("❌ requestPasswordReset:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// ====================
-// 🔐 CONFIRMER LA RÉINITIALISATION DE MOT DE PASSE
-// ====================
-exports.resetPassword = async (req, res) => {
+exports.resetPasswordWithOTP = async (req, res) => {
   try {
-    const { phoneNumber, otpCode, newPassword } = req.body;
+    const { phone, otpCode, newPassword } = req.body;
+    if (!phone || !otpCode || !newPassword)
+      return res.status(400).json({ error: "Téléphone, OTP et nouveau mot de passe requis" });
 
-    if (!phoneNumber || !otpCode || !newPassword) {
-      return res.status(400).json({
-        error: "Téléphone, code OTP et nouveau mot de passe requis"
-      });
-    }
+    const otpVerification = await smsService.verifyOTP(phone, otpCode, "password_reset");
+    if (!otpVerification.success)
+      return res.status(400).json({ error: otpVerification.error, code: otpVerification.code });
 
-    // 🔧 POINT D'INTÉGRATION SMS - VÉRIFIER OTP DE RÉINITIALISATION
-    console.log('✅ Vérification OTP de réinitialisation pour:', phoneNumber);
-    const otpVerification = await smsService.verifyOTP(phoneNumber, otpCode, 'password_reset');
+    const user = await User.findOne({ where: { phone } });
+    if (!user) return res.status(404).json({ error: "Utilisateur non trouvé" });
 
-    if (!otpVerification.success) {
-      return res.status(400).json({
-        error: otpVerification.error,
-        code: otpVerification.code,
-        attemptsLeft: otpVerification.attemptsLeft
-      });
-    }
-
-    // Trouver l'utilisateur
-    const user = await User.findOne({ where: { phone: phoneNumber } });
-    if (!user) {
-      return res.status(404).json({ error: "Utilisateur non trouvé" });
-    }
-
-    // Hasher le nouveau mot de passe
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Mettre à jour le mot de passe
     user.passwordHash = hashedPassword;
     user.passwordResetAt = new Date();
     await user.save();
 
-    console.log('✅ Mot de passe réinitialisé pour:', user.id);
-
-    res.json({
-      success: true,
-      message: "Mot de passe réinitialisé avec succès"
-    });
-
+    res.json({ success: true, message: "Mot de passe réinitialisé avec succès" });
   } catch (err) {
-    console.error('❌ Erreur lors de la réinitialisation:', err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// ====================
-// 👤 Profil utilisateur connecté
-// ====================
-exports.me = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['passwordHash'] }
-    });
-
-    res.json(user);
-  } catch (err) {
+    console.error("❌ resetPasswordWithOTP:", err);
     res.status(500).json({ error: err.message });
   }
 };

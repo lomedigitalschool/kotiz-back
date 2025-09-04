@@ -7,12 +7,8 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { sequelize } = require('./models');
-const { admin, adminRouter } = require('./config/admin');
 
-// Middlewares maison (auth)
-const { authenticate, isAdmin } = require('./middleware/auth');
-
-// Import des routes API
+// 3️⃣ Import des routes API
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const pullRoutes = require('./routes/pullRoutes');
@@ -22,98 +18,107 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const kycRoutes = require('./routes/kycRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
-// 3️⃣ Initialisation de l'application Express
+// 4️⃣ Middlewares Firebase
+const verifyFirebaseToken = require('./middleware/firebaseAuth');
+const { isAdminFirebase } = require('./middleware/roleCheck'); // ✅ on remplace isAdmin par isAdminFirebase
+
+// 5️⃣ AdminJS
+const { admin, adminRouter } = require('./config/admin');
+
+// 6️⃣ Initialisation Express
 const app = express();
 app.use(express.json());
 
-// 4️⃣ Sécurité globale
+// 7️⃣ Sécurité globale
 app.use(cors({
-    origin: 'http://localhost:3000', // URL de votre frontend Vite
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+  origin: 'http://localhost:3000', // 👉 À adapter avec l’URL frontend en prod
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Servir les fichiers statiques (images uploadées)
+// Servir les fichiers uploadés
 app.use('/uploads', express.static('uploads'));
 
-// Limitation des requêtes (rate limiter)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 100, // 100 requêtes par IP
-});
+// Limiter les requêtes
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use(limiter);
 
-// Helmet (⚠️ adapté pour AdminJS avec CSP custom)
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        "script-src": ["'self'", "'unsafe-inline'", "https:"],
-        "style-src": ["'self'", "'unsafe-inline'", "https:"],
-        "img-src": ["'self'", "data:", "https:"],
-      },
+// Helmet (⚠️ adapté pour AdminJS)
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "script-src": ["'self'", "'unsafe-inline'", "https:"],
+      "style-src": ["'self'", "'unsafe-inline'", "https:"],
+      "img-src": ["'self'", "data:", "https:"],
     },
-  })
-);
+  },
+}));
 
-// 5️⃣ Définir le port
+// 8️⃣ Définir le port
 const PORT = process.env.PORT || 5000;
 
-// 6️⃣ Endpoint de test /health
+// 9️⃣ Endpoint santé (test DB + serveur)
 app.get('/health', async (req, res) => {
   try {
     await sequelize.authenticate();
     res.json({ status: 'ok', database: 'connected', timestamp: new Date() });
-  } catch (error) {
-    res.status(500).json({ status: 'error', database: 'disconnected', message: error.message });
+  } catch (err) {
+    res.status(500).json({ status: 'error', database: 'disconnected', message: err.message });
   }
 });
 
-// 7️⃣ Montage des routes API
+// 🔟 Montage des routes API
+
+// 🔑 Auth Firebase (connexion + sync utilisateur)
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', authenticate, userRoutes);
-app.use('/api/v1/pulls', authenticate, pullRoutes);
-app.use('/api/v1/contributions', authenticate, contributionRoutes);
-app.use('/api/v1/transactions', authenticate, transactionRoutes);
-app.use('/api/v1/notifications', authenticate, notificationRoutes);
-app.use('/api/v1/admin', authenticate, isAdmin, adminRoutes);
-app.use('/api/v1/kyc', kycRoutes);
 
-// 🔧 ROUTES WEBHOOK (sans authentification pour les services externes)
+// 🔐 Routes protégées → nécessite un token Firebase
+app.use('/api/v1/users', verifyFirebaseToken, userRoutes);
+app.use('/api/v1/pulls', verifyFirebaseToken, pullRoutes);
+app.use('/api/v1/contributions', verifyFirebaseToken, contributionRoutes);
+app.use('/api/v1/transactions', verifyFirebaseToken, transactionRoutes);
+app.use('/api/v1/notifications', verifyFirebaseToken, notificationRoutes);
+app.use('/api/v1/admin', verifyFirebaseToken, isAdminFirebase, adminRoutes);
+app.use('/api/v1/kyc', verifyFirebaseToken, kycRoutes);
+
+// 🌍 Webhooks (⚠️ publics pour services externes)
 app.use('/api/v1/webhooks', webhookRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
-// 8️⃣ Interface d'administration AdminJS (⚠️ après Helmet et autres middlewares)
-app.use(admin.options.rootPath, adminRouter);
+// 1️⃣1️⃣ Interface AdminJS
+if (adminRouter && typeof adminRouter === 'function') {
+  app.use(admin.options.rootPath, adminRouter);
+} else {
+  console.error('❌ adminRouter n’est pas un middleware valide !');
+}
 
-// 9️⃣ Route racine
+// 1️⃣2️⃣ Route racine
 app.get('/', (req, res) =>
   res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin')
 );
 
-// 🔟 Lancer le serveur après connexion Sequelize
+// 1️⃣3️⃣ Lancer le serveur
 (async () => {
   try {
     console.log('⏳ Tentative de connexion à la BDD...');
     await sequelize.authenticate();
     console.log('✅ Connexion PostgreSQL réussie !');
 
-    // ⚠️ En DEV : synchronise les tables sans perdre les données
     await sequelize.sync({ alter: true });
     console.log('✅ Tables synchronisées (alter: true) - données préservées.');
 
-    // Création de l'administrateur par défaut
     const { createAdmin } = require('./scripts/create-admin');
     await createAdmin();
 
-    // Démarrage serveur
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
       console.log(`🔑 AdminJS dispo sur http://localhost:${PORT}/admin`);
     });
-  } catch (error) {
-    console.error('❌ Erreur connexion/synchro BDD :', error);
+  } catch (err) {
+    console.error('❌ Erreur connexion/synchro BDD :', err);
   }
 })();

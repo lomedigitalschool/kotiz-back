@@ -1,26 +1,10 @@
-const express = require('express');
+// src/routes/authRoutes.js
+const express = require("express");
 const router = express.Router();
-const authController = require('../controllers/authController');
-const { authenticate } = require('../middleware/auth');
+const { firebaseSync } = require("../controllers/authController");
+const verifyFirebaseToken = require("../middleware/firebaseAuth");
 
-// 🔧 NOUVELLES ROUTES AVEC INTÉGRATION OTP SMS
-
-// Inscription en 2 étapes
-router.post('/send-registration-otp', authController.sendRegistrationOTP);
-router.post('/register', authController.register);
-
-// Connexion en 2 étapes
-router.post('/initiate-login', authController.initiateLogin);
-router.post('/login', authController.login);
-
-// Gestion OTP
-router.post('/resend-otp', authController.resendOTP);
-
-// Réinitialisation de mot de passe avec OTP
-router.post('/request-password-reset', authController.requestPasswordReset);
-router.post('/reset-password', authController.resetPassword);
-
-// Profil utilisateur
-router.get('/me', authenticate, authController.me);
+// 🔑 Frontend appelle cette route après login Firebase
+router.post("/firebase-sync", verifyFirebaseToken, firebaseSync);
 
 module.exports = router;

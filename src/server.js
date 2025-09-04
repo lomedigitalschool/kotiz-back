@@ -6,6 +6,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
 const { sequelize } = require('./models');
 const { admin, adminRouter } = require('./config/admin');
 
@@ -25,14 +26,52 @@ const webhookRoutes = require('./routes/webhookRoutes');
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();
+
+// Configuration pour les proxies (nécessaire pour Render et autres plateformes)
+app.set('trust proxy', 1); // Trust first proxy
+
+// Configuration des sessions (production-ready)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'kotiz-session-secret-key-2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    httpOnly: true, // Prevent XSS attacks
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // CSRF protection
+  }
+}));
+
 app.use(express.json());
 
 // 4️⃣ Sécurité globale
 app.use(cors({
-    origin: 'http://localhost:3000', // URL de votre frontend Vite
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = [
+            'http://localhost:3000',      // Développement local
+            'http://localhost:5173',      // Vite dev server
+            'https://kotiz-web.onrender.com', // Production frontend
+            process.env.FRONTEND_URL       // Variable d'environnement
+        ].filter(Boolean); // Remove undefined values
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        // Allow all origins in development
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Servir les fichiers statiques (images uploadées)
@@ -154,8 +193,20 @@ app.use('*', (req, res) => {
 
     // Démarrage serveur
     app.listen(PORT, () => {
-      console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
-      console.log(`🔑 AdminJS dispo sur http://localhost:${PORT}/admin`);
+      const isProduction = process.env.NODE_ENV === 'production';
+      const baseUrl = isProduction ? `https://kotiz-back.onrender.com` : `http://localhost:${PORT}`;
+
+      console.log(`🚀 Serveur démarré sur ${baseUrl}`);
+      console.log(`🔑 AdminJS disponible sur ${baseUrl}/admin`);
+      console.log(`📊 Health check: ${baseUrl}/health`);
+      console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔌 Port: ${PORT}`);
+
+      if (isProduction) {
+        console.log(`✅ Configuration production activée`);
+        console.log(`🔒 Sessions sécurisées (HTTPS)`);
+        console.log(`🌐 CORS configuré pour les domaines autorisés`);
+      }
     });
   } catch (error) {
     console.error('❌ Erreur connexion/synchro BDD :', error);

@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
 const { sequelize } = require('./models');
 const { admin, adminRouter } = require('./config/admin');
 
@@ -30,13 +31,20 @@ const app = express();
 // Configuration pour les proxies (nécessaire pour Render et autres plateformes)
 app.set('trust proxy', 1); // Trust first proxy
 
-// Configuration des sessions (production-ready)
+// Configuration des sessions (production-ready avec PostgreSQL)
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(session({
+  store: isProduction ? new PgSession({
+    conString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+    createTableIfMissing: true,
+    tableName: 'user_sessions'
+  }) : undefined, // Utilise MemoryStore en développement
   secret: process.env.SESSION_SECRET || 'kotiz-session-secret-key-2024',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    secure: isProduction, // HTTPS only in production
     httpOnly: true, // Prevent XSS attacks
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     sameSite: 'lax' // CSRF protection
@@ -98,7 +106,7 @@ app.use(
   })
 );
 
-// 5️⃣ Définir le port
+// 5️⃣ Définir le port (utiliser toujours process.env.PORT en production)
 const PORT = process.env.PORT || 5000;
 
 // 6️⃣ Endpoint de test /health
@@ -201,11 +209,16 @@ app.use('*', (req, res) => {
       console.log(`📊 Health check: ${baseUrl}/health`);
       console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔌 Port: ${PORT}`);
+      console.log(`💾 Sessions: ${isProduction ? 'PostgreSQL' : 'MemoryStore (dev)'}`);
 
       if (isProduction) {
         console.log(`✅ Configuration production activée`);
         console.log(`🔒 Sessions sécurisées (HTTPS)`);
         console.log(`🌐 CORS configuré pour les domaines autorisés`);
+        console.log(`🗄️ Base de données sessions: PostgreSQL`);
+      } else {
+        console.log(`🧪 Mode développement`);
+        console.log(`💾 Sessions: MemoryStore (temporaire)`);
       }
     });
   } catch (error) {

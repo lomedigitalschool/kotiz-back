@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Kotiz API Collection",
-    "description": "Collection complète des endpoints de l'API Kotiz avec système KYC multi-soumissions",
-    "version": "3.0.0",
+    "description": "Collection complète des endpoints de l'API Kotiz avec système KYC multi-soumissions et endpoints publics (v2.0)",
+    "version": "2.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -936,6 +936,98 @@
                 {
                   "key": "id",
                   "value": "transaction-id"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public Endpoints (No Auth)",
+      "item": [
+        {
+          "name": "Get Public Cagnottes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/public/pulls?page=1&limit=10&search=voyage",
+              "host": ["{{base_url}}"],
+              "path": ["public", "pulls"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "voyage",
+                  "description": "Rechercher par titre ou description"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Public Cagnotte Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/public/pulls/:id",
+              "host": ["{{base_url}}"],
+              "path": ["public", "pulls", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cagnotte-id",
+                  "description": "ID de la cagnotte publique"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Anonymous Contribution",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"contributorName\": \"Pierre Anonyme\",\n  \"contributorEmail\": \"pierre@email.com\",\n  \"message\": \"Bonne chance pour votre projet !\",\n  \"phoneNumber\": \"771234567\",\n  \"paymentMethod\": \"orange_money\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/public/contributions/anonymous/:pullId",
+              "host": ["{{base_url}}"],
+              "path": ["public", "contributions", "anonymous", ":pullId"],
+              "variable": [
+                {
+                  "key": "pullId",
+                  "value": "cagnotte-id",
+                  "description": "ID de la cagnotte pour contribution anonyme"
                 }
               ]
             }

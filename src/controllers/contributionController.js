@@ -259,3 +259,149 @@ exports.getMyContributions = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ====================
+// 🎭 CRÉER UNE CONTRIBUTION ANONYME (SANS COMPTE)
+// ====================
+exports.createAnonymous = async (req, res) => {
+  try {
+    const { pullId } = req.params; // Récupérer pullId depuis l'URL
+    const {
+      amount,
+      contributorName,
+      contributorEmail,
+      message,
+      phoneNumber,
+      paymentMethod = 'orange_money'
+    } = req.body;
+
+    console.log('🎭 DEBUG - req.params:', req.params);
+    console.log('🎭 DEBUG - req.body:', req.body);
+    console.log('🎭 Contribution anonyme initiée:', { pullId, amount, contributorName, phoneNumber });
+
+    // Validation des données
+    if (!pullId || !amount || !phoneNumber) {
+      console.log('❌ Validation échouée:', { pullId, amount, phoneNumber });
+      return res.status(400).json({
+        success: false,
+        error: "ID de cagnotte, montant et numéro de téléphone requis",
+        debug: { pullId, amount, phoneNumber }
+      });
+    }
+
+    if (parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Le montant doit être supérieur à 0"
+      });
+    }
+
+    // Vérifier que la cagnotte existe et est publique/active
+    const pull = await Pull.findOne({
+      where: {
+        id: pullId,
+        status: 'active',
+        type: 'public'
+      }
+    });
+
+    if (!pull) {
+      return res.status(404).json({
+        success: false,
+        error: "Cagnotte non trouvée ou non accessible"
+      });
+    }
+
+    // Générer une référence unique pour la transaction
+    const transactionRef = `KOTIZ-ANON-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // 🔧 POINT D'INTÉGRATION API PAIEMENT
+    // Préparer les données de paiement
+    const paymentData = {
+      amount: Math.round(parseFloat(amount) * 100), // Convertir en centimes
+      currency: pull.currency || 'XOF',
+      phoneNumber: phoneNumber,
+      paymentMethod: paymentMethod,
+      reference: transactionRef,
+      description: `Contribution anonyme à: ${pull.title}`,
+      callbackUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/api/v1/webhooks/payment`,
+      returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/cagnotte/${pullId}?contribution=success`
+    };
+
+    console.log('🚀 Initiation du paiement anonyme:', paymentData);
+
+    // Initier le paiement via l'API externe
+    const paymentResult = await paymentService.initiatePayment(paymentData);
+
+    if (!paymentResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Erreur lors de l\'initiation du paiement',
+        details: paymentResult.error,
+        code: 'PAYMENT_INITIATION_FAILED'
+      });
+    }
+
+    // Créer la contribution anonyme avec statut "pending"
+    const contribution = await Contribution.create({
+      userId: null, // Contribution anonyme
+      pullId,
+      amount: parseFloat(amount),
+      currency: pull.currency || 'XOF',
+      status: 'pending', // En attente de confirmation de paiement
+      paymentReference: transactionRef,
+      contributorName: contributorName || 'Anonyme',
+      contributorEmail: contributorEmail || null,
+      message: message || null,
+      phoneNumber: phoneNumber,
+      paymentMethod: paymentMethod
+    });
+
+    // Créer l'enregistrement de transaction (sans userId pour les anonymes)
+    const transaction = await Transaction.create({
+      contributionId: contribution.id,
+      userId: null, // Transaction anonyme
+      amount: parseFloat(amount),
+      currency: pull.currency || 'XOF',
+      status: 'pending',
+      paymentMethod: paymentMethod,
+      phoneNumber: phoneNumber,
+      reference: transactionRef,
+      providerTransactionId: paymentResult.transactionId,
+      providerResponse: JSON.stringify(paymentResult.providerResponse)
+    });
+
+    console.log('✅ Contribution anonyme créée avec succès:', contribution.id);
+
+    // Réponse avec les informations de paiement
+    res.status(201).json({
+      success: true,
+      contribution: {
+        id: contribution.id,
+        amount: contribution.amount,
+        currency: pull.currency,
+        status: contribution.status,
+        reference: transactionRef,
+        contributorName: contribution.contributorName,
+        createdAt: contribution.createdAt
+      },
+      payment: {
+        transactionId: paymentResult.transactionId,
+        paymentUrl: paymentResult.paymentUrl,
+        status: paymentResult.status,
+        reference: paymentResult.reference,
+        instructions: `Un SMS de confirmation va être envoyé au ${phoneNumber}. Suivez les instructions pour finaliser le paiement.`
+      },
+      message: "Contribution anonyme initiée. Veuillez finaliser le paiement via votre téléphone.",
+      redirectUrl: paymentResult.paymentUrl
+    });
+
+  } catch (err) {
+    console.error('❌ Erreur lors de la création de contribution anonyme:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur interne du serveur',
+      details: err.message
+    });
+  }
+};

@@ -11,11 +11,15 @@ class Contribution extends Model {
 function initContribution(sequelize) {
   Contribution.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: false },
+    userId: { type: DataTypes.INTEGER, allowNull: true }, // Permettre les contributions anonymes
     pullId: { type: DataTypes.INTEGER, allowNull: false },
     amount: { type: DataTypes.DECIMAL(12,2), allowNull: false, validate: { min: 0 } },
     currency: { type: DataTypes.ENUM('XOF','EUR','USD'), defaultValue: 'XOF' },
-    status: { type: DataTypes.ENUM('pending','completed','failed'), defaultValue: 'pending' }
+    status: { type: DataTypes.ENUM('pending','completed','failed'), defaultValue: 'pending' },
+    // Champs pour les contributions anonymes
+    contributorName: { type: DataTypes.STRING, allowNull: true },
+    contributorEmail: { type: DataTypes.STRING, allowNull: true },
+    message: { type: DataTypes.TEXT, allowNull: true }
   }, {
     sequelize,
     modelName: 'Contribution',

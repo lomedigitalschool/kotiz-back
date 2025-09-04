@@ -83,6 +83,8 @@ app.use('/api/v1/admin', authenticate, isAdmin, adminRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 
 // 🔧 ROUTES WEBHOOK (sans authentification pour les services externes)
+// 🔓 ROUTES PUBLIQUES (sans authentification pour les visiteurs)
+app.use('/api/v1/public', require('./routes/publicRoutes'));
 app.use('/api/v1/webhooks', webhookRoutes);
 
 // 8️⃣ Interface d'administration AdminJS (⚠️ après Helmet et autres middlewares)

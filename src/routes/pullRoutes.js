@@ -11,4 +11,8 @@ router.get('/:id', pullController.getOne);
 router.put('/:id', authenticate, pullController.update);
 router.delete('/:id', authenticate, pullController.remove);
 
+// ====================
+// 📋 ROUTES PUBLIQUES (SANS AUTHENTIFICATION)
+// ====================
+router.get('/public', pullController.getPublicCagnottes);
 module.exports = router;

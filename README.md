@@ -1,6 +1,6 @@
 # Kotiz Backend API
 
-API backend pour l'application Kotiz développée par Lome Digital School avec système KYC multi-soumissions.
+API backend pour l'application Kotiz développée par Lome Digital School avec système KYC multi-soumissions et **endpoints publics pour l'accès anonyme aux cagnottes** (v2.0).
 
 ## 🚀 Fonctionnalités
 
@@ -23,11 +23,18 @@ API backend pour l'application Kotiz développée par Lome Digital School avec s
 - Contributions avec messages
 - Suivi des objectifs
 - Upload d'images
+- **Accès public aux cagnottes** (nouveau)
+- **Contributions anonymes** (nouveau)
 
 ### Administration
 - Interface AdminJS intégrée
 - Gestion des utilisateurs et KYC
 - Statistiques et rapports
+
+### Nouvelles fonctionnalités (v2.0)
+- **Endpoints publics** : Accès aux cagnottes sans authentification
+- **Contributions anonymes** : Possibilité de contribuer sans créer de compte
+- **API optimisée** : Pagination et recherche avancées
 
 ## 📋 Installation
 
@@ -143,7 +150,13 @@ src/
 ### Authentication
 - `POST /api/v1/auth/register` - Inscription
 - `POST /api/v1/auth/login` - Connexion
+- `POST /api/v1/auth/login-normal` - Connexion sans OTP
 - `GET /api/v1/auth/me` - Profil utilisateur
+
+### Public Endpoints (No Authentication Required)
+- `GET /api/v1/public/pulls` - Liste cagnottes publiques *(nouveau)*
+- `GET /api/v1/public/pulls/:id` - Détails cagnotte publique *(nouveau)*
+- `POST /api/v1/public/contributions/anonymous/:pullId` - Contribution anonyme *(nouveau)*
 
 ### KYC Management
 - `POST /api/v1/kyc/submit` - Soumettre documents KYC
@@ -152,21 +165,47 @@ src/
 - `PUT /api/v1/kyc/:id/status` - Mettre à jour statut (Admin)
 - `GET /api/v1/kyc/admin/all` - Toutes les soumissions (Admin)
 
-### Cagnottes
+### Cagnottes (Authentification requise)
 - `POST /api/v1/pulls` - Créer une cagnotte
-- `GET /api/v1/pulls` - Lister les cagnottes
+- `GET /api/v1/pulls` - Lister ses propres cagnottes
 - `GET /api/v1/pulls/:id` - Détails d'une cagnotte
 - `PUT /api/v1/pulls/:id` - Modifier une cagnotte
 - `DELETE /api/v1/pulls/:id` - Supprimer une cagnotte
+- `POST /api/v1/pulls/:pullId/contribute` - Contribuer à une cagnotte
 
-### Contributions
+### Contributions (Authentification requise)
 - `POST /api/v1/contributions` - Faire une contribution
-- `GET /api/v1/contributions/user` - Contributions de l'utilisateur
-- `GET /api/v1/contributions/pull/:id` - Contributions d'une cagnotte
+- `GET /api/v1/contributions/my` - Mes contributions
+- `GET /api/v1/contributions/:id/status` - Statut d'une contribution
 
-### Users
-- `GET /api/v1/users/profile` - Profil utilisateur
-- `PUT /api/v1/users/profile` - Mettre à jour le profil
+### Users (Authentification requise)
+- `GET /api/v1/users/dashboard` - Dashboard utilisateur
+- `GET /api/v1/users/:id` - Profil utilisateur
+- `PUT /api/v1/users/:id` - Mettre à jour le profil
+- `POST /api/v1/users/avatar` - Upload avatar
+
+### Utilisation des endpoints publics
+
+#### Découverte des cagnottes (sans compte)
+```bash
+# Lister toutes les cagnottes publiques
+GET /api/v1/public/pulls?page=1&limit=10&search=voyage
+
+# Voir les détails d'une cagnotte
+GET /api/v1/public/pulls/123
+```
+
+#### Contribution anonyme
+```bash
+# Contribuer sans créer de compte
+POST /api/v1/public/contributions/anonymous/123
+{
+  "amount": 50000,
+  "contributorName": "Pierre Anonyme",
+  "phoneNumber": "771234567",
+  "paymentMethod": "orange_money"
+}
+```
 
 ## 📁 Upload de fichiers
 
@@ -256,8 +295,13 @@ ADMIN_PASSWORD=admin123
 Importez le fichier `Kotiz_API_Collection.postman_collection.json` dans Postman pour tester tous les endpoints.
 
 ### Variables Postman
-- `base_url` : `http://localhost:3000/api/v1`
+- `base_url` : `http://localhost:5000/api/v1`
 - `auth_token` : Token JWT obtenu après connexion
+
+### Nouveaux endpoints à tester (v2.0)
+- **Endpoints publics** : Testez sans authentification
+- **Contributions anonymes** : Testez avec données fictives
+- **Pagination** : Testez avec `?page=1&limit=5`
 
 ## 🚀 Déploiement
 

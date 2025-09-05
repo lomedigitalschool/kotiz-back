@@ -6,6 +6,9 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { sequelize } = require('./models');
 
 // 3️⃣ Import des routes API
@@ -116,6 +119,7 @@ app.get('/', (req, res) =>
 
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+      console.log(`🔑 AdminJS dispo sur http://localhost:${PORT}/admin`);
       console.log(`🔑 AdminJS dispo sur http://localhost:${PORT}/admin`);
     });
   } catch (err) {

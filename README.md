@@ -76,133 +76,73 @@ npm start
 ### Structure des dossiers
 ```
 src/
-├── config/          # Configuration (DB, AdminJS)
-├── controllers/     # Logique métier
-├── middleware/      # Middlewares (auth, multer, validation)
-├── migrations/      # Migrations de base de données
-├── models/          # Modèles Sequelize
-├── routes/          # Routes API
-├── scripts/         # Scripts utilitaires
-└── utils/           # Fonctions utilitaires
+├── config/
+│   ├── database.js      # Configuration PostgreSQL
+│   └── admin.js         # Configuration AdminJS
+├── migrations/          # Migrations automatiques (10 fichiers)
+├── models/              # 9 modèles Sequelize avec relations
+│   ├── User.js          # Utilisateurs (user/admin)
+│   ├── pull.js      # pulls avec validation
+│   ├── Contribution.js  # Contributions
+│   ├── Transaction.js   # Transactions financières
+│   ├── PaymentMethod.js # Méthodes de paiement
+│   ├── UserPaymentMethod.js # Association users ↔ payments
+│   ├── Notification.js  # Notifications système
+│   ├── Log.js          # Journalisation
+│   ├── Kyc.js          # Vérification d'identité
+│   └── index.js        # Relations entre modèles
+├── utils/
+│   └── migrator.js     # Migrations automatiques
+├── scripts/
+│   └── create-admin.js # Création admin automatique
+└── server.js           # Point d'entrée avec AdminJS
 ```
 
-### Modèles de données
+## 🌐 API Endpoints
 
-#### User (Utilisateur)
-```javascript
-{
-  id: INTEGER (PK),
-  name: STRING,
-  email: STRING (unique),
-  phone: STRING (unique),
-  passwordHash: STRING,
-  role: ENUM('user', 'admin'),
-  avatarUrl: STRING,
-  isVerified: BOOLEAN,
-  lastLogin: DATE
-}
-```
+### 🛠️ Utilitaires
+- `GET /health` - Santé de l'API et base de données
+- `GET /test-models` - Test de création des modèles
+- `GET /test-relations` - Test des relations entre modèles
 
-#### KYC (Vérification d'identité)
-```javascript
-{
-  id: UUID (PK),
-  userId: INTEGER (FK),
-  typeSubmission: ENUM('PREMIERE_SOUMISSION', 'NOUVELLE_TENTATIVE', 'RENOUVELLEMENT', 'CORRECTION'),
-  typePiece: ENUM('CNI', 'PASSPORT', 'PERMIS_CONDUIRE'),
-  numeroPiece: STRING,
-  dateExpiration: DATE,
-  photoRecto: STRING,
-  photoVerso: STRING,
-  statutVerification: ENUM('EN_ATTENTE', 'APPROUVE', 'REFUSE'),
-  commentaireAdmin: TEXT,
-  submissionDate: DATE,
-  isActive: BOOLEAN
-}
-```
+### 👑 Administration (AdminJS)
+- `GET /admin` - **Dashboard complet** (admin uniquement)
+  - 👤 Gestion des utilisateurs (user/admin)
+  - 🎯 Approbation des pulls
+  - 💰 Suivi des contributions
+  - 💳 Gestion des méthodes de paiement
+  - 🔔 Notifications système
+  - 📊 Logs d'activité
+  - ✅ Validation KYC
+  - 💸 Transactions financières
 
-#### Pull (Cagnotte)
-```javascript
-{
-  id: UUID (PK),
-  userId: INTEGER (FK),
-  title: STRING,
-  description: TEXT,
-  goalAmount: DECIMAL,
-  currentAmount: DECIMAL,
-  currency: STRING,
-  deadline: DATE,
-  type: ENUM('public', 'private'),
-  status: ENUM('active', 'completed', 'cancelled'),
-  imageUrl: STRING
-}
-```
+### 🔐 Authentification (À implémenter)
+- `POST /api/auth/register` - Inscription
+- `POST /api/auth/login` - Connexion
+- `GET /api/auth/profile` - Profil utilisateur
 
-## 🔌 API Endpoints
+### 📱 API Mobile/Web (À implémenter)
+- `GET /api/pulls` - pulls publiques
+- `POST /api/pulls` - Créer une pull
+- `POST /api/contributions` - Faire une contribution
+- `GET /api/payment-methods` - Méthodes de paiement disponibles
 
-### Authentication
-- `POST /api/v1/auth/register` - Inscription
-- `POST /api/v1/auth/login` - Connexion
-- `GET /api/v1/auth/me` - Profil utilisateur
+## 🛡️ Fonctionnalités de Sécurité
 
-### KYC Management
-- `POST /api/v1/kyc/submit` - Soumettre documents KYC
-- `GET /api/v1/kyc/history` - Historique des soumissions
-- `GET /api/v1/kyc/status` - Statut KYC actuel
-- `PUT /api/v1/kyc/:id/status` - Mettre à jour statut (Admin)
-- `GET /api/v1/kyc/admin/all` - Toutes les soumissions (Admin)
+### ✅ Validations Implémentées
+- **Montants financiers** : Validation > 0 pour contributions/pulls
+- **Devises** : Limitées à XOF, EUR, USD (ENUM)
+- **Mots de passe** : Hachage bcrypt automatique
+- **KYC** : Validation des documents d'identité
+- **Authentification AdminJS** : Accès admin uniquement
 
-### Cagnottes
-- `POST /api/v1/pulls` - Créer une cagnotte
-- `GET /api/v1/pulls` - Lister les cagnottes
-- `GET /api/v1/pulls/:id` - Détails d'une cagnotte
-- `PUT /api/v1/pulls/:id` - Modifier une cagnotte
-- `DELETE /api/v1/pulls/:id` - Supprimer une cagnotte
-
-### Contributions
-- `POST /api/v1/contributions` - Faire une contribution
-- `GET /api/v1/contributions/user` - Contributions de l'utilisateur
-- `GET /api/v1/contributions/pull/:id` - Contributions d'une cagnotte
-
-### Users
-- `GET /api/v1/users/profile` - Profil utilisateur
-- `PUT /api/v1/users/profile` - Mettre à jour le profil
-
-## 📁 Upload de fichiers
-
-### Configuration Multer
-- **Dossier de stockage** : `uploads/kyc/{userId}/{timestamp}/`
-- **Types acceptés** : JPG, PNG, PDF
-- **Taille maximale** : 5MB par fichier
-- **Fichiers par soumission** : 2 (recto + verso)
-
-### Structure des uploads
-```
-uploads/
-└── kyc/
-    └── {userId}/
-        └── {timestamp}/
-            ├── photoRecto-{unique}.jpg
-            └── photoVerso-{unique}.jpg
-```
-
-## 🔐 Sécurité
-
-### Authentification
-- JWT avec expiration
-- Middleware d'authentification sur routes protégées
-- Vérification des rôles (user/admin)
-
-### Upload de fichiers
-- Validation des types MIME
-- Limitation de taille
-- Noms de fichiers sécurisés
-- Stockage organisé par utilisateur
-
-### Base de données
-- Hachage des mots de passe (bcrypt)
-- Validation des données d'entrée
-- Protection contre l'injection SQL (Sequelize ORM)
+### 🔗 Relations Testées
+- User ↔ pulls (1:N)
+- User ↔ Contributions (1:N)
+- User ↔ KYC (1:1)
+- pull ↔ Contributions (1:N)
+- Contribution ↔ Transaction (1:1)
+- Transaction ↔ PaymentMethod (N:1)
 
 ## 🛠️ Développement
 

@@ -8,11 +8,9 @@ class User extends Model {
     User.hasMany(models.Notification, { foreignKey: 'userId', as: 'notifications' });
     User.hasMany(models.UserPaymentMethod, { foreignKey: 'userId', as: 'paymentMethods' });
     User.hasMany(models.Log, { foreignKey: 'userId', as: 'logs' });
-<<<<<<< HEAD
+
     User.hasMany(models.Kyc, { foreignKey: 'userId', as: 'kycSubmissions' });
-=======
-    User.hasOne(models.Kyc, { foreignKey: 'userId', as: 'kyc' });
->>>>>>> 29e9929e6d74d8a967e68092134456fd7057af91
+
   }
 }
 

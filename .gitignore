@@ -12,3 +12,4 @@ coverage/
 CHANGELOG.md
 SECURITY-FIXES.md
 PULL_REQUEST_SUMMARY.mdsrc/config/serviceAccountKey.json
+src/config/serviceAccountKey.json

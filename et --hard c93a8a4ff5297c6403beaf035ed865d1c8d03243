@@ -1,0 +1,216 @@
+[33mcommit ab6ff1d3503bc06706caf5626179a437a9185e92[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32myannick[m[33m)[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Fri Sep 5 23:50:44 2025 +0000
+
+    delete
+
+[33mcommit c93a8a4ff5297c6403beaf035ed865d1c8d03243[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Fri Sep 5 23:36:42 2025 +0000
+
+    clean
+
+[33mcommit f6b9827cfd82a21f3d330b7e39b84086bf24d89d[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Fri Sep 5 14:29:31 2025 +0000
+
+    Add serviceAccountKey.json to .gitignore
+
+[33mcommit ddf64784e3657d8bf6db18f87e5ca98ba07cf2d9[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Fri Sep 5 12:58:46 2025 +0000
+
+    Remove service account key from repository
+
+[33mcommit d1ccca0a4a3021eeabaa1caeb01d91c1201f70e7[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Fri Sep 5 12:40:38 2025 +0000
+
+    text features otp payement
+
+[33mcommit 6b6aa09126344253ee62d466bfa4b5f89ea8d4f0[m
+Merge: 416072a 29e9929
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Fri Sep 5 12:20:00 2025 +0000
+
+    OTP
+
+[33mcommit 416072a76f5f7570fd071e465ae3518cf35d6ef3[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Thu Sep 4 21:41:14 2025 +0000
+
+    remove service account key from repo
+
+[33mcommit 31be3002db28b140a9b64eb39c1766e252a0b85b[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Thu Sep 4 09:36:57 2025 +0000
+
+    integrationtest
+
+[33mcommit d9dee095e3c67930116159e00f2e25cf94f44b6a[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Thu Sep 4 09:34:53 2025 +0000
+
+    changes
+
+[33mcommit 3bd05bbf8dcc8cb8604269d4d69cc4b4eb5935c8[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Thu Sep 4 09:08:55 2025 +0000
+
+    integration de firebase et semoa
+
+[33mcommit 547bc35fd8b08c1fb63e831b2de2a00b02bf6054[m
+Author: samwin25 <edorhsam@gmail.com>
+Date:   Sat Aug 30 13:16:02 2025 +0000
+
+    connexion API-web kyc multer services otp payement
+
+[33mcommit 9c1142c529b3b0114b286602385661ecdf143645[m
+Author: samwin25 <edorhsam@gmail.com>
+Date:   Sat Aug 30 13:09:40 2025 +0000
+
+    connexion API-web kyc multer services otp payement
+
+[33mcommit 29e9929e6d74d8a967e68092134456fd7057af91[m[33m ([m[1;31morigin/yannick[m[33m)[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Sat Aug 30 09:48:06 2025 +0000
+
+    update kyc
+
+[33mcommit 3d2cb86d358e7558315e4b58b155e1fa3832fbf8[m
+Author: samwin25 <edorhsam@gmail.com>
+Date:   Fri Aug 29 23:31:26 2025 +0000
+
+    version adjs  update
+
+[33mcommit 6135082cf5f1ebb9214e6597cb459c4c7c0b3476[m
+Author: Yano <yanoboston@gmail.com>
+Date:   Fri Aug 29 18:54:29 2025 +0000
+
+    Routes et controllers (#2)
+    
+    * routes et controllers
+    
+    * version adminjs/sequelize et register/login passwordHash
+    
+    * fix
+    
+    * FIX SERVER
+    
+    * passwordhash
+    
+    * authentification
+    
+    * fix auth
+    
+    * fix admin
+    
+    * admin dashboard
+    
+    * update
+    
+    ---------
+    
+    Co-authored-by: samwin25 <edorhsam@gmail.com>
+
+[33mcommit 8a1cde91dbf48c53553d61a03c0f7093e21a31c6[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Fri Aug 29 14:51:22 2025 +0000
+
+    update
+
+[33mcommit 5ac337024705c2663ee3b135ba9b104092526aa6[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Thu Aug 28 23:06:59 2025 +0000
+
+    admin dashboard
+
+[33mcommit e37a7eb0519b0bdbdd1a55f073e9a7eb9ac6082a[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Thu Aug 28 11:34:47 2025 +0000
+
+    fix admin
+
+[33mcommit 8ce21295f451cffeadc013248158958989f03ec3[m
+Merge: 09ec049 089d01e
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Tue Aug 26 22:47:18 2025 +0000
+
+    Merge branch 'yannick' of https://github.com/lomedigitalschool/kotiz-back into yannick
+
+[33mcommit 09ec049e6a298e5233c2adfc666c8096b19939bc[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Tue Aug 26 22:46:53 2025 +0000
+
+    fix auth
+
+[33mcommit 55f066fc58492704559f63b4297f8187ad677084[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Tue Aug 26 22:27:47 2025 +0000
+
+    authentification
+
+[33mcommit 73209a675be8f113d56ed783664f2283c79ebd00[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Tue Aug 26 12:58:01 2025 +0000
+
+    passwordhash
+
+[33mcommit 089d01e24a688b3cfca647a37d9734d53d177704[m
+Merge: e3cd782 44ab454
+Author: samwin25 <edorhsam@gmail.com>
+Date:   Tue Aug 26 12:27:35 2025 +0000
+
+    Merge branch 'origin/yannick' avec résolution des conflits
+
+[33mcommit 44ab4540fad1424416fa9dbdaf603e099b6c8893[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Tue Aug 26 08:43:10 2025 +0000
+
+    FIX SERVER
+
+[33mcommit fa2a2f40d8e1587e48d9aa99ef111eb81559dad5[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Tue Aug 26 06:56:39 2025 +0000
+
+    fix
+
+[33mcommit e3cd782bb59bf486f4c74e7293ee187f7a194ade[m
+Author: samwin25 <edorhsam@gmail.com>
+Date:   Mon Aug 25 21:47:58 2025 +0000
+
+    version adminjs/sequelize et register/login passwordHash
+
+[33mcommit d299f67e793e3ad04ab5efe36df72bb36eae1889[m
+Author: Yano02 <yanoboston@gmail.com>
+Date:   Sat Aug 23 13:06:26 2025 +0000
+
+    routes et controllers
+
+[33mcommit 67af1c059a522a3df0c02956aa69dc2fc80cfce2[m[33m ([m[1;32mdev[m[33m)[m
+Author: samwin25 <edorhsam@gmail.com>
+Date:   Wed Aug 20 14:35:06 2025 +0000
+
+    Mise à jour des modèles et ajout des migrations
+
+[33mcommit 40f8bbf6eaf4acb8e93f535b45ed3a3505328442[m
+Author: Yano <yanoboston@gmail.com>
+Date:   Tue Aug 19 22:26:22 2025 +0000
+
+    modelisation de la nase de donnee (#1)
+    
+    * modelisation de la nase de donnee
+    
+    * integration des modeles
+    
+    * Update User.js
+    
+    modification de la table user
+    
+    * Revues des relations
+
+[33mcommit a66ac64cbc2d0284a2fb9fc9bf9b03203bdb36db[m
+Author: samwin25 <edorhsam@gmail.com>
+Date:   Tue Aug 12 18:29:26 2025 +0000
+
+    Initial commit: Project structure with empty files

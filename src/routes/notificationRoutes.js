@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notificationController');
-const { authenticate } = require('../middleware/auth');
+const { firebaseAuth } = require('../middleware/firebaseAuth');
 
-router.get('/', authenticate, notificationController.getAll);
-router.put('/:id/read', authenticate, notificationController.markAsRead);
+router.get('/', firebaseAuth, notificationController.getAll);
+router.put('/:id/read', firebaseAuth, notificationController.markAsRead);
 
 module.exports = router;

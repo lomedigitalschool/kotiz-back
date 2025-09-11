@@ -15,17 +15,25 @@ class User extends Model {
 function initUser(sequelize) {
   User.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+
+    // 🔑 UID Firebase (obligatoire)
+    firebaseUid: { 
+      type: DataTypes.STRING, 
+      allowNull: false, 
+      unique: true 
+    },
+
+    // Infos basiques
     name: { type: DataTypes.STRING, allowNull: false },
     email: { type: DataTypes.STRING, allowNull: true, unique: true },
     phone: { type: DataTypes.STRING, allowNull: true, unique: true },
-    passwordHash: { type: DataTypes.STRING, allowNull: false },
+
+    // Plus besoin de passwordHash, resetToken, resetTokenExpiry
     role: { type: DataTypes.ENUM('user', 'admin'), defaultValue: 'user', allowNull: false },
     avatarUrl: { type: DataTypes.STRING, allowNull: true },
     isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
     isBlocked: { type: DataTypes.BOOLEAN, defaultValue: false },
-    lastLogin: { type: DataTypes.DATE, allowNull: true },
-    resetToken: { type: DataTypes.STRING, allowNull: true },
-    resetTokenExpiry: { type: DataTypes.DATE, allowNull: true }
+    lastLogin: { type: DataTypes.DATE, allowNull: true }
   }, {
     sequelize,
     modelName: 'User',

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const KycController = require('../controllers/kycController');
-const { authenticate, isAdmin } = require('../middleware/auth');
+const { firebaseAuth, isAdmin } = require('../middleware/firebaseAuth');
 const { uploadKycDocuments, handleMulterError } = require('../middleware/multerConfig');
 
 /**
@@ -13,31 +13,31 @@ const { uploadKycDocuments, handleMulterError } = require('../middleware/multerC
 
 // Routes utilisateur
 router.post('/submit', 
-  authenticate, 
+  firebaseAuth, 
   uploadKycDocuments, 
   handleMulterError, 
   KycController.submitKyc
 );
 
 router.get('/history', 
-  authenticate, 
+  firebaseAuth, 
   KycController.getKycHistory
 );
 
 router.get('/status', 
-  authenticate, 
+  firebaseAuth, 
   KycController.getKycStatus
 );
 
 // Routes administrateur
 router.put('/:id/status', 
-  authenticate, 
+  firebaseAuth, 
   isAdmin, 
   KycController.updateKycStatus
 );
 
 router.get('/admin/all', 
-  authenticate, 
+  firebaseAuth, 
   isAdmin, 
   KycController.getAllKycSubmissions
 );

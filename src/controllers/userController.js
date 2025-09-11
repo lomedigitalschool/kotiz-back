@@ -1,30 +1,58 @@
 const { User, Pull, Contribution, Transaction } = require('../models');
 
+// 🔹 Liste des utilisateurs (admin uniquement)
 exports.getAll = async (req, res) => {
-  const users = await User.findAll();
-  res.json(users);
+  try {
+    const users = await User.findAll({
+      attributes: { exclude: ['passwordHash'] } // inutile avec Firebase, mais au cas où
+    });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
+// 🔹 Obtenir un utilisateur par ID
 exports.getOne = async (req, res) => {
-  const user = await User.findByPk(req.params.id);
-  if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
-  res.json(user);
+  try {
+    const user = await User.findByPk(req.params.id, {
+      attributes: { exclude: ['passwordHash'] }
+    });
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
+// 🔹 Mettre à jour un utilisateur
 exports.update = async (req, res) => {
-  const user = await User.findByPk(req.params.id);
-  if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
 
-  await user.update(req.body);
-  res.json({ message: "Utilisateur mis à jour", user });
+    // ⚠️ Ne jamais mettre à jour password ici (géré par Firebase)
+    const { name, email, phone, avatarUrl } = req.body;
+
+    await user.update({ name, email, phone, avatarUrl });
+
+    res.json({ message: "Utilisateur mis à jour", user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
+// 🔹 Supprimer un utilisateur
 exports.remove = async (req, res) => {
-  await User.destroy({ where: { id: req.params.id } });
-  res.json({ message: "Utilisateur supprimé" });
+  try {
+    await User.destroy({ where: { id: req.params.id } });
+    res.json({ message: "Utilisateur supprimé" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
-// Upload d'avatar utilisateur
+// 🔹 Upload d'avatar utilisateur
 exports.uploadAvatar = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -38,20 +66,17 @@ exports.uploadAvatar = async (req, res) => {
       return res.status(400).json({ message: "Aucun fichier uploadé" });
     }
 
-    // L'URL Cloudinary est disponible dans req.file.path
     const avatarUrl = req.file.path;
-
-    // Mettre à jour l'avatar de l'utilisateur
     await user.update({ avatarUrl });
 
     res.json({
       message: "Avatar uploadé avec succès",
-      avatarUrl: avatarUrl,
+      avatarUrl,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        avatarUrl: avatarUrl
+        avatarUrl
       }
     });
 
@@ -61,24 +86,18 @@ exports.uploadAvatar = async (req, res) => {
   }
 };
 
-// Dashboard utilisateur
+// 🔹 Dashboard utilisateur
 exports.getDashboard = async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log('📊 DASHBOARD - Requête pour user ID:', userId, req.user.name);
 
     // Mes cagnottes
-    const myPulls = await Pull.findAll({
-      where: { userId }
-    });
+    const myPulls = await Pull.findAll({ where: { userId } });
 
     // Nombre de cagnottes actives
-    const activePullsCount = await Pull.count({
-      where: { userId, status: 'active' }
-    });
+    const activePullsCount = await Pull.count({ where: { userId, status: 'active' } });
 
-    // Montant total collecté (somme des contributions complétées à mes cagnottes)
-    // Utilisation d'une requête SQL brute pour éviter les problèmes Sequelize
+    // Montant total collecté
     const { QueryTypes } = require('sequelize');
     const sequelize = require('../config/database');
 
@@ -89,10 +108,9 @@ exports.getDashboard = async (req, res) => {
         type: QueryTypes.SELECT
       }
     );
-
     const totalCollected = parseFloat(totalResult.total) || 0;
 
-    // Nombre de contributeurs (utilisateurs uniques qui ont contribué à mes cagnottes)
+    // Nombre de contributeurs uniques
     const [contributorsResult] = await sequelize.query(
       'SELECT COUNT(DISTINCT "userId") as count FROM contributions WHERE status = $1 AND "pullId" IN (SELECT id FROM pulls WHERE "userId" = $2)',
       {
@@ -100,7 +118,6 @@ exports.getDashboard = async (req, res) => {
         type: QueryTypes.SELECT
       }
     );
-
     const contributorsCount = parseInt(contributorsResult.count) || 0;
 
     // Mes contributions

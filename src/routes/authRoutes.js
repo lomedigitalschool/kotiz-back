@@ -1,32 +1,16 @@
+// src/routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { authenticate } = require('../middleware/auth');
+const verifyFirebaseToken = require('../middleware/firebaseAuth');
 
-// 🔧 NOUVELLES ROUTES AVEC INTÉGRATION OTP SMS
+// 🔑 Synchronisation utilisateur après login Firebase
+router.post('/firebase-sync', verifyFirebaseToken, authController.firebaseSync);
 
-// Inscription en 2 étapes
-router.post('/send-registration-otp', authController.sendRegistrationOTP);
-router.post('/register', authController.register);
+// 👤 Profil utilisateur connecté
+router.get('/me', verifyFirebaseToken, authController.me);
 
-// Connexion en 2 étapes
-router.post('/initiate-login', authController.initiateLogin);
-router.post('/login', authController.login);
-
-// Connexion normale sans OTP
-router.post('/login-normal', authController.normalLogin);
-
-// Gestion OTP
-router.post('/resend-otp', authController.resendOTP);
-
-// Réinitialisation de mot de passe avec OTP
-router.post('/request-password-reset', authController.requestPasswordReset);
-router.post('/reset-password', authController.resetPassword);
-
-// Déconnexion
-router.post('/logout', authenticate, authController.logout);
-
-// Profil utilisateur
-router.get('/me', authenticate, authController.me);
+// 🚪 Déconnexion (coté backend simple)
+router.post('/logout', verifyFirebaseToken, authController.logout);
 
 module.exports = router;

@@ -8,6 +8,16 @@ module.exports = {
         primaryKey: true,
         autoIncrement: true
       },
+      userId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
       title: {
         type: Sequelize.STRING,
         allowNull: false
@@ -18,15 +28,20 @@ module.exports = {
       },
       goalAmount: {
         type: Sequelize.DECIMAL(12, 2),
-        allowNull: false,
-        validate: {
-          min: 1
-        }
+        allowNull: false
+      },
+      currentAmount: {
+        type: Sequelize.DECIMAL(12, 2),
+        defaultValue: 0
       },
       currency: {
         type: Sequelize.ENUM('XOF', 'EUR', 'USD'),
         allowNull: false,
         defaultValue: 'XOF'
+      },
+      startDate: {
+        type: Sequelize.DATE,
+        allowNull: true
       },
       deadline: {
         type: Sequelize.DATE,
@@ -48,34 +63,20 @@ module.exports = {
         type: Sequelize.ENUM('pending', 'active', 'closed'),
         defaultValue: 'pending'
       },
-      shareLink: {
+      slug: {
         type: Sequelize.STRING,
+        unique: true,
         allowNull: true
-      },
-      qrCodeUrl: {
-        type: Sequelize.STRING,
-        allowNull: true
-      },
-      isApproved: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
-      },
-      userId: {
-        type: Sequelize.INTEGER,
-        references: {
-          model: 'users',
-          key: 'id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
       },
       createdAt: {
         type: Sequelize.DATE,
-        allowNull: false
+        allowNull: false,
+        defaultValue: Sequelize.NOW
       },
       updatedAt: {
         type: Sequelize.DATE,
-        allowNull: false
+        allowNull: false,
+        defaultValue: Sequelize.NOW
       }
     });
   },

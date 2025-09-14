@@ -6,13 +6,16 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const { sequelize } = require('./models');
 const { admin, adminRouter } = require('./config/admin');
 
 // Middlewares maison (auth)
-const { authenticate, isAdmin } = require('./middleware/auth');
+const { isAdmin } = require('./middleware/auth');
+// Middleware Firebase
+const verifyFirebaseToken = require('./middleware/firebaseAuth');
 
 // Import des routes API
 const authRoutes = require('./routes/authRoutes');
@@ -53,6 +56,18 @@ app.use(session({
 
 app.use(express.json());
 
+// Middleware de débogage pour les requêtes JSON (APRÈS express.json())
+app.use((req, res, next) => {
+  if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+    console.log('🔍 Requête JSON reçue:');
+    console.log('  Method:', req.method);
+    console.log('  URL:', req.url);
+    console.log('  Content-Type:', req.headers['content-type']);
+    console.log('  Body parsé:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+
 // 4️⃣ Sécurité globale
 app.use(cors({
     origin: function (origin, callback) {
@@ -89,6 +104,9 @@ app.use('/uploads', express.static('uploads'));
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
   max: 100, // 100 requêtes par IP
+  keyGenerator: ipKeyGenerator, // ✅ Utilise la fonction helper pour IPv4/IPv6
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -121,12 +139,12 @@ app.get('/health', async (req, res) => {
 
 // 7️⃣ Montage des routes API
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', authenticate, userRoutes);
-app.use('/api/v1/pulls', authenticate, pullRoutes);
-app.use('/api/v1/contributions', authenticate, contributionRoutes);
-app.use('/api/v1/transactions', authenticate, transactionRoutes);
-app.use('/api/v1/notifications', authenticate, notificationRoutes);
-app.use('/api/v1/admin', authenticate, isAdmin, adminRoutes);
+app.use('/api/v1/users', verifyFirebaseToken, userRoutes);
+app.use('/api/v1/pulls', pullRoutes); // ✅ Suppression du middleware global (géré dans pullRoutes.js)
+app.use('/api/v1/contributions', verifyFirebaseToken, contributionRoutes);
+app.use('/api/v1/transactions', verifyFirebaseToken, transactionRoutes);
+app.use('/api/v1/notifications', verifyFirebaseToken, notificationRoutes);
+app.use('/api/v1/admin', verifyFirebaseToken, isAdmin, adminRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 
 // 🔧 ROUTES WEBHOOK (sans authentification pour les services externes)

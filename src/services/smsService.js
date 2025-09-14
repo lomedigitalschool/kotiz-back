@@ -94,17 +94,33 @@ class SMSService {
     try {
       console.log(`📱 Envoi SMS ${type} vers ${phoneNumber}`);
 
+      // MODE TEST - Simuler l'envoi SMS sans fournisseur réel
+      if (process.env.NODE_ENV !== 'production' || !this.apiKey || this.apiKey === 'your-sms-api-key') {
+        console.log('🧪 MODE TEST - SMS simulé:', message);
+
+        return {
+          success: true,
+          messageId: 'test-' + Date.now(),
+          status: 'sent',
+          phoneNumber: phoneNumber,
+          message: message,
+          provider: 'test',
+          sentAt: new Date().toISOString(),
+          providerResponse: { simulated: true }
+        };
+      }
+
       // Normaliser le numéro de téléphone
       const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
-      
+
       // Préparer le payload selon le fournisseur
       const payload = this.buildSMSPayload(normalizedPhone, message);
-      
+
       // Envoyer le SMS
       const response = await this.client.post(this.getSMSEndpoint(), payload);
-      
+
       console.log('✅ SMS envoyé avec succès:', response.data);
-      
+
       return {
         success: true,
         messageId: this.extractMessageId(response.data),
@@ -118,7 +134,7 @@ class SMSService {
 
     } catch (error) {
       console.error('❌ Erreur lors de l\'envoi SMS:', error.response?.data || error.message);
-      
+
       return {
         success: false,
         error: error.response?.data?.message || 'Erreur lors de l\'envoi du SMS',
@@ -145,7 +161,12 @@ class SMSService {
 
       // Générer le code OTP
       const otpCode = this.generateOTP();
-      
+
+      // MODE TEST - Afficher le code OTP généré
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`🧪 MODE TEST - Code OTP généré: ${otpCode}`);
+      }
+
       // Stocker l'OTP avec expiration
       const otpKey = `${phoneNumber}_${purpose}`;
       this.otpStorage.set(otpKey, {
@@ -160,10 +181,10 @@ class SMSService {
 
       // Préparer le message selon l'objectif
       const message = this.buildOTPMessage(otpCode, purpose);
-      
+
       // Envoyer le SMS
       const smsResult = await this.sendSMS(phoneNumber, message, 'otp');
-      
+
       if (smsResult.success) {
         return {
           success: true,
@@ -181,7 +202,7 @@ class SMSService {
 
     } catch (error) {
       console.error('❌ Erreur lors de l\'envoi OTP:', error.message);
-      
+
       return {
         success: false,
         error: 'Erreur lors de l\'envoi du code de vérification'

@@ -12,3 +12,5 @@ coverage/
 CHANGELOG.md
 SECURITY-FIXES.md
 PULL_REQUEST_SUMMARY.md
+serviceAccountKey.json
+CLOUDINARY_README.md

@@ -18,14 +18,19 @@ function initUser(sequelize) {
     name: { type: DataTypes.STRING, allowNull: false },
     email: { type: DataTypes.STRING, allowNull: true, unique: true },
     phone: { type: DataTypes.STRING, allowNull: true, unique: true },
-    passwordHash: { type: DataTypes.STRING, allowNull: false },
+    passwordHash: { type: DataTypes.STRING, allowNull: true },
     role: { type: DataTypes.ENUM('user', 'admin'), defaultValue: 'user', allowNull: false },
     avatarUrl: { type: DataTypes.STRING, allowNull: true },
     isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
     isBlocked: { type: DataTypes.BOOLEAN, defaultValue: false },
     lastLogin: { type: DataTypes.DATE, allowNull: true },
     resetToken: { type: DataTypes.STRING, allowNull: true },
-    resetTokenExpiry: { type: DataTypes.DATE, allowNull: true }
+    resetTokenExpiry: { type: DataTypes.DATE, allowNull: true },
+    // Firebase fields
+    firebaseUid: { type: DataTypes.STRING, allowNull: true, unique: true },
+    isPhoneVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
+    phoneVerifiedAt: { type: DataTypes.DATE, allowNull: true },
+    passwordResetAt: { type: DataTypes.DATE, allowNull: true }
   }, {
     sequelize,
     modelName: 'User',

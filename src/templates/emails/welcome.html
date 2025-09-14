@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue sur Kotiz</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+        .features {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        .features li {
+            padding: 5px 0;
+            position: relative;
+            padding-left: 25px;
+        }
+        .features li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Kotiz</div>
+            <h1 class="title">Bienvenue sur Kotiz ! 🎉</h1>
+        </div>
+
+        <div class="content">
+            <p>Bonjour {{name}},</p>
+
+            <p>Félicitations ! Votre compte Kotiz a été créé avec succès. Vous pouvez maintenant profiter de toutes les fonctionnalités de notre plateforme de cagnotte en ligne.</p>
+
+            <div class="features">
+                <h3>Ce que vous pouvez faire avec Kotiz :</h3>
+                <ul>
+                    <li>Créer des cagnottes pour vos projets personnels</li>
+                    <li>Participer à des collectes solidaires</li>
+                    <li>Suivre l'évolution de vos contributions</li>
+                    <li>Gérer vos informations de profil</li>
+                    <li>Recevoir des notifications en temps réel</li>
+                </ul>
+            </div>
+
+            <p>Pour commencer votre expérience, connectez-vous à votre compte :</p>
+
+            <div style="text-align: center;">
+                <a href="{{loginUrl}}" class="button">Se connecter à Kotiz</a>
+            </div>
+
+            <p><strong>Conseil :</strong> Pensez à vérifier votre adresse email pour accéder à toutes les fonctionnalités et recevoir des notifications importantes.</p>
+
+            <p>Nous sommes ravis de vous compter parmi nos utilisateurs !</p>
+
+            <p>Cordialement,<br>L'équipe Kotiz</p>
+        </div>
+
+        <div class="footer">
+            <p>
+                Cet email confirme la création de votre compte Kotiz.<br>
+                Si vous avez des questions, n'hésitez pas à nous contacter.
+            </p>
+            <p>&copy; {{year}} Kotiz. Tous droits réservés.</p>
+        </div>
+    </div>
+</body>
+</html>

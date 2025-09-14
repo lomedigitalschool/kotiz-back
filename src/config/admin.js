@@ -143,7 +143,7 @@ const adminOptions = {
           bulkDelete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
         },
         navigation: {
-          name: 'Gestion Utilisateurs',
+          name: 'Utilisateurs',
           icon: 'User'
         }
       },
@@ -184,7 +184,7 @@ const adminOptions = {
           bulkDelete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
         },
         navigation: {
-          name: 'Gestion Cagnottes',
+          name: 'Cagnottes',
           icon: 'Target'
         }
       },
@@ -249,7 +249,7 @@ const adminOptions = {
           createdAt: { type: 'datetime' }
         },
         navigation: {
-          name: 'Journal d\'activité',
+          name: 'Journaux',
           icon: 'FileText'
         }
       },
@@ -307,13 +307,32 @@ const adminOptions = {
   },
   theme: {
     colors: {
-      primary100: '#4CA260', // Couleur dominante KOTIZ
+      // Couleurs primaires Kotiz
+      primary100: '#4CA260',
       primary80: '#5CAF6E',
       primary60: '#6DBB7C',
       primary40: '#7EC78A',
       primary20: '#8FD398',
-      accent: '#3B5BAB', // Couleur secondaire KOTIZ
-      love: '#4CA260',
+      primary: '#4CA260', // Alias pour compatibilité
+
+      // Couleur secondaire Kotiz
+      accent: '#3B5BAB',
+      secondary100: '#3B5BAB',
+      secondary80: '#4C6BCF',
+      secondary60: '#5D7DF3',
+      secondary40: '#6E8FF7',
+      secondary20: '#7FA1FB',
+      secondary: '#3B5BAB', // Alias
+
+      // États et feedback
+      success: '#4CA260',
+      info: '#3B5BAB',
+      warning: '#FF9800',
+      error: '#F44336',
+      danger: '#F44336',
+
+      // Fonds et arrière-plans
+      bg: '#F8F9FA',
       grey100: '#1A1A1A',
       grey80: '#333333',
       grey60: '#666666',
@@ -322,15 +341,31 @@ const adminOptions = {
       grey0: '#FFFFFF',
       white: '#FFFFFF',
       black: '#000000',
-      success: '#4CA260',
-      info: '#3B5BAB',
-      warning: '#FF9800',
-      error: '#F44336',
+
+      // Composants spécifiques
       filterBg: '#4CA260',
       hoverBg: '#5CAF6E',
       border: '#E0E0E0',
       inputBorder: '#CCCCCC',
-      bg: '#F8F9FA'
+      buttonPrimary: '#4CA260',
+      buttonSecondary: '#3B5BAB',
+      textPrimary: '#1A1A1A',
+      textSecondary: '#666666',
+
+      // Icônes et éléments décoratifs
+      love: '#4CA260',
+      contrastText: '#FFFFFF',
+
+      // Navigation et menus
+      sidebarBg: '#FFFFFF',
+      sidebarText: '#1A1A1A',
+      sidebarHover: '#F8F9FA',
+      sidebarActive: '#4CA260',
+
+      // Tableaux et listes
+      tableHeader: '#F8F9FA',
+      tableRowHover: '#F8F9FA',
+      tableBorder: '#E0E0E0'
     }
   },
   dashboard: {

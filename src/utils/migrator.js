@@ -39,7 +39,10 @@ async function runMigrations() {
       { name: '007-create-notifications', ...require('../migrations/007-create-notifications') },
       { name: '008-create-logs', ...require('../migrations/008-create-logs') },
       { name: '009-create-kyc', ...require('../migrations/009-create-kyc') },
-      { name: '010-seed-payment-methods', ...require('../migrations/010-seed-payment-methods') }
+      { name: '010-seed-payment-methods', ...require('../migrations/010-seed-payment-methods') },
+      { name: '011-update-kyc-table', ...require('../migrations/011-update-kyc-table') },
+      { name: '012-create-reports-table', ...require('../migrations/012-create-reports-table') },
+      { name: '013-add-firebase-fields-to-users', ...require('../migrations/013-add-firebase-fields-to-users') }
     ];
     
     // Récupération des migrations déjà exécutées

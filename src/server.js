@@ -27,6 +27,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const kycRoutes = require('./routes/kycRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const otpRoutes = require('./routes/otpRoutes');
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();
@@ -146,6 +147,7 @@ app.use('/api/v1/transactions', verifyFirebaseToken, transactionRoutes);
 app.use('/api/v1/notifications', verifyFirebaseToken, notificationRoutes);
 app.use('/api/v1/admin', verifyFirebaseToken, isAdmin, adminRoutes);
 app.use('/api/v1/kyc', kycRoutes);
+app.use('/api/v1/otp', otpRoutes);
 
 // 🔧 ROUTES WEBHOOK (sans authentification pour les services externes)
 // 🔓 ROUTES PUBLIQUES (sans authentification pour les visiteurs)

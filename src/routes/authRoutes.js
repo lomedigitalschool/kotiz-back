@@ -47,15 +47,11 @@ router.put('/profile', verifyFirebaseToken, authController.updateProfile);
 // Vérification accès admin
 router.get('/admin-check', verifyFirebaseToken, authController.checkAdminAccess);
 
-// Route de test temporaire
-const testController = require('../controllers/testController');
-router.post('/test-route', testController.testRoute);
 
 // Mot de passe oublié (avec rate limiting et sans middleware d'auth)
-const authControllerSimple = require('../controllers/authControllerSimple');
 router.post('/forgot-password', forgotPasswordLimiter, (req, res) => {
   console.log('Route forgot-password appelée');
-  return authControllerSimple.forgotPassword(req, res);
+  return authController.forgotPassword(req, res);
 });
 
 // Envoi email confirmation changement mot de passe
@@ -63,5 +59,8 @@ router.post('/send-password-changed-email', verifyFirebaseToken, authController.
 
 // Déconnexion
 router.post('/logout', verifyFirebaseToken, authController.logout);
+
+// Mise à jour du numéro de téléphone après inscription
+router.post('/update-phone', verifyFirebaseToken, authController.updatePhone);
 
 module.exports = router;

@@ -324,6 +324,250 @@ exports.getPublicCagnottes = async (req, res) => {
 };
 
 // ====================
+// 📋 RÉCUPÉRER TOUTES LES CAGNOTTES (PUBLIQUES + PRIVÉES SI AUTHENTIFIÉ)
+// ====================
+exports.getAllCagnottes = async (req, res) => {
+  try {
+    console.log('=== RÉCUPÉRATION TOUTES LES CAGNOTTES ===');
+
+    const { page = 1, limit = 50, search = '', type = 'all' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Conditions de base : TOUTES les cagnottes actives (pas de filtrage par visibilité)
+    const whereConditions = {
+      status: 'active'
+    };
+
+    // Filtrage par type si spécifié
+    if (type !== 'all') {
+      whereConditions.type = type;
+    }
+
+    // Ajouter la recherche si fournie
+    if (search) {
+      whereConditions[Op.or] = [
+        { title: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const { count, rows: pulls } = await Pull.findAndCountAll({
+      where: whereConditions,
+      include: [
+        {
+          model: Contribution,
+          as: 'contributions',
+          attributes: ['id', 'amount', 'contributorName', 'createdAt'],
+          where: { status: 'completed' },
+          required: false
+        },
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      limit: parseInt(limit),
+      offset: offset,
+      order: [['createdAt', 'DESC']],
+      distinct: true
+    });
+
+    // Calculer le montant total collecté pour chaque cagnotte
+    const pullsWithStats = pulls.map(pull => {
+      const totalCollected = pull.contributions?.reduce((sum, contrib) => {
+        return sum + parseFloat(contrib.amount || 0);
+      }, 0) || 0;
+
+      // Vérifier si l'utilisateur est le propriétaire
+      const isOwner = req.user && req.user.id === pull.userId;
+      const isPrivate = pull.type === 'private';
+
+      // Base data
+      const cagnotteData = {
+        id: pull.id,
+        title: pull.title,
+        description: pull.description,
+        currency: pull.currency,
+        deadline: pull.deadline,
+        type: pull.type,
+        imageUrl: pull.imageUrl,
+        status: pull.status,
+        createdAt: pull.createdAt,
+        userId: pull.userId,
+        owner: pull.owner,
+        isOwner: isOwner
+      };
+
+      // Pour les cagnottes privées, masquer les détails sensibles si pas propriétaire
+      if (isPrivate && !isOwner) {
+        return {
+          ...cagnotteData,
+          // 🔒 Champs sensibles masqués pour les non-propriétaires
+          goalAmount: null,
+          currentAmount: null,
+          contributionCount: null,
+          progressPercentage: null,
+          contributions: [], // Masquer la liste des contributions
+          // Garder seulement les informations publiques
+          description: pull.description ? "Description disponible pour les propriétaires uniquement" : null
+        };
+      } else {
+        // Cagnotte publique OU propriétaire : montrer tous les détails
+        return {
+          ...cagnotteData,
+          goalAmount: parseFloat(pull.goalAmount),
+          currentAmount: totalCollected,
+          contributionCount: pull.contributions?.length || 0,
+          progressPercentage: pull.goalAmount > 0 ?
+            Math.round((totalCollected / parseFloat(pull.goalAmount)) * 100) : 0,
+          recentContributions: pull.contributions?.slice(-5) || []
+        };
+      }
+    });
+
+    console.log(`✅ ${pullsWithStats.length} cagnottes récupérées (${req.user ? 'avec' : 'sans'} authentification)`);
+
+    res.json({
+      success: true,
+      data: pullsWithStats,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        totalItems: count,
+        itemsPerPage: parseInt(limit)
+      },
+      message: `${pullsWithStats.length} cagnottes trouvées`
+    });
+
+  } catch (err) {
+    console.error('❌ Erreur lors de la récupération de toutes les cagnottes:', err);
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de la récupération des cagnottes",
+      details: err.message
+    });
+  }
+};
+
+// ====================
+// 📋 RÉCUPÉRER UNE CAGNOTTE PAR ID (AVEC CONTRÔLE D'ACCÈS)
+// ====================
+exports.getCagnotteById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`=== RÉCUPÉRATION CAGNOTTE ${id} ===`);
+
+    // Validation : s'assurer que l'ID est numérique
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "ID de cagnotte invalide - doit être un nombre"
+      });
+    }
+
+    const pull = await Pull.findOne({
+      where: {
+        id: parseInt(id),
+        status: 'active'
+      },
+      include: [
+        {
+          model: Contribution,
+          as: 'contributions',
+          attributes: ['id', 'amount', 'contributorName', 'message', 'createdAt'],
+          where: { status: 'completed' },
+          required: false
+        },
+        {
+          model: User,
+          as: 'owner',
+          attributes: ['id', 'name']
+        }
+      ]
+    });
+
+    if (!pull) {
+      return res.status(404).json({
+        success: false,
+        error: "Cagnotte non trouvée"
+      });
+    }
+
+    // Vérifier les droits d'accès
+    const isOwner = req.user && req.user.id === pull.userId;
+    const isPrivate = pull.type === 'private';
+
+    // Pour les cagnottes privées, on autorise l'accès mais on masque les détails sensibles
+    // Seuls les propriétaires peuvent voir tous les détails
+
+    // Calculer le montant total collecté
+    const totalCollected = pull.contributions?.reduce((sum, contrib) => {
+      return sum + parseFloat(contrib.amount || 0);
+    }, 0) || 0;
+
+    // Base data commune
+    const baseData = {
+      id: pull.id,
+      title: pull.title,
+      currency: pull.currency,
+      deadline: pull.deadline,
+      type: pull.type,
+      imageUrl: pull.imageUrl,
+      status: pull.status,
+      createdAt: pull.createdAt,
+      userId: pull.userId,
+      owner: pull.owner,
+      isOwner: isOwner
+    };
+
+    let cagnotteData;
+
+    // Pour les cagnottes privées, masquer les détails sensibles si pas propriétaire
+    if (isPrivate && !isOwner) {
+      cagnotteData = {
+        ...baseData,
+        // 🔒 Champs sensibles masqués pour les non-propriétaires
+        description: "Description disponible pour les propriétaires uniquement",
+        goalAmount: null,
+        currentAmount: null,
+        contributionCount: null,
+        progressPercentage: null,
+        contributions: [], // Masquer toutes les contributions
+        recentContributions: []
+      };
+    } else {
+      // Cagnotte publique OU propriétaire : montrer tous les détails
+      cagnotteData = {
+        ...baseData,
+        description: pull.description,
+        goalAmount: parseFloat(pull.goalAmount),
+        currentAmount: totalCollected,
+        contributionCount: pull.contributions?.length || 0,
+        progressPercentage: pull.goalAmount > 0 ?
+          Math.round((totalCollected / parseFloat(pull.goalAmount)) * 100) : 0,
+        recentContributions: pull.contributions?.slice(-5) || []
+      };
+    }
+
+    console.log(`✅ Cagnotte ${id} récupérée (${pull.type})`);
+
+    res.json({
+      success: true,
+      data: cagnotteData
+    });
+
+  } catch (err) {
+    console.error(`❌ Erreur lors de la récupération de la cagnotte ${req.params.id}:`, err);
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de la récupération de la cagnotte",
+      details: err.message
+    });
+  }
+};
+
+// ====================
 // 📋 RÉCUPÉRER UNE CAGNOTTE PUBLIQUE PAR ID
 // ====================
 exports.getPublicCagnotteById = async (req, res) => {

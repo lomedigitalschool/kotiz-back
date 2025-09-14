@@ -194,3 +194,63 @@ exports.sendPasswordChangedEmail = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ====================
+// Mise à jour du numéro de téléphone après inscription
+// ====================
+exports.updatePhone = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Numéro de téléphone requis' });
+    }
+
+    // Validation basique du numéro de téléphone
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
+      return res.status(400).json({
+        error: 'Format de numéro de téléphone invalide',
+        message: 'Le numéro doit être au format international (ex: +22501020304)'
+      });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Mettre à jour le numéro de téléphone
+    await user.update({
+      phone: phone.replace(/\s+/g, ''), // Supprimer les espaces
+      isPhoneVerified: false, // Le numéro n'est pas encore vérifié
+      phoneVerifiedAt: null
+    });
+
+    console.log(`📱 Numéro de téléphone mis à jour pour l'utilisateur ${userId}: ${phone}`);
+
+    res.json({
+      message: 'Numéro de téléphone mis à jour avec succès',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        isPhoneVerified: user.isPhoneVerified
+      }
+    });
+  } catch (err) {
+    console.error('Erreur mise à jour numéro de téléphone:', err);
+
+    // Gestion des erreurs de contrainte unique
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({
+        error: 'Numéro de téléphone déjà utilisé',
+        message: 'Ce numéro de téléphone est déjà associé à un autre compte'
+      });
+    }
+
+    res.status(500).json({ error: err.message });
+  }
+};

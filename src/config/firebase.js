@@ -1,38 +1,58 @@
 /**
  * 📂 src/config/firebase.js
  * --------------------------------------
- * Ce fichier initialise Firebase Admin SDK avec la clé de service.
- * Cette clé est générée dans Firebase Console (⚙️ > Service accounts).
+ * Configuration Firebase Admin SDK pour production et développement
  */
 
 const admin = require("firebase-admin");
 let firebaseApp = null;
 
 try {
-  // Vérifier si le fichier de clé de service existe et est valide
-  const fs = require('fs');
-  const path = require('path');
-
-  const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
-
-  if (fs.existsSync(serviceAccountPath)) {
-    const serviceAccount = require(serviceAccountPath);
-
-    // Vérifier que ce n'est pas le fichier placeholder
-    if (serviceAccount.private_key && !serviceAccount.private_key.includes('YOUR_PRIVATE_KEY_HERE')) {
-      firebaseApp = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-      console.log('✅ Firebase Admin SDK initialisé avec succès');
+  let credential;
+  
+  // Production: utiliser les variables d'environnement
+  if (process.env.NODE_ENV === 'production') {
+    const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    
+    if (serviceAccountEnv) {
+      credential = admin.credential.cert(JSON.parse(serviceAccountEnv));
+      console.log('✅ Firebase configuré avec variable d\'environnement');
     } else {
-      console.warn('⚠️ Clé de service Firebase non configurée (fichier placeholder détecté)');
+      // Fallback avec variables individuelles
+      credential = admin.credential.cert({
+        projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      });
+      console.log('✅ Firebase configuré avec variables individuelles');
     }
   } else {
-    console.warn('⚠️ Fichier serviceAccountKey.json manquant');
+    // Développement: utiliser le fichier local
+    const fs = require('fs');
+    const path = require('path');
+    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+    
+    if (fs.existsSync(serviceAccountPath)) {
+      const serviceAccount = require(serviceAccountPath);
+      if (serviceAccount.private_key && !serviceAccount.private_key.includes('YOUR_PRIVATE_KEY_HERE')) {
+        credential = admin.credential.cert(serviceAccount);
+        console.log('✅ Firebase configuré avec fichier local');
+      }
+    }
+  }
+  
+  if (credential) {
+    firebaseApp = admin.initializeApp({
+      credential,
+      projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID
+    });
+    console.log('✅ Firebase Admin SDK initialisé avec succès');
+  } else {
+    console.warn('⚠️ Firebase non configuré - authentification désactivée');
   }
 } catch (error) {
-  console.error('❌ Erreur lors de l\'initialisation Firebase:', error.message);
-  console.warn('⚠️ Firebase sera désactivé. Configurez serviceAccountKey.json pour activer l\'authentification Firebase');
+  console.error('❌ Erreur Firebase:', error.message);
+  console.warn('⚠️ Firebase désactivé');
 }
 
 module.exports = firebaseApp;

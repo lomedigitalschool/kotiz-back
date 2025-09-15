@@ -128,6 +128,16 @@ app.use(
 // 5️⃣ Définir le port (utiliser toujours process.env.PORT en production)
 const PORT = process.env.PORT || 5000;
 
+// Optimisation mémoire pour Render Free
+if (process.env.NODE_ENV === 'production') {
+  // Forcer le garbage collection plus fréquent
+  if (global.gc) {
+    setInterval(() => {
+      global.gc();
+    }, 30000); // Toutes les 30 secondes
+  }
+}
+
 // 6️⃣ Endpoint de test /health
 app.get('/health', async (req, res) => {
   try {
@@ -211,9 +221,14 @@ app.use('*', (req, res) => {
     await sequelize.authenticate();
     console.log('✅ Connexion PostgreSQL réussie !');
 
-    // ⚠️ En DEV : synchronise les tables sans perdre les données
-    await sequelize.sync({ alter: true });
-    console.log('✅ Tables synchronisées (alter: true) - données préservées.');
+    // ⚠️ Synchronisation conditionnelle selon l'environnement
+    if (process.env.NODE_ENV === 'production') {
+      // En production, ne pas synchroniser automatiquement
+      console.log('🏭 Mode production - synchronisation manuelle requise');
+    } else {
+      await sequelize.sync({ alter: true });
+      console.log('✅ Tables synchronisées (alter: true) - données préservées.');
+    }
 
     // Création de l'administrateur par défaut
     const { createAdmin } = require('./scripts/create-admin');

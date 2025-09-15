@@ -187,7 +187,13 @@ module.exports.requireEmailVerification = async function requireEmailVerificatio
       });
     }
 
-    // Vérifier que l'email est vérifié
+    // Exempter les utilisateurs avec emails temporaires (inscrits par téléphone)
+    if (req.user.email && req.user.email.includes('@kotiz-test.com')) {
+      console.log('📱 Utilisateur inscrit par téléphone - exemption vérification email');
+      return next();
+    }
+
+    // Vérifier que l'email est vérifié pour les autres utilisateurs
     if (!req.user.isVerified) {
       return res.status(403).json({
         error: 'Vérification email requise',

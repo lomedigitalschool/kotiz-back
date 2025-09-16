@@ -57,17 +57,19 @@ app.use(session({
 
 app.use(express.json());
 
-// Middleware de débogage pour les requêtes JSON (APRÈS express.json())
-app.use((req, res, next) => {
-  if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
-    console.log('🔍 Requête JSON reçue:');
-    console.log('  Method:', req.method);
-    console.log('  URL:', req.url);
-    console.log('  Content-Type:', req.headers['content-type']);
-    console.log('  Body parsé:', JSON.stringify(req.body, null, 2));
-  }
-  next();
-});
+// Middleware de débogage pour les requêtes JSON (seulement en développement)
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+      console.log('🔍 Requête JSON reçue:');
+      console.log('  Method:', req.method);
+      console.log('  URL:', req.url);
+      console.log('  Content-Type:', req.headers['content-type']);
+      console.log('  Body parsé:', JSON.stringify(req.body, null, 2));
+    }
+    next();
+  });
+}
 
 // 4️⃣ Sécurité globale
 app.use(cors({
@@ -134,8 +136,12 @@ if (process.env.NODE_ENV === 'production') {
   if (global.gc) {
     setInterval(() => {
       global.gc();
-    }, 30000); // Toutes les 30 secondes
+    }, 15000); // Toutes les 15 secondes
   }
+  
+  // Limiter la taille des logs en production
+  console.log = () => {};
+  console.debug = () => {};
 }
 
 // 6️⃣ Endpoint de test /health
@@ -174,14 +180,16 @@ app.get('/', (req, res) =>
 
 // 9️⃣1️⃣ Gestionnaire d'erreurs global amélioré
 app.use((err, req, res, next) => {
-  console.error('=== ERREUR GLOBALE ===');
-  console.error('Message:', err.message);
-  console.error('Stack:', err.stack);
-  console.error('Type:', err.constructor.name);
-  console.error('URL:', req.url);
-  console.error('Method:', req.method);
-  console.error('Body:', JSON.stringify(req.body, null, 2));
-  console.error('===================');
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('=== ERREUR GLOBALE ===');
+    console.error('Message:', err.message);
+    console.error('Stack:', err.stack);
+    console.error('Type:', err.constructor.name);
+    console.error('URL:', req.url);
+    console.error('Method:', req.method);
+    console.error('Body:', JSON.stringify(req.body, null, 2));
+    console.error('===================');
+  }
 
   // Gestion spécifique des erreurs Multer
   if (err.name === 'MulterError') {

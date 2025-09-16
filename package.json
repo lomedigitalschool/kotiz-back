@@ -10,7 +10,7 @@
     "create-admin": "node scripts/createAdmin.js"
   },
   "dependencies": {
-    "@adminjs/design-system": "^4.1.1",
+    "@adminjs/design-system": "^3.1.8",
     "@adminjs/express": "^5.1.0",
     "@adminjs/sequelize": "^2.1.5",
     "adminjs": "^6.8.0",
@@ -28,7 +28,7 @@
     "firebase-admin": "^13.5.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.0.0",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.6",
     "pg": "^8.11.3",

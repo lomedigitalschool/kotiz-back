@@ -10,141 +10,94 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const { sequelize } = require('./models');
-const { admin, adminRouter } = require('./config/admin');
-
-// Middlewares maison (auth)
-const { isAdmin } = require('./middleware/auth');
-// Middleware Firebase
-const verifyFirebaseToken = require('./middleware/firebaseAuth');
-
-// Import des routes API
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const pullRoutes = require('./routes/pullRoutes');
-const contributionRoutes = require('./routes/contributionRoutes');
-const transactionRoutes = require('./routes/transactionRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const kycRoutes = require('./routes/kycRoutes');
-const webhookRoutes = require('./routes/webhookRoutes');
-const otpRoutes = require('./routes/otpRoutes');
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();
 
-// Configuration pour les proxies (nécessaire pour Render et autres plateformes)
-app.set('trust proxy', 1); // Trust first proxy
+// 4️⃣ Configuration de base AVANT les routes
+app.set('trust proxy', 1);
 
-// Configuration des sessions (production-ready avec PostgreSQL)
+// 6️⃣ Sessions
 const isProduction = process.env.NODE_ENV === 'production';
-
 app.use(session({
   store: isProduction ? new PgSession({
     conString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
     createTableIfMissing: true,
     tableName: 'user_sessions'
-  }) : undefined, // Utilise MemoryStore en développement
+  }) : undefined,
   secret: process.env.SESSION_SECRET || 'kotiz-session-secret-key-2024',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: isProduction, // HTTPS only in production
-    httpOnly: true, // Prevent XSS attacks
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax' // CSRF protection
+    secure: isProduction,
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax'
   }
 }));
 
-app.use(express.json());
-
-// Middleware de débogage pour les requêtes JSON (seulement en développement)
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
-      console.log('🔍 Requête JSON reçue:');
-      console.log('  Method:', req.method);
-      console.log('  URL:', req.url);
-      console.log('  Content-Type:', req.headers['content-type']);
-      console.log('  Body parsé:', JSON.stringify(req.body, null, 2));
-    }
-    next();
-  });
-}
-
-// 4️⃣ Sécurité globale
+// 7️⃣ CORS
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, curl, etc.)
-        if (!origin) return callback(null, true);
-
-        const allowedOrigins = [
-            'http://localhost:3000',      // Développement local
-            'http://localhost:5173',      // Vite dev server
-            'https://kotiz-web.onrender.com', // Production frontend
-            process.env.FRONTEND_URL       // Variable d'environnement
-        ].filter(Boolean); // Remove undefined values
-
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-
-        // Allow all origins in development
-        if (process.env.NODE_ENV !== 'production') {
-            return callback(null, true);
-        }
-
-        return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:8080',
+      'https://kotiz-web.onrender.com',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
+    
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  optionsSuccessStatus: 200
 }));
 
-// Servir les fichiers statiques (images uploadées)
-app.use('/uploads', express.static('uploads'));
+// 8️⃣ Sécurité
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "script-src": ["'self'", "'unsafe-inline'", "https:"],
+      "style-src": ["'self'", "'unsafe-inline'", "https:"],
+      "img-src": ["'self'", "data:", "https:"],
+    },
+  },
+}));
 
-// Limitation des requêtes (rate limiter)
+// 9️⃣ Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 100, // 100 requêtes par IP
-  keyGenerator: ipKeyGenerator, // ✅ Utilise la fonction helper pour IPv4/IPv6
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  keyGenerator: ipKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use(limiter);
 
-// Helmet (⚠️ adapté pour AdminJS avec CSP custom)
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        "script-src": ["'self'", "'unsafe-inline'", "https:"],
-        "style-src": ["'self'", "'unsafe-inline'", "https:"],
-        "img-src": ["'self'", "data:", "https:"],
-      },
-    },
-  })
-);
+// 🔟 Fichiers statiques
+app.use('/uploads', express.static('uploads'));
 
-// 5️⃣ Définir le port (utiliser toujours process.env.PORT en production)
-const PORT = process.env.PORT || 5000;
-
-// Optimisation mémoire pour Render Free
-if (process.env.NODE_ENV === 'production') {
-  // Forcer le garbage collection plus fréquent
-  if (global.gc) {
-    setInterval(() => {
-      global.gc();
-    }, 15000); // Toutes les 15 secondes
-  }
-  
-  // Limiter la taille des logs en production
-  console.log = () => {};
-  console.debug = () => {};
+// 1️⃣1️⃣ Middleware de débogage
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`📍 ${req.method} ${req.url}`);
+    next();
+  });
 }
 
-// 6️⃣ Endpoint de test /health
+// 1️⃣2️⃣ ROUTES DE TEST (AVANT AdminJS)
+app.get('/test', (req, res) => {
+  console.log('🧪 Route de test appelée');
+  res.json({ message: 'Test réussi', timestamp: new Date() });
+});
+
 app.get('/health', async (req, res) => {
   try {
     await sequelize.authenticate();
@@ -154,117 +107,93 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// 7️⃣ Montage des routes API
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', verifyFirebaseToken, userRoutes);
-app.use('/api/v1/pulls', pullRoutes); // ✅ Suppression du middleware global (géré dans pullRoutes.js)
-app.use('/api/v1/contributions', verifyFirebaseToken, contributionRoutes);
-app.use('/api/v1/transactions', verifyFirebaseToken, transactionRoutes);
-app.use('/api/v1/notifications', verifyFirebaseToken, notificationRoutes);
-app.use('/api/v1/admin', verifyFirebaseToken, isAdmin, adminRoutes);
-app.use('/api/v1/kyc', kycRoutes);
-app.use('/api/v1/otp', otpRoutes);
+// 1️⃣3️⃣ ROUTES ADMINJS SANS AUTHENTIFICATION
+const UserController = require('./controllers/userController');
+const ContributionController = require('./controllers/contributionController');
+const PullController = require('./controllers/pullController');
 
-// 🔧 ROUTES WEBHOOK (sans authentification pour les services externes)
-// 🔓 ROUTES PUBLIQUES (sans authentification pour les visiteurs)
+app.get('/api/v1/adminjs/users/admin-stats', (req, res, next) => {
+  console.log('🔍 Route admin-stats appelée');
+  UserController.getAdminStats(req, res, next);
+});
+
+app.get('/api/v1/adminjs/users/admin-chart-data', (req, res, next) => {
+  console.log('🔍 Route admin-chart-data appelée');
+  UserController.getAdminChartData(req, res, next);
+});
+
+app.get('/api/v1/adminjs/contributions/admin-stats', (req, res, next) => {
+  console.log('🔍 Route contributions admin-stats appelée');
+  ContributionController.getStats(req, res, next);
+});
+
+app.get('/api/v1/adminjs/pulls/admin-stats', (req, res, next) => {
+  console.log('🔍 Route pulls admin-stats appelée');
+  PullController.getStats(req, res, next);
+});
+
+// Routes pour le dashboard AdminJS (sans authentification)
+app.get('/api/v1/users/stats', UserController.getAdminStats);
+app.get('/api/v1/contributions/stats', ContributionController.getStats);
+app.get('/api/v1/pulls/stats', PullController.getStats);
+app.get('/api/v1/admin/export/users', (req, res) => {
+  res.json({ message: 'Export non implémenté', users: [] });
+});
+
+// 1️⃣4️⃣ ROUTES API AVEC AUTHENTIFICATION
+const verifyFirebaseToken = require('./middleware/firebaseAuth');
+const { isAdmin } = require('./middleware/auth');
+
+app.use('/api/v1/auth', require('./routes/authRoutes'));
+app.use('/api/v1/users', verifyFirebaseToken, require('./routes/userRoutes'));
+app.use('/api/v1/pulls', require('./routes/pullRoutes'));
+app.use('/api/v1/contributions', verifyFirebaseToken, require('./routes/contributionRoutes'));
+app.use('/api/v1/transactions', verifyFirebaseToken, require('./routes/transactionRoutes'));
+app.use('/api/v1/notifications', verifyFirebaseToken, require('./routes/notificationRoutes'));
+app.use('/api/v1/admin', verifyFirebaseToken, isAdmin, require('./routes/adminRoutes'));
+app.use('/api/v1/kyc', require('./routes/kycRoutes'));
+app.use('/api/v1/otp', require('./routes/otpRoutes'));
 app.use('/api/v1/public', require('./routes/publicRoutes'));
-app.use('/api/v1/webhooks', webhookRoutes);
+app.use('/api/v1/webhooks', require('./routes/webhookRoutes'));
 
-// 8️⃣ Interface d'administration AdminJS (⚠️ après Helmet et autres middlewares)
+// 1️⃣5️⃣ ADMINJS (AVANT body parser)
+const { admin, adminRouter } = require('./config/admin');
 app.use(admin.options.rootPath, adminRouter);
 
-// 9️⃣ Route racine
-app.get('/', (req, res) =>
-  res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin')
-);
+// 1️⃣5️⃣bis Body parser APRÈS AdminJS
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 9️⃣1️⃣ Gestionnaire d'erreurs global amélioré
+// 1️⃣6️⃣ Route racine
+app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));
+
+// 1️⃣7️⃣ Gestionnaire d'erreurs
 app.use((err, req, res, next) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('=== ERREUR GLOBALE ===');
-    console.error('Message:', err.message);
-    console.error('Stack:', err.stack);
-    console.error('Type:', err.constructor.name);
-    console.error('URL:', req.url);
-    console.error('Method:', req.method);
-    console.error('Body:', JSON.stringify(req.body, null, 2));
-    console.error('===================');
-  }
-
-  // Gestion spécifique des erreurs Multer
-  if (err.name === 'MulterError') {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        error: 'Fichier trop volumineux',
-        message: 'La taille maximale autorisée est de 10MB pour les images de cagnottes'
-      });
-    }
-  }
-
-  // Gestion des erreurs de validation
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      error: 'Erreur de validation',
-      message: err.message
-    });
-  }
-
-  // Erreur par défaut
-  res.status(500).json({
-    error: 'Erreur interne du serveur',
-    message: err.message || 'Une erreur inattendue s\'est produite',
-    type: err.constructor.name
-  });
+  console.error('Erreur:', err.message);
+  res.status(500).json({ error: 'Erreur interne du serveur', message: err.message });
 });
 
-// Middleware pour les routes non trouvées
+// 1️⃣8️⃣ Route 404
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route non trouvée' });
+  console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: 'Route non trouvée', path: req.originalUrl });
 });
 
-// 🔟 Lancer le serveur après connexion Sequelize
+// 1️⃣9️⃣ Démarrage du serveur
+const PORT = process.env.PORT || 5000;
+
 (async () => {
   try {
-    console.log('⏳ Tentative de connexion à la BDD...');
-    await sequelize.authenticate();
-    console.log('✅ Connexion PostgreSQL réussie !');
-
-    // ⚠️ Synchronisation conditionnelle selon l'environnement
-    if (process.env.NODE_ENV === 'production') {
-      // En production, ne pas synchroniser automatiquement
-      console.log('🏭 Mode production - synchronisation manuelle requise');
-    } else {
-      await sequelize.sync({ alter: true });
-      console.log('✅ Tables synchronisées (alter: true) - données préservées.');
-    }
-
-    // Création de l'administrateur par défaut
-    const { createAdmin } = require('./scripts/create-admin');
-    await createAdmin();
-
-    // Démarrage serveur
+    console.log('⏳ Démarrage du serveur...');
+    
     app.listen(PORT, () => {
-      const isProduction = process.env.NODE_ENV === 'production';
-      const baseUrl = isProduction ? `https://kotiz-back.onrender.com` : `http://localhost:${PORT}`;
-
-      console.log(`🚀 Serveur démarré sur ${baseUrl}`);
-      console.log(`🔑 AdminJS disponible sur ${baseUrl}/admin`);
-      console.log(`📊 Health check: ${baseUrl}/health`);
-      console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔌 Port: ${PORT}`);
-      console.log(`💾 Sessions: ${isProduction ? 'PostgreSQL' : 'MemoryStore (dev)'}`);
-
-      if (isProduction) {
-        console.log(`✅ Configuration production activée`);
-        console.log(`🔒 Sessions sécurisées (HTTPS)`);
-        console.log(`🌐 CORS configuré pour les domaines autorisés`);
-        console.log(`🗄️ Base de données sessions: PostgreSQL`);
-      } else {
-        console.log(`🧪 Mode développement`);
-        console.log(`💾 Sessions: MemoryStore (temporaire)`);
-      }
+      console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+      console.log(`🔑 AdminJS disponible sur http://localhost:${PORT}/admin`);
+      console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`🧪 Test route: http://localhost:${PORT}/test`);
+      console.log(`📈 AdminJS Stats: http://localhost:${PORT}/api/v1/adminjs/users/admin-stats`);
     });
   } catch (error) {
-    console.error('❌ Erreur connexion/synchro BDD :', error);
+    console.error('❌ Erreur démarrage serveur:', error);
   }
 })();

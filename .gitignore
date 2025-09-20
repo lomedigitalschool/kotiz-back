@@ -14,3 +14,16 @@ SECURITY-FIXES.md
 PULL_REQUEST_SUMMARY.md
 src/config/serviceAccountKey.json
 CLOUDINARY_README.md
+GUIDE-TESTS.md
+apply-fix.js
+debug-adminjs.js
+debug-auth.js
+debug-user-cagnottes.js
+fix-navigation.js
+fix-server.js
+src/server.js.backup
+test-complete.js
+test-firebase.js
+test-routes.js
+fix-sql-queries.js
+restart-server.js

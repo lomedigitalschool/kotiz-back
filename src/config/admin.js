@@ -104,15 +104,12 @@ const getDashboardMetrics = async () => {
 
 // Composant dashboard personnalisé
 const dashboardComponent = {
-  component: AdminJS.bundle('./components/Dashboard'),
-  props: {
-    metrics: getDashboardMetrics
-  }
+  component: AdminJS.bundle('./components/HomeDashboard')
 };
 
 // Configuration AdminJS
 const adminOptions = {
-  databases: [sequelize],
+  databases: [],
   resources: [
     {
       resource: User,
@@ -142,10 +139,7 @@ const adminOptions = {
           delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
           bulkDelete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
         },
-        navigation: {
-          name: 'Utilisateurs',
-          icon: 'User'
-        }
+        navigation: { name: "Users" }
       },
     },
     {
@@ -183,10 +177,7 @@ const adminOptions = {
           delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
           bulkDelete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
         },
-        navigation: {
-          name: 'Cagnottes',
-          icon: 'Target'
-        }
+        navigation: { name: "Pulls" }
       },
     },
     {
@@ -208,10 +199,7 @@ const adminOptions = {
           isAnonymous: { type: 'boolean' },
           createdAt: { type: 'datetime' }
         },
-        navigation: {
-          name: 'Contributions',
-          icon: 'CreditCard'
-        }
+        navigation: { name: "Contributions" }
       },
     },
     {
@@ -232,10 +220,7 @@ const adminOptions = {
           reference: { type: 'string' },
           createdAt: { type: 'datetime' }
         },
-        navigation: {
-          name: 'Transactions',
-          icon: 'Receipt'
-        }
+        navigation: { name: "Transactions" }
       },
     },
     {
@@ -248,16 +233,33 @@ const adminOptions = {
           userId: { type: 'number' },
           createdAt: { type: 'datetime' }
         },
-        navigation: {
-          name: 'Journaux',
-          icon: 'FileText'
-        }
+        navigation: { name: "Logs" }
       },
     },
-    PaymentMethod,
-    UserPaymentMethod,
-    Notification,
-    Kyc,
+    {
+      resource: PaymentMethod,
+      options: {
+        navigation: { name: "Payment Methods" }
+      }
+    },
+    {
+      resource: UserPaymentMethod,
+      options: {
+        navigation: { name: "User Payment Methods" }
+      }
+    },
+    {
+      resource: Notification,
+      options: {
+        navigation: { name: "Notifications" }
+      }
+    },
+    {
+      resource: Kyc,
+      options: {
+        navigation: { name: "KYC" }
+      }
+    },
     {
       resource: Report,
       options: {
@@ -288,14 +290,11 @@ const adminOptions = {
           createdAt: { type: 'datetime' }
         },
         actions: {
-          new: { isAccessible: false },
+          new: { isAccessible: () => false },
           edit: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
           delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
         },
-        navigation: {
-          name: 'Signalements',
-          icon: 'Flag'
-        }
+        navigation: { name: "Reports" }
       },
     }
   ],
@@ -373,19 +372,19 @@ const adminOptions = {
   },
   pages: {
     'Rapports': {
-      component: AdminJS.bundle('../components/Reports'),
+      component: AdminJS.bundle('./components/Reports'),
       icon: 'BarChart'
     },
     'Statistiques Détaillées': {
-      component: AdminJS.bundle('../components/Stats'),
+      component: AdminJS.bundle('./components/Stats'),
       icon: 'TrendingUp'
     },
     'Export Données': {
-      component: AdminJS.bundle('../components/Export'),
+      component: AdminJS.bundle('./components/Export'),
       icon: 'Download'
     },
     'Modération': {
-      component: AdminJS.bundle('../components/Moderation'),
+      component: AdminJS.bundle('./components/Moderation'),
       icon: 'Shield'
     }
   }

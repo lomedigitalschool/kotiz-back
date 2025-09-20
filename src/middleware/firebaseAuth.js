@@ -160,6 +160,13 @@ module.exports = async function firebaseAuth(req, res, next) {
     req.user = user;    // Instance Sequelize de l'utilisateur
 
     console.log(`🎉 Authentification réussie - Utilisateur: ${user.id} (${user.name})`);
+    console.log('🔍 Type de user.id:', typeof user.id, 'Valeur:', user.id);
+    console.log('🔍 User complet pour debug:', {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      firebaseUid: user.firebaseUid
+    });
     return next();
 
   } catch (err) {

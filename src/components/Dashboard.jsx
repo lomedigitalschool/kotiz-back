@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, H1, H2, H3, Text, Button, Table, TableHead, TableBody, TableRow, TableCell } from '@adminjs/design-system';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
 const Dashboard = () => {
   const [metrics, setMetrics] = useState({
@@ -11,11 +10,7 @@ const Dashboard = () => {
     monthlyContributionCount: 0,
     topCagnottes: []
   });
-  const [chartData, setChartData] = useState({
-    contributionsOverTime: [],
-    paymentMethods: [],
-    topCagnottesChart: []
-  });
+  // Suppression des données de graphiques car recharts n'est pas compatible avec AdminJS
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -46,38 +41,13 @@ const Dashboard = () => {
     };
   }, [autoRefresh]);
 
-  const generateChartData = (metrics) => {
-    // Données pour l'évolution des contributions (simulation basée sur les vraies données)
-    const baseAmount = parseFloat(metrics.totalCollected) || 0;
-    const contributionsOverTime = [
-      { month: 'Avril', amount: Math.floor(baseAmount * 0.1) },
-      { month: 'Mai', amount: Math.floor(baseAmount * 0.15) },
-      { month: 'Juin', amount: Math.floor(baseAmount * 0.2) },
-      { month: 'Juillet', amount: Math.floor(baseAmount * 0.25) },
-      { month: 'Août', amount: Math.floor(baseAmount * 0.2) },
-      { month: 'Septembre', amount: baseAmount }
-    ];
-
-    // Données pour les méthodes de paiement (simulation réaliste)
-    const totalCollected = parseFloat(metrics.totalCollected) || 0;
-    const paymentMethods = [
-      { name: 'Orange Money', value: Math.floor(totalCollected * 0.4), color: '#4CA260' },
-      { name: 'MTN Mobile Money', value: Math.floor(totalCollected * 0.3), color: '#3B5BAB' },
-      { name: 'Wave', value: Math.floor(totalCollected * 0.2), color: '#FF9800' },
-      { name: 'Carte bancaire', value: Math.floor(totalCollected * 0.1), color: '#F44336' }
-    ];
-
-    // Données pour le top des cagnottes (utilisant les vraies données)
-    const topCagnottesChart = (metrics.topCagnottes || []).slice(0, 5).map((cagnotte, index) => ({
-      name: cagnotte.title && cagnotte.title.length > 15 ? cagnotte.title.substring(0, 15) + '...' : (cagnotte.title || 'Sans titre'),
-      amount: parseFloat(cagnotte.totalCollected) || 0,
-      color: index === 0 ? '#4CA260' : index === 1 ? '#3B5BAB' : '#FF9800'
-    }));
-
+  // Fonction simplifiée sans graphiques
+  const generateSimpleData = (metrics) => {
     return {
-      contributionsOverTime,
-      paymentMethods,
-      topCagnottesChart
+      totalUsers: metrics.totalUsers || 0,
+      totalCollected: metrics.totalCollected || 0,
+      activeCagnottes: metrics.activeCagnottes || 0,
+      monthlyContributions: metrics.monthlyContributions || 0
     };
   };
 
@@ -123,9 +93,9 @@ const Dashboard = () => {
         topCagnottes: cagnottesData.topCagnottes || []
       };
 
-      // Générer les données pour les graphiques
-      const chartData = generateChartData(realData);
-      setChartData(chartData);
+      // Générer les données simplifiées
+      const simpleData = generateSimpleData(realData);
+      setMetrics(prevMetrics => ({ ...prevMetrics, ...simpleData }));
 
       setMetrics(realData);
       setLastUpdate(new Date());
@@ -207,148 +177,169 @@ const Dashboard = () => {
         </Box>
       </Box>
 
-      {/* Métriques principales avec graphiques */}
-      <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap="lg" mb="xl">
-        {/* Graphique d'évolution des contributions */}
-        <Box
-          bg="white"
-          p="lg"
-          borderRadius="lg"
-          boxShadow="card"
-          border="1px solid"
-          borderColor="grey20"
-        >
-          <H3 mb="sm" color="primary">Évolution des contributions</H3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData.contributionsOverTime}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => [formatCurrency(value), 'Montant']} />
-              <Line type="monotone" dataKey="amount" stroke="#4CA260" strokeWidth={3} />
-            </LineChart>
-          </ResponsiveContainer>
+      {/* Métriques principales simplifiées */}
+      <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap="lg" mb="xl">
+        <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
+          <H3 mb="sm" color="primary">Utilisateurs</H3>
+          <Text fontSize="h1" fontWeight="bold" color="success">
+            {metrics.totalUsers.toLocaleString('fr-FR')}
+          </Text>
+          <Text fontSize="sm" color="grey60">Utilisateurs inscrits</Text>
         </Box>
 
-        {/* Graphique des méthodes de paiement */}
-        <Box
-          bg="white"
-          p="lg"
-          borderRadius="lg"
-          boxShadow="card"
-          border="1px solid"
-          borderColor="grey20"
-        >
-          <H3 mb="sm" color="primary">Répartition par méthode de paiement</H3>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={chartData.paymentMethods}
-                cx="50%"
-                cy="50%"
-                outerRadius={60}
-                dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              >
-                {chartData.paymentMethods.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => [formatCurrency(value), 'Montant']} />
-            </PieChart>
-          </ResponsiveContainer>
+        <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
+          <H3 mb="sm" color="primary">Total collecté</H3>
+          <Text fontSize="h1" fontWeight="bold" color="info">
+            {formatCurrency(metrics.totalCollected)}
+          </Text>
+          <Text fontSize="sm" color="grey60">Montant total des contributions</Text>
         </Box>
 
-        {/* Métriques clés */}
-        <Box
-          bg="white"
-          p="lg"
-          borderRadius="lg"
-          boxShadow="card"
-          border="1px solid"
-          borderColor="grey20"
-        >
-          <H3 mb="lg" color="primary">Métriques clés</H3>
-          <Box display="grid" gridTemplateColumns="1fr 1fr" gap="md">
-            <Box textAlign="center">
-              <Text fontSize="h2" fontWeight="bold" color="success">
-                {metrics.totalUsers.toLocaleString('fr-FR')}
-              </Text>
-              <Text fontSize="sm" color="grey60">Utilisateurs</Text>
-            </Box>
-            <Box textAlign="center">
-              <Text fontSize="h2" fontWeight="bold" color="info">
-                {formatCurrency(metrics.totalCollected)}
-              </Text>
-              <Text fontSize="sm" color="grey60">Total collecté</Text>
-            </Box>
-            <Box textAlign="center">
-              <Text fontSize="h2" fontWeight="bold" color="warning">
-                {metrics.activeCagnottes}
-              </Text>
-              <Text fontSize="sm" color="grey60">Cagnottes actives</Text>
-            </Box>
-            <Box textAlign="center">
-              <Text fontSize="h2" fontWeight="bold" color="success">
-                {metrics.monthlyContributionCount}
-              </Text>
-              <Text fontSize="sm" color="grey60">Ce mois</Text>
-            </Box>
-          </Box>
+        <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
+          <H3 mb="sm" color="primary">Cagnottes actives</H3>
+          <Text fontSize="h1" fontWeight="bold" color="warning">
+            {metrics.activeCagnottes}
+          </Text>
+          <Text fontSize="sm" color="grey60">Cagnottes en cours</Text>
+        </Box>
+
+        <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
+          <H3 mb="sm" color="primary">Ce mois</H3>
+          <Text fontSize="h1" fontWeight="bold" color="success">
+            {metrics.monthlyContributionCount}
+          </Text>
+          <Text fontSize="sm" color="grey60">Contributions ce mois</Text>
         </Box>
       </Box>
 
-      {/* Top 5 cagnottes avec graphique */}
-      <Box display="grid" gridTemplateColumns="1fr 1fr" gap="lg">
-        <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
-          <H2 mb="lg">Top Cagnottes - Graphique</H2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData.topCagnottesChart}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={(value) => [formatCurrency(value), 'Montant']} />
-              <Bar dataKey="amount" fill="#4CA260" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Box>
-
-        <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
-          <H2 mb="lg">Top Cagnottes - Détails</H2>
+      {/* Top Cagnottes - Version simplifiée */}
+      <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
+        <H2 mb="lg">Top Cagnottes</H2>
+        {metrics.topCagnottes && metrics.topCagnottes.length > 0 ? (
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell fontWeight="bold">#</TableCell>
                 <TableCell fontWeight="bold">Titre</TableCell>
-                <TableCell fontWeight="bold" textAlign="right">Montant</TableCell>
+                <TableCell fontWeight="bold" textAlign="right">Montant collecté</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {metrics.topCagnottes.map((cagnotte, index) => (
-                <TableRow key={cagnotte.id}>
+              {metrics.topCagnottes.slice(0, 10).map((cagnotte, index) => (
+                <TableRow key={cagnotte.id || index}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{cagnotte.title}</TableCell>
+                  <TableCell>{cagnotte.title || 'Sans titre'}</TableCell>
                   <TableCell textAlign="right" fontWeight="bold" color="success">
-                    {formatCurrency(cagnotte.totalCollected)}
+                    {formatCurrency(cagnotte.totalCollected || 0)}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </Box>
+        ) : (
+          <Text color="grey60">Aucune cagnotte trouvée</Text>
+        )}
       </Box>
 
-      {/* Actions rapides */}
-      <Box mt="xl" display="flex" gap="lg">
-        <Button variant="primary" size="lg">
-          Créer une nouvelle cagnotte
-        </Button>
-        <Button variant="secondary" size="lg">
-          Voir les rapports détaillés
-        </Button>
-        <Button variant="outlined" size="lg">
-          Gérer les utilisateurs
-        </Button>
+      {/* Accès rapide aux données */}
+      <Box mt="xl">
+        <H2 mb="lg" style={{ color: '#4CA260' }}>🔗 Accès rapide aux données</H2>
+        <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap="lg">
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => window.location.href = '/admin/resources/User'}
+            style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
+          >
+            <span style={{ fontSize: '24px' }}>👥</span>
+            <span>Utilisateurs ({metrics.totalUsers || 0})</span>
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => window.location.href = '/admin/resources/Pull'}
+            style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
+          >
+            <span style={{ fontSize: '24px' }}>🎯</span>
+            <span>Cagnottes ({metrics.activeCagnottes || 0})</span>
+          </Button>
+          <Button
+            variant="success"
+            size="lg"
+            onClick={() => window.location.href = '/admin/resources/Contribution'}
+            style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
+          >
+            <span style={{ fontSize: '24px' }}>💰</span>
+            <span>Contributions ({metrics.monthlyContributions || 0})</span>
+          </Button>
+          <Button
+            variant="info"
+            size="lg"
+            onClick={() => window.location.href = '/admin/pages/Statistiques%20D%C3%A9taill%C3%A9es'}
+            style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
+          >
+            <span style={{ fontSize: '24px' }}>📊</span>
+            <span>Statistiques détaillées</span>
+          </Button>
+        </Box>
+
+        {/* Section Admin */}
+        <Box mt="lg" p="lg" bg="#f8f9fa" borderRadius="lg" border="1px solid" borderColor="#e9ecef">
+          <H3 mb="md" style={{ color: '#495057' }}>🔐 Connexion Admin</H3>
+          <Text mb="sm" style={{ color: '#6c757d' }}>
+            Pour accéder aux statistiques complètes, utilisez ces credentials :
+          </Text>
+          <Box display="grid" gridTemplateColumns="1fr 1fr" gap="md">
+            <Box>
+              <Text fontWeight="bold">Email:</Text>
+              <Text style={{ fontFamily: 'monospace', backgroundColor: '#e9ecef', padding: '4px 8px', borderRadius: '4px' }}>
+                admin@kotiz.com
+              </Text>
+            </Box>
+            <Box>
+              <Text fontWeight="bold">Mot de passe:</Text>
+              <Text style={{ fontFamily: 'monospace', backgroundColor: '#e9ecef', padding: '4px 8px', borderRadius: '4px' }}>
+                admin123
+              </Text>
+            </Box>
+          </Box>
+          <Text mt="sm" fontSize="sm" style={{ color: '#6c757d' }}>
+            Endpoint: <code>POST /api/v1/users/admin-login</code>
+          </Text>
+          <Button
+            variant="outline"
+            size="sm"
+            mt="sm"
+            onClick={async () => {
+              try {
+                const response = await fetch('http://localhost:5000/api/v1/users/admin-login', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    email: 'admin@kotiz.com',
+                    password: 'admin123'
+                  })
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log('Token JWT généré:', data.token);
+                  alert(`Token JWT copié dans la console:\n${data.token}`);
+                  navigator.clipboard.writeText(data.token);
+                } else {
+                  alert('Erreur lors de la génération du token');
+                }
+              } catch (error) {
+                console.error('Erreur:', error);
+                alert('Erreur de connexion');
+              }
+            }}
+          >
+            🔑 Générer Token JWT
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

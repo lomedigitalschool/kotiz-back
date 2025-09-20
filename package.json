@@ -7,7 +7,12 @@
     "start": "node --max-old-space-size=400 --optimize-for-size src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "create-admin": "node scripts/createAdmin.js"
+    "create-admin": "node scripts/createAdmin.js",
+    "test-routes": "node test-routes.js",
+    "debug-adminjs": "node debug-adminjs.js",
+    "fix-server": "node fix-server.js all",
+    "test-complete": "node test-complete.js",
+    "test-firebase": "node test-firebase.js"
   },
   "dependencies": {
     "@adminjs/design-system": "^3.1.8",
@@ -33,7 +38,7 @@
     "nodemailer": "^7.0.6",
     "pg": "^8.11.3",
     "pg-hstore": "^2.3.4",
-
+    "recharts": "^3.2.1",
     "sequelize": "^6.32.1"
   },
   "devDependencies": {

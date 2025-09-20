@@ -1,6 +1,58 @@
 // Contrôleur des contributions
 const { Contribution, Pull, Transaction } = require('../models');
+const { Op } = require('sequelize');
 const paymentService = require('../services/paymentService');
+
+exports.getStats = async (req, res) => {
+  try {
+    const { QueryTypes } = require('sequelize');
+    const sequelize = require('../config/database');
+
+    // Total collecté
+    const [totalResult] = await sequelize.query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\'',
+      { type: QueryTypes.SELECT }
+    );
+    const totalCollected = parseFloat(totalResult.total) || 0;
+
+    // Ce mois
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+
+    const [monthlyResult] = await sequelize.query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\' AND "createdAt" >= $1',
+      {
+        bind: [currentMonth],
+        type: QueryTypes.SELECT
+      }
+    );
+    const monthlyAmount = parseFloat(monthlyResult.total) || 0;
+
+    const monthlyCount = await Contribution.count({
+      where: {
+        status: 'completed',
+        createdAt: {
+          [Op.gte]: currentMonth
+        }
+      }
+    });
+
+    res.json({
+      totalCollected: totalCollected || 0,
+      monthlyAmount: monthlyAmount || 0,
+      monthlyCount: monthlyCount || 0
+    });
+  } catch (error) {
+    console.error('Erreur stats contributions:', error);
+    res.status(500).json({
+      totalCollected: 0,
+      monthlyAmount: 0,
+      monthlyCount: 0,
+      error: error.message
+    });
+  }
+};
 
 // 💳 POINT D'INTÉGRATION PRINCIPAL - CRÉER UNE CONTRIBUTION AVEC PAIEMENT
 exports.create = async (req, res) => {

@@ -3,6 +3,36 @@ const { Op } = require('sequelize');
 const { sendEmail } = require('../config/mailer');
 const emailContent = require('../config/emailContent');
 
+exports.getStats = async (req, res) => {
+  try {
+    const activeCount = await Pull.count({ where: { status: 'active' } });
+    const totalCount = await Pull.count();
+
+    // Top 5 cagnottes par montant collecté
+    const { QueryTypes } = require('sequelize');
+    const sequelize = require('../config/database');
+    const [topCagnottesResult] = await sequelize.query(
+      'SELECT p.id, p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c."pullId" AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
+      { type: QueryTypes.SELECT }
+    );
+    const topCagnottes = Array.isArray(topCagnottesResult) ? topCagnottesResult : [];
+
+    res.json({
+      activeCount: activeCount || 0,
+      totalCount: totalCount || 0,
+      topCagnottes: topCagnottes || []
+    });
+  } catch (error) {
+    console.error('Erreur stats pulls:', error);
+    res.status(500).json({
+      activeCount: 0,
+      totalCount: 0,
+      topCagnottes: [],
+      error: error.message
+    });
+  }
+};
+
 // Créer un nouveau Pull
 exports.create = async (req, res) => {
   try {
@@ -83,12 +113,21 @@ exports.create = async (req, res) => {
 // Récupérer tous les Pulls de l'utilisateur connecté avec leurs Contributions
 exports.getAll = async (req, res) => {
   try {
+    console.log('=== RÉCUPÉRATION CAGNOTTES UTILISATEUR ===');
+    console.log('Utilisateur connecté:', req.user.id, req.user.email);
+    
     const pulls = await Pull.findAll({
       where: { userId: req.user.id }, // ✅ Filtrer par utilisateur connecté
       include: [
         { model: Contribution, as: 'contributions' } // ← alias exact défini dans le modèle
       ]
     });
+    
+    console.log(`Nombre de cagnottes trouvées pour l'utilisateur ${req.user.id}:`, pulls.length);
+    pulls.forEach(pull => {
+      console.log(`  - Cagnotte ID: ${pull.id} | Titre: ${pull.title} | Propriétaire: ${pull.userId}`);
+    });
+    
     res.json(pulls);
   } catch (err) {
     console.error(err);
@@ -116,22 +155,101 @@ exports.getOne = async (req, res) => {
   }
 };
 
-// Mettre à jour un Pull existant (uniquement si l'utilisateur est propriétaire)
+// Mettre à jour une cagnotte (propriétaire ou admin)
 exports.update = async (req, res) => {
   try {
-    const singlePull = await Pull.findOne({
-      where: {
-        id: req.params.id,
-        userId: req.user.id // ✅ Vérifier que l'utilisateur est propriétaire
+    console.log('=== MODIFICATION CAGNOTTE ===');
+    console.log('Cagnotte ID:', req.params.id);
+    console.log('Utilisateur complet:', req.user);
+    console.log('Utilisateur ID:', req.user.id, 'Type:', typeof req.user.id);
+    console.log('Utilisateur role:', req.user.role);
+    console.log('Données reçues:', req.body);
+    
+    const pull = await Pull.findByPk(req.params.id);
+    if (!pull) {
+      return res.status(404).json({ error: "Cagnotte non trouvée" });
+    }
+    
+    console.log('Propriétaire cagnotte:', pull.userId, 'Type:', typeof pull.userId);
+    
+    // Conversion explicite pour éviter les problèmes de type string vs int
+    const userId = parseInt(req.user.id);
+    const pullUserId = parseInt(pull.userId);
+    
+    console.log('Comparaison après conversion:');
+    console.log('  - userId (converti):', userId, typeof userId);
+    console.log('  - pullUserId (converti):', pullUserId, typeof pullUserId);
+    
+    // Vérification d'autorisation : propriétaire OU admin
+    const isOwner = pullUserId === userId;
+    const isAdmin = req.user.role === 'admin';
+    
+    console.log('Résultats vérification:');
+    console.log('  - isOwner:', isOwner);
+    console.log('  - isAdmin:', isAdmin);
+    
+    if (!isOwner && !isAdmin) {
+      console.log('❌ Accès refusé - Détails:');
+      console.log('  - pull.userId:', pull.userId, typeof pull.userId);
+      console.log('  - req.user.id:', req.user.id, typeof req.user.id);
+      console.log('  - req.user.role:', req.user.role);
+      return res.status(403).json({ 
+        error: "Vous n'avez pas l'autorisation de modifier cette cagnotte",
+        debug: {
+          pullUserId: pull.userId,
+          currentUserId: req.user.id,
+          userRole: req.user.role,
+          isOwner,
+          isAdmin
+        }
+      });
+    }
+    
+    console.log('✅ Autorisation accordée:', isOwner ? 'propriétaire' : 'admin');
+    
+    // Whitelist des champs modifiables avec conversion de types
+    const allowedFields = {
+      title: (val) => val,
+      description: (val) => val,
+      goalAmount: (val) => parseFloat(val),
+      currency: (val) => val,
+      deadline: (val) => val ? new Date(val) : null,
+      type: (val) => val,
+      status: (val) => val,
+      participantLimit: (val) => val ? parseInt(val) : null
+    };
+    
+    // Appliquer les modifications
+    let hasChanges = false;
+    Object.keys(allowedFields).forEach(field => {
+      if (req.body[field] !== undefined) {
+        const newValue = allowedFields[field](req.body[field]);
+        if (pull[field] !== newValue) {
+          console.log(`Modification ${field}: ${pull[field]} → ${newValue}`);
+          pull[field] = newValue;
+          hasChanges = true;
+        }
       }
     });
-    if (!singlePull) return res.status(404).json({ message: "Pull introuvable ou accès non autorisé" });
-
-    await singlePull.update(req.body);
-    res.json({ message: "Pull mis à jour", pull: singlePull });
+    
+    if (!hasChanges) {
+      console.log('⚠️ Aucune modification détectée');
+      return res.json({ message: "Aucune modification nécessaire", pull });
+    }
+    
+    // Sauvegarder
+    await pull.save();
+    
+    console.log('✅ Cagnotte modifiée avec succès:', pull.title);
+    res.json({ message: "Cagnotte mise à jour avec succès", pull });
+    
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Erreur lors de la modification:', err.message);
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ 
+      error: "Erreur lors de la modification de la cagnotte",
+      details: err.message 
+    });
   }
 };
 

@@ -29,8 +29,14 @@ try {
     credential = admin.credential.cert(serviceAccount);
     console.log('✅ Firebase configuré avec variables d\'environnement');
   } else {
+    const missing = [];
+    if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID');
+    if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY');
+    if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL');
+    
     console.warn('⚠️ Variables Firebase manquantes - authentification désactivée');
-    console.warn('Variables requises: FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, FIREBASE_PROJECT_ID');
+    console.warn('Variables manquantes:', missing.join(', '));
+    console.warn('🔧 Configurez ces variables sur Render pour activer l\'authentification');
   }
 
   if (credential) {
@@ -41,6 +47,7 @@ try {
     console.log('✅ Firebase Admin SDK initialisé avec succès');
   } else {
     console.warn('⚠️ Firebase non configuré - authentification désactivée');
+    console.warn('🔧 Configurez les variables Firebase sur Render pour activer l\'authentification');
   }
 } catch (error) {
   console.error('❌ Erreur Firebase:', error.message);

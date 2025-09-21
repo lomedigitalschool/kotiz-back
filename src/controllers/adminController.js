@@ -1,9 +1,12 @@
 // src/controllers/adminController.js
 
-const { User, Pull, Log, Transaction } = require('../models');
+import db from '../models/index.js';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+const { User, Pull, Log, Transaction } = db;
 
 // Dashboard global
-exports.getDashboard = async (_req, res) => {
+export const getDashboard = async (_req, res) => {
   try {
     const usersCount = await User.count();
     const pullsCount = await Pull.count();
@@ -25,7 +28,7 @@ exports.getDashboard = async (_req, res) => {
 };
 
 // Gestion utilisateurs
-exports.getAllUsers = async (_req, res) => {
+export const getAllUsers = async (_req, res) => {
   try {
     const users = await User.findAll();
     res.json(users);
@@ -34,7 +37,7 @@ exports.getAllUsers = async (_req, res) => {
   }
 };
 
-exports.blockUser = async (req, res) => {
+export const blockUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
@@ -48,7 +51,7 @@ exports.blockUser = async (req, res) => {
   }
 };
 
-exports.deleteUser = async (req, res) => {
+export const deleteUser = async (req, res) => {
   try {
     await User.destroy({ where: { id: req.params.id } });
     res.json({ message: "Utilisateur supprimé" });
@@ -58,7 +61,7 @@ exports.deleteUser = async (req, res) => {
 };
 
 // Gestion pulls
-exports.getAllPulls = async (_req, res) => {
+export const getAllPulls = async (_req, res) => {
   try {
     const pulls = await Pull.findAll();
     res.json(pulls);
@@ -67,7 +70,7 @@ exports.getAllPulls = async (_req, res) => {
   }
 };
 
-exports.validatePull = async (req, res) => {
+export const validatePull = async (req, res) => {
   try {
     const pull = await Pull.findByPk(req.params.id);
     if (!pull) return res.status(404).json({ message: "Pull non trouvée" });
@@ -81,7 +84,7 @@ exports.validatePull = async (req, res) => {
   }
 };
 
-exports.deletePull = async (req, res) => {
+export const deletePull = async (req, res) => {
   try {
     await Pull.destroy({ where: { id: req.params.id } });
     res.json({ message: "Pull supprimée" });
@@ -91,7 +94,7 @@ exports.deletePull = async (req, res) => {
 };
 
 // Logs
-exports.getLogs = async (_req, res) => {
+export const getLogs = async (_req, res) => {
   try {
     const logs = await Log.findAll({
       limit: 50,
@@ -104,7 +107,7 @@ exports.getLogs = async (_req, res) => {
 };
 
 // Export Transactions
-exports.exportTransactions = async (_req, res) => {
+export const exportTransactions = async (_req, res) => {
   try {
     const transactions = await Transaction.findAll({
       order: [['createdAt', 'DESC']]
@@ -116,7 +119,7 @@ exports.exportTransactions = async (_req, res) => {
 };
 
 // Réinitialiser le mot de passe d'un utilisateur
-exports.resetUserPassword = async (req, res) => {
+export const resetUserPassword = async (req, res) => {
   try {
     const { id } = req.params;
     const { newPassword } = req.body;
@@ -124,7 +127,6 @@ exports.resetUserPassword = async (req, res) => {
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
 
-    const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     user.passwordHash = hashedPassword;
@@ -146,10 +148,9 @@ exports.resetUserPassword = async (req, res) => {
 };
 
 // Générer un token de réinitialisation
-exports.generateResetToken = async (req, res) => {
+export const generateResetToken = async (req, res) => {
   try {
     const { id } = req.params;
-    const crypto = require('crypto');
 
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
@@ -172,7 +173,7 @@ exports.generateResetToken = async (req, res) => {
 };
 
 // Débloquer un utilisateur
-exports.unblockUser = async (req, res) => {
+export const unblockUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
@@ -191,3 +192,5 @@ exports.unblockUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export default { getDashboard, getAllUsers, blockUser, deleteUser, getAllPulls, validatePull, deletePull, getLogs, exportTransactions, resetUserPassword, generateResetToken, unblockUser };

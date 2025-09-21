@@ -12,8 +12,8 @@
  * - DB_PORT: Port (5432 par défaut)
  */
 
-const { Sequelize } = require('sequelize');
-require('dotenv').config();  // Chargement des variables d'environnement
+import { Sequelize } from 'sequelize';
+import 'dotenv/config';  // Chargement des variables d'environnement
 
 // Configuration de la connexion Sequelize
 // Support pour Railway/Render (DATABASE_URL) et développement local
@@ -50,4 +50,4 @@ if (process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
 }
 
 // Export de l'instance Sequelize configurée
-module.exports = sequelize;
+export default sequelize;

@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const contributionController = require('../controllers/contributionController');
-const { authenticate, isAdmin } = require('../middleware/auth');
+import contributionController from '../controllers/contributionController.js';
+import { authenticate, isAdmin } from '../middleware/auth.js';
 
 // 🔧 ROUTES AVEC INTÉGRATION PAIEMENT
 
@@ -20,4 +20,4 @@ router.get('/:id/status', authenticate, contributionController.checkContribution
 // Mes contributions
 router.get('/my', authenticate, contributionController.getMyContributions);
 
-module.exports = router;
+export default router;

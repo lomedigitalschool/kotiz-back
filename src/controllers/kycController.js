@@ -1,6 +1,7 @@
-const { Kyc, User } = require('../models');
-const path = require('path');
-const fs = require('fs');
+import db from '../models/index.js';
+import path from 'path';
+import fs from 'fs';
+const { Kyc, User } = db;
 
 /**
  * Contrôleur pour la gestion des vérifications KYC
@@ -281,4 +282,4 @@ class KycController {
   }
 }
 
-module.exports = KycController;
+export default KycController;

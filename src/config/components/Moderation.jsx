@@ -14,17 +14,19 @@ const Moderation = () => {
     try {
       const baseUrl = window.location.origin;
 
-      // Récupérer les cagnottes en attente de validation
-      const pullsRes = await fetch(`${baseUrl}/api/v1/admin/pulls/pending`, {
+      // Récupérer toutes les cagnottes et filtrer celles en attente
+      const pullsRes = await fetch(`${baseUrl}/api/v1/admin/pulls`, {
         credentials: 'include'
       });
-      const pulls = pullsRes.ok ? await pullsRes.json() : [];
+      const allPulls = pullsRes.ok ? await pullsRes.json() : [];
+      const pulls = allPulls.filter(pull => pull.status === 'pending');
 
-      // Récupérer les signalements
+      // Récupérer les signalements en attente
       const reportsRes = await fetch(`${baseUrl}/api/v1/admin/reports`, {
         credentials: 'include'
       });
-      const reports = reportsRes.ok ? await reportsRes.json() : [];
+      const allReports = reportsRes.ok ? await reportsRes.json() : [];
+      const reports = allReports.filter(report => report.status === 'pending');
 
       setPendingPulls(pulls);
       setReportedContent(reports);
@@ -38,8 +40,11 @@ const Moderation = () => {
   const handlePullAction = async (pullId, action) => {
     try {
       const baseUrl = window.location.origin;
-      const response = await fetch(`${baseUrl}/api/v1/admin/pulls/${pullId}/${action}`, {
-        method: 'POST',
+      const method = action === 'approve' ? 'PUT' : 'DELETE';
+      const endpoint = action === 'approve' ? `${baseUrl}/api/v1/admin/pulls/${pullId}/validate` : `${baseUrl}/api/v1/admin/pulls/${pullId}`;
+
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -61,11 +66,26 @@ const Moderation = () => {
   const handleReportAction = async (reportId, action) => {
     try {
       const baseUrl = window.location.origin;
-      const response = await fetch(`${baseUrl}/api/v1/admin/reports/${reportId}/${action}`, {
-        method: 'POST',
+      let endpoint, method, body;
+
+      if (action === 'block') {
+        endpoint = `${baseUrl}/api/v1/admin/reports/${reportId}/block`;
+        method = 'PUT';
+      } else {
+        endpoint = `${baseUrl}/api/v1/admin/reports/${reportId}/handle`;
+        method = 'PUT';
+        body = JSON.stringify({
+          action: action === 'dismiss' ? 'dismiss' : 'resolve',
+          adminResponse: action === 'dismiss' ? 'Signalement rejeté' : 'Signalement résolu'
+        });
+      }
+
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
+        body: body,
         credentials: 'include'
       });
 

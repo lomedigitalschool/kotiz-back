@@ -1,4 +1,4 @@
-const { Model, DataTypes } = require('sequelize');
+import { Model, DataTypes } from 'sequelize';
 
 class UserPaymentMethod extends Model {
   static associate(models) {
@@ -25,4 +25,4 @@ function initUserPaymentMethod(sequelize) {
   return UserPaymentMethod;
 }
 
-module.exports = initUserPaymentMethod;
+export default initUserPaymentMethod;

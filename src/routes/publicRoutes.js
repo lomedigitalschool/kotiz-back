@@ -1,9 +1,10 @@
 // src/routes/publicRoutes.js
 // Routes publiques accessibles sans authentification
 
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const pullController = require('../controllers/pullController');
+import * as pullController from '../controllers/pullController.js';
+import contributionController from '../controllers/contributionController.js';
 
 /**
  * Routes publiques pour les visiteurs
@@ -42,6 +43,6 @@ router.get('/pulls/:id', pullController.getPublicCagnotteById);
  * POST /api/v1/public/contributions/anonymous/:pullId
  * Créer une contribution anonyme à une cagnotte publique
  */
-router.post('/contributions/anonymous/:pullId', require('../controllers/contributionController').createAnonymous);
+router.post('/contributions/anonymous/:pullId', contributionController.createAnonymous);
 
-module.exports = router;
+export default router;

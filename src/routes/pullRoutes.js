@@ -1,12 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const pullController = require('../controllers/pullController');
-const firebaseAuth = require('../middleware/firebaseAuth');
-const { uploadCagnotteImage } = require('../middleware/multerConfig');
-const { authenticate, isAdmin } = require('../middleware/auth');
-
-// Middleware pour vérifier la vérification d'email
-const requireEmailVerification = firebaseAuth.requireEmailVerification;
+import * as pullController from '../controllers/pullController.js';
+import firebaseAuth, { requireEmailVerification } from '../middleware/firebaseAuth.js';
+import { uploadCagnotteImage } from '../middleware/multerConfig.js';
+import { authenticate, isAdmin } from '../middleware/auth.js';
 
 // Stats pour admin
 router.get('/stats', authenticate, isAdmin, pullController.getStats);
@@ -36,4 +33,4 @@ router.get('/:id', pullController.getCagnotteById); // Avec contrôle d'accès
 router.get('/', firebaseAuth, pullController.getAll); // Cagnottes de l'utilisateur
 router.put('/:id', firebaseAuth, requireEmailVerification, pullController.update);
 router.delete('/:id', firebaseAuth, requireEmailVerification, pullController.remove);
-module.exports = router;
+export default router;

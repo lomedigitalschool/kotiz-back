@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   subjects: {
     // Utilisateur
     otp: "Votre code de connexion KOTIZ",

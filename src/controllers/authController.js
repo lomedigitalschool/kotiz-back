@@ -1,7 +1,9 @@
-const { User } = require('../models');
+import db from '../models/index.js';
+
+const { User } = db;
 
 // 🔄 Synchronisation Firebase → PostgreSQL
-exports.firebaseSync = async (req, res) => {
+const firebaseSync = async (req, res) => {
   try {
     // req.user est déjà rempli par firebaseAuth.js
     return res.json({
@@ -16,7 +18,7 @@ exports.firebaseSync = async (req, res) => {
 // ====================
 // 🚪 Déconnexion
 // ====================
-exports.logout = async (req, res) => {
+const logout = async (req, res) => {
   try {
     // Pour Firebase, la déconnexion se fait côté client
     res.json({
@@ -31,7 +33,7 @@ exports.logout = async (req, res) => {
 // ====================
 // 👤 Profil utilisateur connecté
 // ====================
-exports.me = async (req, res) => {
+const me = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: { exclude: ['passwordHash'] }
@@ -46,7 +48,7 @@ exports.me = async (req, res) => {
 // ====================
 // ✏️ Mise à jour du profil
 // ====================
-exports.updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const { name, email, phone } = req.body;
@@ -82,7 +84,7 @@ exports.updateProfile = async (req, res) => {
 // ====================
 // 🔐 Vérification des rôles AdminJS
 // ====================
-exports.checkAdminAccess = async (req, res) => {
+const checkAdminAccess = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findByPk(userId);
@@ -118,7 +120,7 @@ exports.checkAdminAccess = async (req, res) => {
 // ====================
 // 🔑 Mot de passe oublié (version sécurisée)
 // ====================
-exports.forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res) => {
   console.log('Forgot password request received:', req.body);
 
   const { email } = req.body;
@@ -175,7 +177,7 @@ exports.forgotPassword = async (req, res) => {
 // ====================
 //  Envoi d'email de confirmation changement mot de passe
 // ====================
-exports.sendPasswordChangedEmail = async (req, res) => {
+const sendPasswordChangedEmail = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findByPk(userId);
@@ -185,7 +187,7 @@ exports.sendPasswordChangedEmail = async (req, res) => {
     }
 
     // Utiliser le service d'email
-    const EmailService = require('../services/emailService');
+    const { default: EmailService } = await import('../services/emailService.js');
     await EmailService.sendPasswordChangedEmail(user.email, user.name);
 
     res.json({ message: 'Email de confirmation envoyé' });
@@ -198,7 +200,7 @@ exports.sendPasswordChangedEmail = async (req, res) => {
 // ====================
 // Mise à jour du numéro de téléphone après inscription
 // ====================
-exports.updatePhone = async (req, res) => {
+const updatePhone = async (req, res) => {
   try {
     const userId = req.user.id;
     const { phone } = req.body;
@@ -254,3 +256,5 @@ exports.updatePhone = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+export default { firebaseSync, logout, me, updateProfile, checkAdminAccess, forgotPassword, sendPasswordChangedEmail, updatePhone };
+

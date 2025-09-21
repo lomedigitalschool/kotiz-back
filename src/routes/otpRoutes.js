@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const otpController = require('../controllers/otpController');
-const rateLimit = require('express-rate-limit');
+import otpController from '../controllers/otpController.js';
+import rateLimit from 'express-rate-limit';
+import { ipKeyGenerator } from 'express-rate-limit';
 
 // ====================
 // 🛡️ RATE LIMITING POUR OTP
@@ -114,4 +115,4 @@ router.post('/test', (req, res) => {
   return otpController.testOTP(req, res);
 });
 
-module.exports = router;
+export default router;

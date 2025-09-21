@@ -1,5 +1,7 @@
-const bcrypt = require('bcryptjs');
-const { User } = require('../models');
+import bcrypt from 'bcryptjs';
+import db from '../models/index.js';
+
+const { User } = db;
 
 async function createAdmin() {
   try {
@@ -37,4 +39,7 @@ async function createAdmin() {
   }
 }
 
-module.exports = { createAdmin };
+// Exécuter la fonction si le script est appelé directement
+if (import.meta.url === `file://${process.argv[1]}`) {
+  createAdmin();
+}

@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const rateLimit = require('express-rate-limit');
-const { ipKeyGenerator } = require('express-rate-limit');
-const authController = require('../controllers/authController');
-const verifyFirebaseToken = require('../middleware/firebaseAuth');
+import rateLimit from 'express-rate-limit';
+import { ipKeyGenerator } from 'express-rate-limit';
+import authController from '../controllers/authController.js';
+import firebaseAuth from '../middleware/firebaseAuth.js';
 
 // Rate limiter spécifique pour forgot-password (plus restrictif)
 const forgotPasswordLimiter = rateLimit({
@@ -36,16 +36,16 @@ const forgotPasswordLimiter = rateLimit({
 });
 
 //  Synchronisation Firebase → PostgreSQL
-router.post('/firebase-sync', verifyFirebaseToken, authController.firebaseSync);
+router.post('/firebase-sync', firebaseAuth, authController.firebaseSync);
 
 // Profil utilisateur
-router.get('/me', verifyFirebaseToken, authController.me);
+router.get('/me', firebaseAuth, authController.me);
 
 // Mise à jour du profil
-router.put('/profile', verifyFirebaseToken, authController.updateProfile);
+router.put('/profile', firebaseAuth, authController.updateProfile);
 
 // Vérification accès admin
-router.get('/admin-check', verifyFirebaseToken, authController.checkAdminAccess);
+router.get('/admin-check', firebaseAuth, authController.checkAdminAccess);
 
 
 // Mot de passe oublié (avec rate limiting et sans middleware d'auth)
@@ -55,12 +55,12 @@ router.post('/forgot-password', forgotPasswordLimiter, (req, res) => {
 });
 
 // Envoi email confirmation changement mot de passe
-router.post('/send-password-changed-email', verifyFirebaseToken, authController.sendPasswordChangedEmail);
+router.post('/send-password-changed-email', firebaseAuth, authController.sendPasswordChangedEmail);
 
 // Déconnexion
-router.post('/logout', verifyFirebaseToken, authController.logout);
+router.post('/logout', firebaseAuth, authController.logout);
 
 // Mise à jour du numéro de téléphone après inscription
-router.post('/update-phone', verifyFirebaseToken, authController.updatePhone);
+router.post('/update-phone', firebaseAuth, authController.updatePhone);
 
-module.exports = router;
+export default router;

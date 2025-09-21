@@ -1,15 +1,19 @@
 // 1️⃣ Charger les variables d'environnement
-require('dotenv').config();
+import 'dotenv/config';
 
 // 2️⃣ Import des modules nécessaires
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const { ipKeyGenerator } = require('express-rate-limit');
-const session = require('express-session');
-const PgSession = require('connect-pg-simple')(session);
-const { sequelize } = require('./models');
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import { ipKeyGenerator } from 'express-rate-limit';
+import session from 'express-session';
+import PgSession from 'connect-pg-simple';
+const PgSimpleStore = PgSession(session);
+import bodyParser from 'body-parser';
+import db from './models/index.js';
+
+const { sequelize } = db;
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();
@@ -20,7 +24,7 @@ app.set('trust proxy', 1);
 // 6️⃣ Sessions
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
-  store: isProduction ? new PgSession({
+  store: isProduction ? new PgSimpleStore({
     conString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
     createTableIfMissing: true,
     tableName: 'user_sessions'
@@ -108,9 +112,9 @@ app.get('/health', async (req, res) => {
 });
 
 // 1️⃣3️⃣ ROUTES ADMINJS SANS AUTHENTIFICATION
-const UserController = require('./controllers/userController');
-const ContributionController = require('./controllers/contributionController');
-const PullController = require('./controllers/pullController');
+import UserController from './controllers/userController.js';
+import * as ContributionController from './controllers/contributionController.js';
+import * as PullController from './controllers/pullController.js';
 
 app.get('/api/v1/adminjs/users/admin-stats', (req, res, next) => {
   console.log('🔍 Route admin-stats appelée');
@@ -141,28 +145,36 @@ app.get('/api/v1/admin/export/users', (req, res) => {
 });
 
 // 1️⃣4️⃣ ROUTES API AVEC AUTHENTIFICATION
-const verifyFirebaseToken = require('./middleware/firebaseAuth');
-const { isAdmin } = require('./middleware/auth');
+import firebaseAuth from './middleware/firebaseAuth.js';
+import { isAdmin } from './middleware/auth.js';
 
-app.use('/api/v1/auth', require('./routes/authRoutes'));
-app.use('/api/v1/users', verifyFirebaseToken, require('./routes/userRoutes'));
-app.use('/api/v1/pulls', require('./routes/pullRoutes'));
-app.use('/api/v1/contributions', verifyFirebaseToken, require('./routes/contributionRoutes'));
-app.use('/api/v1/transactions', verifyFirebaseToken, require('./routes/transactionRoutes'));
-app.use('/api/v1/notifications', verifyFirebaseToken, require('./routes/notificationRoutes'));
-app.use('/api/v1/admin', verifyFirebaseToken, isAdmin, require('./routes/adminRoutes'));
-app.use('/api/v1/kyc', require('./routes/kycRoutes'));
-app.use('/api/v1/otp', require('./routes/otpRoutes'));
-app.use('/api/v1/public', require('./routes/publicRoutes'));
-app.use('/api/v1/webhooks', require('./routes/webhookRoutes'));
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import pullRoutes from './routes/pullRoutes.js';
+import contributionRoutes from './routes/contributionRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import kycRoutes from './routes/kycRoutes.js';
+import otpRoutes from './routes/otpRoutes.js';
+import publicRoutes from './routes/publicRoutes.js';
+import webhookRoutes from './routes/webhookRoutes.js';
 
-// 1️⃣5️⃣ ADMINJS (AVANT body parser)
-const { admin, adminRouter } = require('./config/admin');
-app.use(admin.options.rootPath, adminRouter);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', firebaseAuth, userRoutes);
+app.use('/api/v1/pulls', pullRoutes);
+app.use('/api/v1/contributions', firebaseAuth, contributionRoutes);
+app.use('/api/v1/transactions', firebaseAuth, transactionRoutes);
+app.use('/api/v1/notifications', firebaseAuth, notificationRoutes);
+app.use('/api/v1/admin', firebaseAuth, isAdmin, adminRoutes);
+app.use('/api/v1/kyc', kycRoutes);
+app.use('/api/v1/otp', otpRoutes);
+app.use('/api/v1/public', publicRoutes);
+app.use('/api/v1/webhooks', webhookRoutes);
 
 // 1️⃣5️⃣bis Body parser APRÈS AdminJS
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // 1️⃣6️⃣ Route racine
 app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));
@@ -173,19 +185,32 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erreur interne du serveur', message: err.message });
 });
 
-// 1️⃣8️⃣ Route 404
-app.use('*', (req, res) => {
-  console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({ error: 'Route non trouvée', path: req.originalUrl });
-});
-
 // 1️⃣9️⃣ Démarrage du serveur
 const PORT = process.env.PORT || 5000;
 
 (async () => {
   try {
     console.log('⏳ Démarrage du serveur...');
-    
+
+    // 1️⃣5️⃣ ADMINJS (AVANT body parser)
+    await sequelize.authenticate();
+    console.log('✅ Base de données connectée');
+
+    try {
+      const { default: initAdmin } = await import('./config/admin.js');
+      const { admin, adminRouter } = await initAdmin();
+      app.use(admin.options.rootPath, adminRouter);
+      console.log('✅ AdminJS chargé avec succès');
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement d\'AdminJS:', error);
+    }
+
+    // 1️⃣8️⃣ Route 404 (APRÈS AdminJS)
+    app.use('*', (req, res) => {
+      console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
+      res.status(404).json({ error: 'Route non trouvée', path: req.originalUrl });
+    });
+
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
       console.log(`🔑 AdminJS disponible sur http://localhost:${PORT}/admin`);

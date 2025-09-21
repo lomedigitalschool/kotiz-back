@@ -1,15 +1,15 @@
-const sequelize = require('../config/database');
+import sequelize from '../config/database.js';
 
-const initUser = require('./User');
-const initPull = require('./pull');
-const initContribution = require('./Contribution');
-const initTransaction = require('./Transaction');
-const initPaymentMethod = require('./PaymentMethod');
-const initUserPaymentMethod = require('./UserPaymentMethod');
-const initKyc = require('./Kyc');
-const initNotification = require('./Notification');
-const initLog = require('./Log');
-const initReport = require('./Report');
+import initUser from './User.js';
+import initPull from './pull.js';
+import initContribution from './Contribution.js';
+import initTransaction from './Transaction.js';
+import initPaymentMethod from './PaymentMethod.js';
+import initUserPaymentMethod from './UserPaymentMethod.js';
+import initKyc from './Kyc.js';
+import initNotification from './Notification.js';
+import initLog from './Log.js';
+import initReport from './Report.js';
 
 // Init modèles
 const db = {};
@@ -31,4 +31,4 @@ Object.values(db).forEach(model => {
 
 db.sequelize = sequelize;
 
-module.exports = db;
+export default db;

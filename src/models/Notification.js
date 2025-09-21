@@ -1,4 +1,4 @@
-const { Model, DataTypes } = require('sequelize');
+import { Model, DataTypes } from 'sequelize';
 
 class Notification extends Model {
   static associate(models) {
@@ -22,4 +22,4 @@ function initNotification(sequelize) {
   return Notification;
 }
 
-module.exports = initNotification;
+export default initNotification;

@@ -2,6 +2,7 @@
   "name": "kotiz-back",
   "version": "1.0.0",
   "description": "Backend API pour l'application Kotiz développée par Lome Digital School",
+  "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node --max-old-space-size=400 --optimize-for-size src/server.js",
@@ -16,12 +17,13 @@
   },
   "dependencies": {
     "@adminjs/design-system": "^4.0.5",
-    "@adminjs/express": "^5.1.0",
-    "@adminjs/sequelize": "^2.1.5",
+    "@adminjs/express": "^6.1.1",
+    "@adminjs/sequelize": "^4.1.1",
     "adminjs": "^7.6.1",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
+    "body-parser": "^2.2.0",
     "cloudinary": "^1.41.3",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",

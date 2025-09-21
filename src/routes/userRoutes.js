@@ -1,9 +1,9 @@
 // Routes des utilisateurs
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const UserController = require('../controllers/userController');
-const { authenticate, isAdmin } = require('../middleware/auth');
-const { uploadAvatar } = require('../middleware/multerConfig');
+import UserController from '../controllers/userController.js';
+import { authenticate, isAdmin } from '../middleware/auth.js';
+import { uploadAvatar } from '../middleware/multerConfig.js';
 
 router.get('/', authenticate, isAdmin, UserController.getAll);
 router.get('/stats', authenticate, isAdmin, UserController.getStats);
@@ -23,4 +23,4 @@ router.delete('/:id', authenticate, isAdmin, UserController.remove);
 // Upload d'avatar
 router.post('/avatar', authenticate, uploadAvatar, UserController.uploadAvatar);
 
-module.exports = router;
+export default router;

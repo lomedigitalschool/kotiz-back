@@ -1,4 +1,4 @@
-const { Model, DataTypes } = require('sequelize');
+import { Model, DataTypes } from 'sequelize';
 
 class Kyc extends Model {
   static associate(models) {
@@ -73,4 +73,4 @@ function initKyc(sequelize) {
   return Kyc;
 }
 
-module.exports = initKyc;
+export default initKyc;

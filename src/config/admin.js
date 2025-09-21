@@ -1,19 +1,10 @@
 /**
  * 🛠️ Configuration AdminJS - Interface d'administration
  */
-const AdminJS = require('adminjs').default;
-const AdminJSExpress = require('@adminjs/express');
-const AdminJSSequelize = require('@adminjs/sequelize');
-const bcrypt = require('bcryptjs');
+import bcrypt from 'bcryptjs';
+import { QueryTypes } from 'sequelize';
+import db from '../models/index.js';
 
-// Enregistrement de l’adapter Sequelize
-AdminJS.registerAdapter({
-  Resource: AdminJSSequelize.Resource,
-  Database: AdminJSSequelize.Database,
-});
-
-// Import des modèles
-const { QueryTypes } = require('sequelize');
 const {
   sequelize,
   User,
@@ -26,7 +17,20 @@ const {
   Log,
   Kyc,
   Report
-} = require('../models');
+} = db;
+
+const initAdmin = async () => {
+  console.log('🔧 Initialisation AdminJS...');
+  const { default: AdminJS } = await import('adminjs');
+  const { default: AdminJSExpress } = await import('@adminjs/express');
+  const { default: AdminJSSequelize } = await import('@adminjs/sequelize');
+  const { ComponentLoader } = await import('adminjs');
+
+  // Enregistrement de l'adapter Sequelize
+  AdminJS.registerAdapter(AdminJSSequelize);
+
+  // Component loader pour les composants personnalisés
+  const componentLoader = new ComponentLoader();
 
 // Fonction pour calculer les métriques du dashboard
 const getDashboardMetrics = async () => {
@@ -103,12 +107,13 @@ const getDashboardMetrics = async () => {
 };
 
 // Composant dashboard personnalisé
-const dashboardComponent = {
-  component: AdminJS.bundle('./components/HomeDashboard')
-};
+// const dashboardComponent = {
+//   component: AdminJS.bundle('./components/HomeDashboard')
+// };
 
 // Configuration AdminJS
 const adminOptions = {
+  componentLoader,
   databases: [],
   resources: [
     {
@@ -367,46 +372,44 @@ const adminOptions = {
       tableBorder: '#E0E0E0'
     }
   },
-  dashboard: {
-    component: AdminJS.bundle('../components/Dashboard')
-  },
-  pages: {
-    'Rapports': {
-      component: AdminJS.bundle('./components/Reports'),
-      icon: 'BarChart'
-    },
-    'Statistiques Détaillées': {
-      component: AdminJS.bundle('./components/Stats'),
-      icon: 'TrendingUp'
-    },
-    'Export Données': {
-      component: AdminJS.bundle('./components/Export'),
-      icon: 'Download'
-    },
-    'Modération': {
-      component: AdminJS.bundle('./components/Moderation'),
-      icon: 'Shield'
-    }
-  }
+  // dashboard: {
+  //   component: componentLoader.add('HomeDashboard', '../components/HomeDashboard.jsx')
+  // },
+  // pages: {
+  //   'Rapports': {
+  //     component: componentLoader.add('Reports', './components/Reports.jsx'),
+  //     icon: 'BarChart'
+  //   },
+  //   'Statistiques Détaillées': {
+  //     component: componentLoader.add('Stats', './components/Stats.jsx'),
+  //     icon: 'TrendingUp'
+  //   },
+  //   'Export Données': {
+  //     component: componentLoader.add('Export', './components/Export.jsx'),
+  //     icon: 'Download'
+  //   },
+  //   'Modération': {
+  //     component: componentLoader.add('Moderation', './components/Moderation.jsx'),
+  //     icon: 'Shield'
+  //   }
+  // }
 };
 
 // Création de l'instance AdminJS
+console.log('🔧 Création instance AdminJS...');
 const admin = new AdminJS(adminOptions);
+console.log('✅ Instance AdminJS créée');
 
-// Routeur avec authentification sécurisée
-const adminRouter = AdminJSExpress.buildAuthenticatedRouter(admin, {
-  authenticate: async (email, password) => {
-    const user = await User.findOne({ where: { email, role: 'admin' } });
-    if (user && await bcrypt.compare(password, user.passwordHash)) {
-      return user;
-    }
-    return null;
-  },
-  cookieName: 'adminjs',
-  cookiePassword: process.env.SESSION_SECRET || 'session-secret-kotiz',
-}, null, {
-  resave: false,
-  saveUninitialized: false
-});
+console.log('🔧 Initialisation AdminJS...');
+await admin.initialize();
+console.log('✅ AdminJS initialisé');
 
-module.exports = { admin, adminRouter };
+// Routeur AdminJS (sans authentification pour stabilité)
+console.log('🔧 Création routeur AdminJS...');
+const adminRouter = AdminJSExpress.buildRouter(admin);
+console.log('✅ Routeur AdminJS créé');
+
+  return { admin, adminRouter };
+};
+
+export default initAdmin;

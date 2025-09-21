@@ -14,7 +14,29 @@ const Export = () => {
       const typeValue = typeof exportType === 'object' ? exportType.value : exportType;
       const formatValue = typeof exportFormat === 'object' ? exportFormat.value : exportFormat;
 
-      const response = await fetch(`${baseUrl}/api/v1/admin/export/${typeValue}?format=${formatValue}`, {
+      // Utiliser les endpoints existants
+      let endpoint;
+      switch (typeValue) {
+        case 'users':
+          endpoint = `${baseUrl}/api/v1/admin/users`;
+          break;
+        case 'pulls':
+          endpoint = `${baseUrl}/api/v1/admin/pulls`;
+          break;
+        case 'contributions':
+          endpoint = `${baseUrl}/api/v1/contributions/stats`; // Utilise l'endpoint public
+          break;
+        case 'transactions':
+          endpoint = `${baseUrl}/api/v1/admin/transactions/export`;
+          break;
+        case 'logs':
+          endpoint = `${baseUrl}/api/v1/admin/logs`;
+          break;
+        default:
+          endpoint = `${baseUrl}/api/v1/admin/users`;
+      }
+
+      const response = await fetch(endpoint, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -23,11 +45,40 @@ const Export = () => {
       });
 
       if (response.ok) {
-        const blob = await response.blob();
+        const data = await response.json();
+        let content, mimeType, extension;
+
+        if (formatValue === 'json') {
+          content = JSON.stringify(data, null, 2);
+          mimeType = 'application/json';
+          extension = 'json';
+        } else if (formatValue === 'csv') {
+          // Conversion simple en CSV (basique)
+          if (Array.isArray(data)) {
+            const headers = Object.keys(data[0] || {}).join(',');
+            const rows = data.map(item => Object.values(item).map(val =>
+              typeof val === 'object' ? JSON.stringify(val) : val
+            ).join(','));
+            content = [headers, ...rows].join('\n');
+          } else {
+            content = Object.entries(data).map(([key, value]) =>
+              `${key},${typeof value === 'object' ? JSON.stringify(value) : value}`
+            ).join('\n');
+          }
+          mimeType = 'text/csv';
+          extension = 'csv';
+        } else {
+          // XLSX basique comme CSV
+          content = JSON.stringify(data, null, 2);
+          mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          extension = 'xlsx';
+        }
+
+        const blob = new Blob([content], { type: mimeType });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${typeValue}_${new Date().toISOString().split('T')[0]}.${formatValue}`;
+        a.download = `${typeValue}_${new Date().toISOString().split('T')[0]}.${extension}`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);

@@ -1,5 +1,6 @@
-const admin = require('../config/firebase');
-const { User } = require('../models');
+import admin from '../config/firebase.js';
+import db from '../models/index.js';
+const { User } = db;
 
 /**
  * Middleware d'authentification Firebase
@@ -7,7 +8,7 @@ const { User } = require('../models');
  * - Synchronise l'utilisateur avec la base de données
  * - Empêche les doublons et maintient la cohérence
  */
-module.exports = async function firebaseAuth(req, res, next) {
+export default async function firebaseAuth(req, res, next) {
   try {
     // Vérifier si Firebase est configuré
     if (!admin) {
@@ -184,7 +185,7 @@ module.exports = async function firebaseAuth(req, res, next) {
  * Middleware pour vérifier que l'email de l'utilisateur est vérifié
  * À utiliser sur les routes nécessitant une vérification d'email
  */
-module.exports.requireEmailVerification = async function requireEmailVerification(req, res, next) {
+export const requireEmailVerification = async function requireEmailVerification(req, res, next) {
   try {
     // Vérifier que l'utilisateur est authentifié
     if (!req.user) {

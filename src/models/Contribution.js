@@ -1,4 +1,4 @@
-const { Model, DataTypes } = require('sequelize');
+import { Model, DataTypes } from 'sequelize';
 
 class Contribution extends Model {
   static associate(models) {
@@ -30,4 +30,4 @@ function initContribution(sequelize) {
   return Contribution;
 }
 
-module.exports = initContribution;
+export default initContribution;

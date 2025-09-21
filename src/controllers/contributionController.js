@@ -1,12 +1,12 @@
 // Contrôleur des contributions
-const { Contribution, Pull, Transaction } = require('../models');
-const { Op } = require('sequelize');
-const paymentService = require('../services/paymentService');
+import db from '../models/index.js';
+const { Contribution, Pull, Transaction } = db;
+import { Op, QueryTypes } from 'sequelize';
+import paymentService from '../services/paymentService.js';
+import sequelize from '../config/database.js';
 
-exports.getStats = async (req, res) => {
+export const getStats = async (req, res) => {
   try {
-    const { QueryTypes } = require('sequelize');
-    const sequelize = require('../config/database');
 
     // Total collecté
     const [totalResult] = await sequelize.query(
@@ -55,7 +55,7 @@ exports.getStats = async (req, res) => {
 };
 
 // 💳 POINT D'INTÉGRATION PRINCIPAL - CRÉER UNE CONTRIBUTION AVEC PAIEMENT
-exports.create = async (req, res) => {
+export const create = async (req, res) => {
   try {
     const {
       pullId,
@@ -175,7 +175,7 @@ exports.create = async (req, res) => {
 };
 
 // 🔄 WEBHOOK POUR TRAITER LES NOTIFICATIONS DE PAIEMENT
-exports.handlePaymentWebhook = async (req, res) => {
+export const handlePaymentWebhook = async (req, res) => {
   try {
     console.log('📨 Webhook de paiement reçu:', req.body);
 
@@ -247,7 +247,7 @@ exports.handlePaymentWebhook = async (req, res) => {
 };
 
 // 🔍 VÉRIFIER LE STATUT D'UNE CONTRIBUTION
-exports.checkContributionStatus = async (req, res) => {
+export const checkContributionStatus = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -300,7 +300,7 @@ exports.checkContributionStatus = async (req, res) => {
   }
 };
 
-exports.getMyContributions = async (req, res) => {
+export const getMyContributions = async (req, res) => {
   try {
     const contributions = await Contribution.findAll({
       where: { userId: req.user.id },
@@ -315,7 +315,7 @@ exports.getMyContributions = async (req, res) => {
 // ====================
 // 🎭 CRÉER UNE CONTRIBUTION ANONYME (SANS COMPTE)
 // ====================
-exports.createAnonymous = async (req, res) => {
+export const createAnonymous = async (req, res) => {
   try {
     const { pullId } = req.params; // Récupérer pullId depuis l'URL
     const {
@@ -457,3 +457,5 @@ exports.createAnonymous = async (req, res) => {
     });
   }
 };
+
+export default { getStats, create, handlePaymentWebhook, checkContributionStatus, getMyContributions, createAnonymous };

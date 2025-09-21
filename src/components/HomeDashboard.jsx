@@ -118,16 +118,16 @@ const HomeDashboard = () => {
       <Box>
         <H2 mb="lg" style={{ color: '#4CA260' }}>⚡ Actions Rapides</H2>
         <Box display="flex" gap="lg" flexWrap="wrap">
-          <Button variant="primary" size="lg" as="a" href="/admin/resources/User">
+          <Button variant="primary" size="lg" as="a" href="/admin/resources/Users">
             👥 Gérer les Utilisateurs
           </Button>
-          <Button variant="secondary" size="lg" as="a" href="/admin/resources/Pull">
+          <Button variant="secondary" size="lg" as="a" href="/admin/resources/Pulls">
             🎯 Gérer les Cagnottes
           </Button>
-          <Button variant="success" size="lg" as="a" href="/admin/resources/Report">
+          <Button variant="success" size="lg" as="a" href="/admin/resources/Reports">
             🚨 Voir les Signalements
           </Button>
-          <Button variant="warning" size="lg" as="a" href="/admin/resources/Log">
+          <Button variant="warning" size="lg" as="a" href="/admin/resources/Logs">
             📋 Consulter les Logs
           </Button>
           <Button variant="info" size="lg" as="a" href="/admin/pages/Export%20Donn%C3%A9es">

@@ -1,7 +1,8 @@
-const { Report, User, Pull, Contribution } = require('../models');
+import db from '../models/index.js';
+const { Report, User, Pull, Contribution } = db;
 
 // Créer un signalement
-exports.createReport = async (req, res) => {
+export const createReport = async (req, res) => {
   try {
     const { type, targetId, reason, description } = req.body;
     const reporterId = req.user.id;
@@ -28,7 +29,7 @@ exports.createReport = async (req, res) => {
 };
 
 // Récupérer tous les signalements (admin)
-exports.getAllReports = async (req, res) => {
+export const getAllReports = async (req, res) => {
   try {
     const reports = await Report.findAll({
       include: [
@@ -45,7 +46,7 @@ exports.getAllReports = async (req, res) => {
 };
 
 // Traiter un signalement (admin)
-exports.handleReport = async (req, res) => {
+export const handleReport = async (req, res) => {
   try {
     const { id } = req.params;
     const { action, adminResponse } = req.body;
@@ -73,7 +74,7 @@ exports.handleReport = async (req, res) => {
 };
 
 // Bloquer un utilisateur signalé
-exports.blockReportedUser = async (req, res) => {
+export const blockReportedUser = async (req, res) => {
   try {
     const { id } = req.params;
     const report = await Report.findByPk(id, {
@@ -111,3 +112,5 @@ exports.blockReportedUser = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export default { createReport, getAllReports, handleReport, blockReportedUser };

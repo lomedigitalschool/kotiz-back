@@ -1,8 +1,8 @@
 // src/routes/adminRoutes.js
 
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const adminController = require('../controllers/adminController');
+import adminController from '../controllers/adminController.js';
 
 // Dashboard
 router.get('/dashboard', adminController.getDashboard);
@@ -29,9 +29,9 @@ router.post('/users/:id/generate-reset-token', adminController.generateResetToke
 router.put('/users/:id/unblock', adminController.unblockUser);
 
 // Signalements
-const reportController = require('../controllers/reportController');
+import reportController from '../controllers/reportController.js';
 router.get('/reports', reportController.getAllReports);
 router.put('/reports/:id/handle', reportController.handleReport);
 router.put('/reports/:id/block', reportController.blockReportedUser);
 
-module.exports = router;
+export default router;

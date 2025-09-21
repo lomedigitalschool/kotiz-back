@@ -4,7 +4,7 @@
  * Configuration Firebase Admin SDK pour production et développement
  */
 
-const admin = require("firebase-admin");
+import admin from "firebase-admin";
 let firebaseApp = null;
 
 try {
@@ -54,4 +54,4 @@ try {
   console.warn('⚠️ Firebase désactivé');
 }
 
-module.exports = firebaseApp;
+export default firebaseApp;

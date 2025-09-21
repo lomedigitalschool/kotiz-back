@@ -12,8 +12,8 @@
  * 5. Personnaliser les templates de messages
  */
 
-const axios = require('axios');
-const crypto = require('crypto');
+import axios from 'axios';
+import crypto from 'crypto';
 
 class SMSService {
   constructor() {
@@ -450,4 +450,4 @@ TWILIO_ACCOUNT_SID=your-account-sid
 TWILIO_AUTH_TOKEN=your-auth-token
 */
 
-module.exports = new SMSService();
+export default new SMSService();

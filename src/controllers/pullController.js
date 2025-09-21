@@ -1,16 +1,16 @@
-const { Pull, Contribution, User } = require('../models');
-const { Op } = require('sequelize');
-const { sendEmail } = require('../config/mailer');
-const emailContent = require('../config/emailContent');
+import db from '../models/index.js';
+const { Pull, Contribution, User } = db;
+import { Op, QueryTypes } from 'sequelize';
+import { sendEmail } from '../config/mailer.js';
+import emailContent from '../config/emailContent.js';
+import sequelize from '../config/database.js';
 
-exports.getStats = async (req, res) => {
+export const getStats = async (req, res) => {
   try {
     const activeCount = await Pull.count({ where: { status: 'active' } });
     const totalCount = await Pull.count();
 
     // Top 5 cagnottes par montant collecté
-    const { QueryTypes } = require('sequelize');
-    const sequelize = require('../config/database');
     const [topCagnottesResult] = await sequelize.query(
       'SELECT p.id, p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c."pullId" AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
       { type: QueryTypes.SELECT }
@@ -34,7 +34,7 @@ exports.getStats = async (req, res) => {
 };
 
 // Créer un nouveau Pull
-exports.create = async (req, res) => {
+export const create = async (req, res) => {
   try {
     console.log('=== CRÉATION CAGNOTTE ===');
     console.log('Données reçues:', req.body);
@@ -111,7 +111,7 @@ exports.create = async (req, res) => {
 };
 
 // Récupérer tous les Pulls de l'utilisateur connecté avec leurs Contributions
-exports.getAll = async (req, res) => {
+export const getAll = async (req, res) => {
   try {
     console.log('=== RÉCUPÉRATION CAGNOTTES UTILISATEUR ===');
     console.log('Utilisateur connecté:', req.user.id, req.user.email);
@@ -136,7 +136,7 @@ exports.getAll = async (req, res) => {
 };
 
 // Récupérer un Pull par ID avec ses Contributions (uniquement si l'utilisateur est propriétaire)
-exports.getOne = async (req, res) => {
+export const getOne = async (req, res) => {
   try {
     const singlePull = await Pull.findOne({
       where: {
@@ -156,7 +156,7 @@ exports.getOne = async (req, res) => {
 };
 
 // Mettre à jour une cagnotte (propriétaire ou admin)
-exports.update = async (req, res) => {
+export const update = async (req, res) => {
   try {
     console.log('=== MODIFICATION CAGNOTTE ===');
     console.log('Cagnotte ID:', req.params.id);
@@ -254,7 +254,7 @@ exports.update = async (req, res) => {
 };
 
 // Supprimer un Pull (uniquement si l'utilisateur est propriétaire)
-exports.remove = async (req, res) => {
+export const remove = async (req, res) => {
   try {
     const deleted = await Pull.destroy({
       where: {
@@ -272,7 +272,7 @@ exports.remove = async (req, res) => {
 };
 
 // Contribuer à une cagnotte
-exports.contribute = async (req, res) => {
+export const contribute = async (req, res) => {
   try {
     const { pullId } = req.params;
     const { amount, message } = req.body;
@@ -349,7 +349,7 @@ exports.contribute = async (req, res) => {
 // ====================
 // 📋 RÉCUPÉRER LES CAGNOTTES PUBLIQUES (SANS AUTHENTIFICATION)
 // ====================
-exports.getPublicCagnottes = async (req, res) => {
+export const getPublicCagnottes = async (req, res) => {
   try {
     console.log('=== RÉCUPÉRATION CAGNOTTES PUBLIQUES ===');
 
@@ -444,7 +444,7 @@ exports.getPublicCagnottes = async (req, res) => {
 // ====================
 // 📋 RÉCUPÉRER TOUTES LES CAGNOTTES (PUBLIQUES + PRIVÉES SI AUTHENTIFIÉ)
 // ====================
-exports.getAllCagnottes = async (req, res) => {
+export const getAllCagnottes = async (req, res) => {
   try {
     console.log('=== RÉCUPÉRATION TOUTES LES CAGNOTTES ===');
 
@@ -571,7 +571,7 @@ exports.getAllCagnottes = async (req, res) => {
 // ====================
 // 📋 RÉCUPÉRER UNE CAGNOTTE PAR ID (AVEC CONTRÔLE D'ACCÈS)
 // ====================
-exports.getCagnotteById = async (req, res) => {
+export const getCagnotteById = async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`=== RÉCUPÉRATION CAGNOTTE ${id} ===`);
@@ -688,7 +688,7 @@ exports.getCagnotteById = async (req, res) => {
 // ====================
 // 📋 RÉCUPÉRER UNE CAGNOTTE PUBLIQUE PAR ID
 // ====================
-exports.getPublicCagnotteById = async (req, res) => {
+export const getPublicCagnotteById = async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`=== RÉCUPÉRATION CAGNOTTE PUBLIQUE ${id} ===`);

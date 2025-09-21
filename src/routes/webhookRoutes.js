@@ -5,9 +5,9 @@
  * comme les APIs de paiement, SMS, etc.
  */
 
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const contributionController = require('../controllers/contributionController');
+import contributionController from '../controllers/contributionController.js';
 
 /**
  * 💳 WEBHOOK PAIEMENT
@@ -69,4 +69,4 @@ router.post('/secure-payment', (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

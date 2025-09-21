@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const notificationController = require('../controllers/notificationController');
-const { authenticate } = require('../middleware/auth');
+import notificationController from '../controllers/notificationController.js';
+import { authenticate } from '../middleware/auth.js';
 
 router.get('/', authenticate, notificationController.getAll);
 router.put('/:id/read', authenticate, notificationController.markAsRead);
 
-module.exports = router;
+export default router;

@@ -1,4 +1,4 @@
-const SmsService = require('../services/smsService');
+import SmsService from '../services/smsService.js';
 
 /**
  * Contrôleur pour la gestion des OTP (One-Time Password)
@@ -8,7 +8,7 @@ const SmsService = require('../services/smsService');
 // ====================
 // 📱 ENVOI D'OTP
 // ====================
-exports.sendOTP = async (req, res) => {
+export const sendOTP = async (req, res) => {
   try {
     const { phoneNumber, purpose = 'verification' } = req.body;
 
@@ -67,7 +67,7 @@ exports.sendOTP = async (req, res) => {
 // ====================
 // ✅ VÉRIFICATION D'OTP
 // ====================
-exports.verifyOTP = async (req, res) => {
+export const verifyOTP = async (req, res) => {
   try {
     const { phoneNumber, code, purpose = 'verification' } = req.body;
 
@@ -121,7 +121,7 @@ exports.verifyOTP = async (req, res) => {
 // ====================
 // 🔄 RENVOI D'OTP
 // ====================
-exports.resendOTP = async (req, res) => {
+export const resendOTP = async (req, res) => {
   try {
     const { phoneNumber, purpose = 'verification' } = req.body;
 
@@ -171,7 +171,7 @@ exports.resendOTP = async (req, res) => {
 // ====================
 // 🧪 TEST OTP (MODE DÉVELOPPEMENT)
 // ====================
-exports.testOTP = async (req, res) => {
+export const testOTP = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
 
@@ -215,3 +215,5 @@ exports.testOTP = async (req, res) => {
     });
   }
 };
+
+export default { sendOTP, verifyOTP, resendOTP, testOTP };

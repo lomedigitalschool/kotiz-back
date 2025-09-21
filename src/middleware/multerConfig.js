@@ -1,5 +1,5 @@
-const multer = require('multer');
-const { avatarStorage, cagnotteStorage, kycStorage } = require('../config/cloudinary');
+import multer from 'multer';
+import { avatarStorage, cagnotteStorage, kycStorage } from '../config/cloudinary.js';
 
 /**
  * Configuration Cloudinary pour l'upload de fichiers KOTIZ
@@ -125,7 +125,7 @@ const handleMulterError = (error, req, res, next) => {
   next(error);
 };
 
-module.exports = {
+export {
   uploadAvatar,
   uploadCagnotteImage,
   uploadKycDocuments,

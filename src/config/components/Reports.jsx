@@ -16,22 +16,78 @@ const Reports = () => {
 
   const fetchReportData = async () => {
     try {
-      // Données mockées pour la démonstration
-      const mockReportData = {
+      // Récupération des données réelles depuis l'API
+      const [userStatsRes, contributionStatsRes, cagnotteStatsRes] = await Promise.all([
+        fetch('/api/v1/adminjs/users/admin-stats'),
+        fetch('/api/v1/adminjs/contributions/admin-stats'),
+        fetch('/api/v1/adminjs/pulls/admin-stats')
+      ]);
+
+      const userStatsData = userStatsRes.ok ? await userStatsRes.json() : {};
+      const contributionStatsData = contributionStatsRes.ok ? await contributionStatsRes.json() : {};
+      const cagnotteStatsData = cagnotteStatsRes.ok ? await cagnotteStatsRes.json() : {};
+
+      // Adaptation des données pour l'affichage
+      const reportData = {
         userStats: [
-          { period: 'Ce mois', newUsers: 45, activeUsers: 234, verifiedUsers: 189 },
-          { period: 'Mois dernier', newUsers: 52, activeUsers: 198, verifiedUsers: 176 },
-          { period: 'Il y a 2 mois', newUsers: 38, activeUsers: 212, verifiedUsers: 165 }
+          {
+            period: 'Ce mois',
+            newUsers: userStatsData.newUsersThisMonth || 0,
+            activeUsers: userStatsData.totalUsers || 0,
+            verifiedUsers: userStatsData.verifiedUsers || 0
+          },
+          {
+            period: 'Mois dernier',
+            newUsers: userStatsData.newUsersLastMonth || 0,
+            activeUsers: userStatsData.totalUsers || 0,
+            verifiedUsers: userStatsData.verifiedUsers || 0
+          },
+          {
+            period: 'Il y a 2 mois',
+            newUsers: userStatsData.newUsersTwoMonthsAgo || 0,
+            activeUsers: userStatsData.totalUsers || 0,
+            verifiedUsers: userStatsData.verifiedUsers || 0
+          }
         ],
         contributionStats: [
-          { period: 'Ce mois', totalAmount: 450000, count: 89, averageAmount: 5056 },
-          { period: 'Mois dernier', totalAmount: 380000, count: 76, averageAmount: 5000 },
-          { period: 'Il y a 2 mois', totalAmount: 420000, count: 84, averageAmount: 5000 }
+          {
+            period: 'Ce mois',
+            totalAmount: contributionStatsData.totalAmountThisMonth || 0,
+            count: contributionStatsData.totalContributionsThisMonth || 0,
+            averageAmount: contributionStatsData.averageAmountThisMonth || 0
+          },
+          {
+            period: 'Mois dernier',
+            totalAmount: contributionStatsData.totalAmountLastMonth || 0,
+            count: contributionStatsData.totalContributionsLastMonth || 0,
+            averageAmount: contributionStatsData.averageAmountLastMonth || 0
+          },
+          {
+            period: 'Il y a 2 mois',
+            totalAmount: contributionStatsData.totalAmountTwoMonthsAgo || 0,
+            count: contributionStatsData.totalContributionsTwoMonthsAgo || 0,
+            averageAmount: contributionStatsData.averageAmountTwoMonthsAgo || 0
+          }
         ],
         cagnotteStats: [
-          { status: 'Active', count: 45, totalGoal: 15000000, totalCollected: 8750000 },
-          { status: 'Terminée', count: 23, totalGoal: 8500000, totalCollected: 8500000 },
-          { status: 'En pause', count: 8, totalGoal: 3200000, totalCollected: 1200000 }
+          {
+            status: 'Active',
+            count: cagnotteStatsData.activeCagnottes || 0,
+            totalGoal: cagnotteStatsData.totalGoalActive || 0,
+            totalCollected: cagnotteStatsData.totalCollectedActive || 0
+          },
+          {
+            status: 'Terminée',
+            count: cagnotteStatsData.completedCagnottes || 0,
+            totalGoal: cagnotteStatsData.totalGoalCompleted || 0,
+            totalCollected: cagnotteStatsData.totalCollectedCompleted || 0
+          },
+          {
+            status: 'En pause',
+            count: cagnotteStatsData.pausedCagnottes || 0,
+            totalGoal: cagnotteStatsData.totalGoalPaused || 0,
+            totalCollected: cagnotteStatsData.totalCollectedPaused || 0
+          }
         ],
         paymentStats: [
           { method: 'Orange Money', count: 145, totalAmount: 1250000, successRate: 98.5 },
@@ -41,7 +97,7 @@ const Reports = () => {
         ]
       };
 
-      setReportData(mockReportData);
+      setReportData(reportData);
       setLoading(false);
     } catch (error) {
       console.error('Erreur chargement rapports:', error);

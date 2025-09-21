@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const KycController = require('../controllers/kycController');
-const { authenticate, isAdmin } = require('../middleware/auth');
-const { uploadKycDocuments, handleMulterError } = require('../middleware/multerConfig');
+import KycController from '../controllers/kycController.js';
+import { authenticate, isAdmin } from '../middleware/auth.js';
+import { uploadKycDocuments, handleMulterError } from '../middleware/multerConfig.js';
 
 /**
  * Routes pour la gestion des vérifications KYC
@@ -42,4 +42,4 @@ router.get('/admin/all',
   KycController.getAllKycSubmissions
 );
 
-module.exports = router;
+export default router;

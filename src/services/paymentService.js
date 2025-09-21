@@ -11,7 +11,8 @@
  * 4. Implémenter la logique de webhook pour les notifications de paiement
  */
 
-const axios = require('axios');
+import axios from 'axios';
+import crypto from 'crypto';
 
 class PaymentService {
   constructor() {
@@ -172,7 +173,6 @@ class PaymentService {
   validateWebhookSignature(webhookData) {
     // 🔧 IMPLÉMENTER LA VALIDATION SELON VOTRE API
     // Exemple avec HMAC SHA256
-    const crypto = require('crypto');
     const signature = webhookData.signature;
     const payload = JSON.stringify(webhookData.data);
     
@@ -272,4 +272,4 @@ PAYMENT_SECRET_KEY=your-secret-key
 PAYMENT_WEBHOOK_URL=https://votre-domaine.com/api/v1/webhooks/payment
 */
 
-module.exports = new PaymentService();
+export default new PaymentService();

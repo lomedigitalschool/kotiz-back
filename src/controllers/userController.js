@@ -1,12 +1,16 @@
-const { User, Pull, Contribution, Transaction } = require('../models');
-const { Op } = require('sequelize');
+import db from '../models/index.js';
+import { Op, QueryTypes } from 'sequelize';
+import sequelize from '../config/database.js';
+import jwt from 'jsonwebtoken';
 
-exports.getAll = async (req, res) => {
+const { User, Pull, Contribution, Transaction } = db;
+
+const getAll = async (req, res) => {
   const users = await User.findAll();
   res.json(users);
 };
 
-exports.getStats = async (req, res) => {
+const getStats = async (req, res) => {
   try {
     const total = await User.count();
     const active = await User.count({ where: { isBlocked: false } });
@@ -43,13 +47,13 @@ exports.getStats = async (req, res) => {
   }
 };
 
-exports.getOne = async (req, res) => {
+const getOne = async (req, res) => {
   const user = await User.findByPk(req.params.id);
   if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
   res.json(user);
 };
 
-exports.update = async (req, res) => {
+const update = async (req, res) => {
   const user = await User.findByPk(req.params.id);
   if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
 
@@ -57,13 +61,13 @@ exports.update = async (req, res) => {
   res.json({ message: "Utilisateur mis à jour", user });
 };
 
-exports.remove = async (req, res) => {
+const remove = async (req, res) => {
   await User.destroy({ where: { id: req.params.id } });
   res.json({ message: "Utilisateur supprimé" });
 };
 
 // Upload d'avatar utilisateur
-exports.uploadAvatar = async (req, res) => {
+const uploadAvatar = async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findByPk(userId);
@@ -100,7 +104,7 @@ exports.uploadAvatar = async (req, res) => {
 };
 
 // Dashboard utilisateur
-exports.getDashboard = async (req, res) => {
+const getDashboard = async (req, res) => {
   try {
     const userId = req.user.id;
     console.log('📊 DASHBOARD - Requête pour user ID:', userId, req.user.name);
@@ -117,8 +121,8 @@ exports.getDashboard = async (req, res) => {
 
     // Montant total collecté (somme des contributions complétées à mes cagnottes)
     // Utilisation d'une requête SQL brute pour éviter les problèmes Sequelize
-    const { QueryTypes } = require('sequelize');
-    const sequelize = require('../config/database');
+    const { QueryTypes } = await import('sequelize');
+    const { default: sequelize } = await import('../config/database.js');
 
     const [totalResult] = await sequelize.query(
       'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = $1 AND "pullId" IN (SELECT id FROM pulls WHERE "userId" = $2)',
@@ -162,10 +166,8 @@ exports.getDashboard = async (req, res) => {
 };
 
 // Données pour les graphiques AdminJS
-exports.getChartData = async (req, res) => {
+const getChartData = async (req, res) => {
   try {
-    const sequelize = require('../config/database');
-    const { QueryTypes } = require('sequelize');
 
     // Données d'évolution des contributions par mois (6 derniers mois)
     const monthlyData = [];
@@ -233,7 +235,7 @@ exports.getChartData = async (req, res) => {
 };
 
 // Méthodes spéciales pour AdminJS (sans authentification JWT)
-exports.getAdminStats = async (req, res) => {
+const getAdminStats = async (req, res) => {
   console.log('🔍 getAdminStats appelée depuis:', req.url);
   try {
     const total = await User.count();
@@ -271,10 +273,8 @@ exports.getAdminStats = async (req, res) => {
   }
 };
 
-exports.getAdminChartData = async (req, res) => {
+const getAdminChartData = async (req, res) => {
   try {
-    const sequelize = require('../config/database');
-    const { QueryTypes } = require('sequelize');
 
     // Données d'évolution des contributions par mois (6 derniers mois)
     const monthlyData = [];
@@ -342,7 +342,7 @@ exports.getAdminChartData = async (req, res) => {
 };
 
 // Connexion spéciale pour l'admin local (génère token JWT)
-exports.adminLogin = async (req, res) => {
+const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -365,7 +365,6 @@ exports.adminLogin = async (req, res) => {
     }
 
     // Générer token JWT
-    const jwt = require('jsonwebtoken');
     const token = jwt.sign(
       { id: adminUser.id, email: adminUser.email, role: adminUser.role },
       process.env.JWT_SECRET,
@@ -391,3 +390,5 @@ exports.adminLogin = async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la connexion admin' });
   }
 };
+
+export default { getAll, getStats, getOne, update, remove, uploadAvatar, getDashboard, getChartData, getAdminStats, getAdminChartData, adminLogin };

@@ -1,4 +1,4 @@
-const { Model, DataTypes } = require('sequelize');
+import { Model, DataTypes } from 'sequelize';
 
 class Pull extends Model {
   static associate(models) {
@@ -33,4 +33,4 @@ function initPull(sequelize) {
   return Pull;
 }
 
-module.exports = initPull;
+export default initPull;

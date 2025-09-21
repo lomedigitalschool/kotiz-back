@@ -1,8 +1,10 @@
-const jwt = require('jsonwebtoken');
-const { User } = require('../models'); // <-- importe ton modèle User
+import jwt from 'jsonwebtoken';
+import db from '../models/index.js';
+import admin from '../config/firebase.js';
+const { User } = db;
 
 // Vérifie que l’utilisateur est connecté
-exports.authenticate = async (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
 
   // 🔹 1. Vérifier token Firebase (pour les utilisateurs normaux)
@@ -12,7 +14,6 @@ exports.authenticate = async (req, res, next) => {
 
     try {
       // Essayer Firebase d'abord
-      const admin = require('../config/firebase');
       if (admin) {
         const decoded = await admin.auth().verifyIdToken(token);
         console.log('🔐 AUTH MIDDLEWARE - Utilisateur Firebase authentifié:', decoded.email);
@@ -71,7 +72,7 @@ exports.authenticate = async (req, res, next) => {
 };
 
 // Vérifie que l’utilisateur est admin
-exports.isAdmin = (req, res, next) => {
+export const isAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ error: "Accès réservé aux administrateurs" });
   }

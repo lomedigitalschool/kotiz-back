@@ -50,6 +50,7 @@ app.use(cors({
       'http://localhost:5173',
       'http://localhost:8080',
       'https://kotiz-web.onrender.com',
+      'https://kotiz-web.netlify.app',
       process.env.FRONTEND_URL
     ].filter(Boolean);
     

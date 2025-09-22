@@ -11,6 +11,7 @@ const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const { sequelize } = require('./models');
 const { admin, adminRouter } = require('./config/admin');
+const errorHandler = require("./middleware/errorHandler");
 
 // Middlewares maison (auth)
 const { isAdmin } = require('./middleware/auth');
@@ -28,6 +29,9 @@ const adminRoutes = require('./routes/adminRoutes');
 const kycRoutes = require('./routes/kycRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const otpRoutes = require('./routes/otpRoutes');
+
+// Middleware de gestion d'erreurs
+app.use(errorHandler);
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();

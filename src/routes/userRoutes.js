@@ -7,6 +7,7 @@ import { uploadAvatar } from '../middleware/multerConfig.js';
 
 router.get('/', authenticate, isAdmin, UserController.getAll);
 router.get('/stats', authenticate, isAdmin, UserController.getStats);
+router.get('/me', authenticate, UserController.getMe);
 router.get('/dashboard', authenticate, UserController.getDashboard);
 router.get('/chart-data', authenticate, isAdmin, UserController.getChartData);
 

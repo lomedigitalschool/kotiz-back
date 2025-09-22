@@ -46,6 +46,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
     const allowedOrigins = [
       'http://localhost:3000',
+      'http://localhost:3001',
       'http://localhost:5173',
       'http://localhost:8080',
       'https://kotiz-web.onrender.com',
@@ -144,9 +145,82 @@ app.get('/api/v1/admin/export/users', (req, res) => {
   res.json({ message: 'Export non implémenté', users: [] });
 });
 
-// 1️⃣4️⃣ ROUTES API AVEC AUTHENTIFICATION
+// Route de test temporaire pour AdminJS (avec session simulée)
+app.get('/api/v1/admin/test-session', (req, res) => {
+  // Simuler une session AdminJS pour les tests
+  req.session.adminUser = {
+    id: 1,
+    email: 'admin@kotiz.com',
+    name: 'Admin Kotiz',
+    role: 'admin'
+  };
+  res.json({ message: 'Session AdminJS simulée', user: req.session.adminUser });
+});
+
+// Route de test temporaire pour accéder aux contributions sans auth (pour debug)
+app.get('/api/v1/admin/test-contributions', async (req, res) => {
+  try {
+    const { page = 1, limit = 50, status, startDate, endDate } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const whereConditions = {};
+    if (status) whereConditions.status = status;
+    if (startDate || endDate) {
+      whereConditions.createdAt = {};
+      if (startDate) whereConditions.createdAt[db.Sequelize.Op.gte] = new Date(startDate);
+      if (endDate) whereConditions.createdAt[db.Sequelize.Op.lte] = new Date(endDate);
+    }
+
+    const { count, rows: contributions } = await db.Contribution.findAndCountAll({
+      where: whereConditions,
+      include: [
+        { model: db.Pull, as: 'Pull', attributes: ['id', 'title'] },
+        { model: db.User, as: 'contributor', attributes: ['id', 'name', 'email'] }
+      ],
+      limit: parseInt(limit),
+      offset,
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: contributions,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        totalItems: count,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 1️⃣4️⃣ BODY PARSER AVANT LES ROUTES
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// 1️⃣5️⃣ ROUTES API AVEC AUTHENTIFICATION
 import firebaseAuth from './middleware/firebaseAuth.js';
 import { isAdmin } from './middleware/auth.js';
+
+// Middleware spécial pour AdminJS - permet l'accès aux routes admin si connecté via AdminJS
+const adminJSAuth = (req, res, next) => {
+  // Vérifier si l'utilisateur est connecté via AdminJS (session)
+  if (req.session && req.session.adminUser) {
+    // Injecter l'utilisateur AdminJS dans req.user pour compatibilité
+    req.user = {
+      ...req.session.adminUser,
+      role: 'admin' // S'assurer que le rôle admin est défini
+    };
+    console.log('🔐 AdminJS Auth - Utilisateur admin connecté:', req.user.email);
+    return next();
+  }
+
+  // Sinon, utiliser l'authentification Firebase normale
+  return firebaseAuth(req, res, next);
+};
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -166,15 +240,11 @@ app.use('/api/v1/pulls', pullRoutes);
 app.use('/api/v1/contributions', firebaseAuth, contributionRoutes);
 app.use('/api/v1/transactions', firebaseAuth, transactionRoutes);
 app.use('/api/v1/notifications', firebaseAuth, notificationRoutes);
-app.use('/api/v1/admin', firebaseAuth, isAdmin, adminRoutes);
+app.use('/api/v1/admin', adminJSAuth, isAdmin, adminRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/otp', otpRoutes);
 app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/webhooks', webhookRoutes);
-
-// 1️⃣5️⃣bis Body parser APRÈS AdminJS
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
 // 1️⃣6️⃣ Route racine
 app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));

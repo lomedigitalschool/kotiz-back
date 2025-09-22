@@ -4,6 +4,12 @@
 import bcrypt from 'bcryptjs';
 import { QueryTypes } from 'sequelize';
 import db from '../models/index.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '../..');
 
 const {
   sequelize,
@@ -115,6 +121,41 @@ const getDashboardMetrics = async () => {
 const adminOptions = {
   componentLoader,
   databases: [],
+  auth: {
+    authenticate: async (email, password) => {
+      try {
+        const User = db.User;
+        const user = await User.findOne({ where: { email } });
+        if (!user || user.role !== 'admin') return false;
+
+        // Pour la démo, vérifier un mot de passe simple
+        // En production, utiliser bcrypt
+        if (password === process.env.ADMIN_PASSWORD || password === 'admin123') {
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role
+          };
+        }
+        return false;
+      } catch (error) {
+        console.error('Erreur authentification AdminJS:', error);
+        return false;
+      }
+    },
+    cookieName: 'adminjs',
+    cookiePassword: process.env.SESSION_SECRET || 'adminjs-cookie-password-long-enough'
+  },
+  sessionOptions: {
+    resave: false,
+    saveUninitialized: false,
+    secret: process.env.SESSION_SECRET || 'adminjs-session-secret',
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production'
+    }
+  },
   resources: [
     {
       resource: User,
@@ -372,27 +413,31 @@ const adminOptions = {
       tableBorder: '#E0E0E0'
     }
   },
-  // dashboard: {
-  //   component: componentLoader.add('HomeDashboard', '../components/HomeDashboard.jsx')
-  // },
-  // pages: {
-  //   'Rapports': {
-  //     component: componentLoader.add('Reports', './components/Reports.jsx'),
-  //     icon: 'BarChart'
-  //   },
-  //   'Statistiques Détaillées': {
-  //     component: componentLoader.add('Stats', './components/Stats.jsx'),
-  //     icon: 'TrendingUp'
-  //   },
-  //   'Export Données': {
-  //     component: componentLoader.add('Export', './components/Export.jsx'),
-  //     icon: 'Download'
-  //   },
-  //   'Modération': {
-  //     component: componentLoader.add('Moderation', './components/Moderation.jsx'),
-  //     icon: 'Shield'
-  //   }
-  // }
+  dashboard: {
+    component: componentLoader.add('Dashboard', join(projectRoot, 'src/config/components/Dashboard.jsx'))
+  },
+  pages: {
+    'Dashboard Avancé': {
+      component: componentLoader.add('Dashboard', join(projectRoot, 'src/config/components/Dashboard.jsx')),
+      icon: 'Home'
+    },
+    'Contributions': {
+      component: componentLoader.add('Contributions', join(projectRoot, 'src/config/components/Contributions.jsx')),
+      icon: 'Currency'
+    },
+    'Retraits': {
+      component: componentLoader.add('Retraits', join(projectRoot, 'src/config/components/Retraits.jsx')),
+      icon: 'Money'
+    },
+    'Statistiques Détaillées': {
+      component: componentLoader.add('Stats', join(projectRoot, 'src/config/components/Stats.jsx')),
+      icon: 'TrendingUp'
+    },
+    'Exports': {
+      component: componentLoader.add('Export', join(projectRoot, 'src/config/components/Export.jsx')),
+      icon: 'Download'
+    }
+  }
 };
 
 // Création de l'instance AdminJS

@@ -27,3 +27,4 @@ test-firebase.js
 test-routes.js
 fix-sql-queries.js
 restart-server.js
+test-admin.js

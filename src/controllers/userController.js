@@ -66,6 +66,27 @@ const remove = async (req, res) => {
   res.json({ message: "Utilisateur supprimé" });
 };
 
+// Récupérer l'utilisateur actuel
+const getMe = async (req, res) => {
+  try {
+    const user = req.user;
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      isVerified: user.isVerified,
+      isPhoneVerified: user.isPhoneVerified,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt
+    });
+  } catch (err) {
+    console.error('Erreur récupération utilisateur actuel:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Upload d'avatar utilisateur
 const uploadAvatar = async (req, res) => {
   try {
@@ -391,4 +412,4 @@ const adminLogin = async (req, res) => {
   }
 };
 
-export default { getAll, getStats, getOne, update, remove, uploadAvatar, getDashboard, getChartData, getAdminStats, getAdminChartData, adminLogin };
+export default { getAll, getStats, getOne, update, remove, uploadAvatar, getMe, getDashboard, getChartData, getAdminStats, getAdminChartData, adminLogin };

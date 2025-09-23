@@ -9,9 +9,27 @@ class Log extends Model {
 function initLog(sequelize) {
   Log.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: true },
-    action: { type: DataTypes.STRING, allowNull: false },
-    details: { type: DataTypes.JSON, allowNull: true }
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    action: {
+      type: DataTypes.STRING, // Ou DataTypes.ENUM(['login', 'logout', 'create_pull', ...])
+      allowNull: false,
+      validate: {
+        notEmpty: {
+          msg: 'L\'action ne peut pas être vide.'
+        },
+        len: {
+          args: [3, 100],
+          msg: 'L\'action doit contenir entre 3 et 100 caractères.'
+        }
+      }
+    },
+    details: {
+      type: DataTypes.JSON,
+      allowNull: true
+    }
   }, {
     sequelize,
     modelName: 'Log',

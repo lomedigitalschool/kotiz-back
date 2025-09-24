@@ -1,66 +1,47 @@
-require('dotenv').config();
-
 const axios = require('axios');
-const crypto = require('crypto');
+const querystring = require('querystring');
 
-// ⚠️ Variables du .env
-const CASH_LOGIN = process.env.CASHPAY_LOGIN;
-const CASH_API_REF = process.env.CASHPAY_API_REFERENCE;
-const CASH_API_KEY = process.env.CASHPAY_API_SECRET;
+const API_BASE_URL = 'https://api.semoa-payments.ovh/sandbox';
+const API_KEY = 'dBirFPoKa5XyQZLB4j8MA7AzPrbxBLuAQ54h';
+const CLIENT_ID = 'cashpay';
+const CLIENT_SECRET = 'HpuNOm3sDOkAvd8v3UCIxiBu68634BBs';
+const USERNAME = 'api_cashpay.zedeka';
+const PASSWORD = 'yVf95Q8SBT';
 
-console.log('🔍 Variables ENV:', {
-  login: CASH_LOGIN,
-  apiRef: CASH_API_REF,
-  apiKey: CASH_API_KEY
-});
+let accessToken = null;
+let tokenExpiry = null;
 
-// Générateur d’en-têtes d’authentification
-function generateHeaders() {
-  if (!CASH_LOGIN || !CASH_API_REF || !CASH_API_KEY) {
-    throw new Error('❌ Variables CashPay manquantes ! Vérifie ton .env');
-  }
+async function getAccessToken() {
+    if (accessToken && tokenExpiry > Date.now()) {
+        return accessToken;
+    }
 
-  const salt = Date.now().toString();
-  const apisecure = crypto
-    .createHash('sha256')
-    .update(CASH_LOGIN + CASH_API_KEY + salt, 'utf8')
-    .digest('base64'); // 🔄 Base64
+    try {
+        const response = await axios.post(
+            `${API_BASE_URL}/api/v1/auth/token`,
+            querystring.stringify({
+                grant_type: 'password',
+                client_id: CLIENT_ID,
+                client_secret: CLIENT_SECRET,
+                username: USERNAME,
+                password: PASSWORD,
+            }),
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Apikey': API_KEY,
+                },
+            }
+        );
 
-  console.log('🔑 Headers générés:', {
-    login: CASH_LOGIN,
-    apireference: CASH_API_REF,
-    salt,
-    apisecure
-  });
+        accessToken = response.data.access_token;
+        tokenExpiry = Date.now() + response.data.expires_in * 1000;
+        return accessToken;
 
-  return {
-    login: CASH_LOGIN,
-    apireference: CASH_API_REF,
-    salt,
-    apisecure,
-    'Content-Type': 'application/json'
-  };
+    } catch (error) {
+        console.error('Erreur lors de la récupération du token Semoa:', error.response?.data || error.message);
+        throw new Error('Impossible d\'authentifier auprès de Semoa.');
+    }
 }
 
-// Créer une facture
-async function createInvoice() {
-  try {
-    console.log('⏳ Création facture test...');
-    const response = await axios.post(
-      'https://sandbox.semoa-payments.com/api/invoices/create',
-      {
-        amount: 25000,
-        currency: 'XOF',
-        description: 'Contribution Kotiz',
-        callback_url: 'https://mon-backend.com/webhook/cashpay'
-      },
-      { headers: generateHeaders() }
-    );
-
-    console.log('✅ Facture créée:', response.data);
-  } catch (error) {
-    console.error('❌ Erreur:', error.response?.data || error.message);
-  }
-}
-
-createInvoice();
+module.exports = { getAccessToken };

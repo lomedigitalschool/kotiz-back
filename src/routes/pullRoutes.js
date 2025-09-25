@@ -25,6 +25,7 @@ router.get('/public/:id', pullController.getPublicCagnotteById);
 // ====================
 // ⚠️ IMPORTANT : Les routes statiques doivent être AVANT les routes dynamiques
 router.get('/all', pullController.getAllCagnottes); // Toutes les cagnottes selon auth
+router.get('/:id/contributions', pullController.getContributionsByPullId); // Contributions d'une cagnotte
 router.get('/:id', pullController.getCagnotteById); // Avec contrôle d'accès
 
 // ====================

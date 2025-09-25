@@ -701,6 +701,81 @@ export const getCagnotteById = async (req, res) => {
 };
 
 // ====================
+// 📋 RÉCUPÉRER LES CONTRIBUTIONS D'UNE CAGNOTTE PAR ID
+// ====================
+export const getContributionsByPullId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`=== RÉCUPÉRATION CONTRIBUTIONS CAGNOTTE ${id} ===`);
+
+    // Validation : s'assurer que l'ID est numérique
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "ID de cagnotte invalide - doit être un nombre"
+      });
+    }
+
+    // Vérifier que la cagnotte existe et est active
+    const pull = await Pull.findOne({
+      where: {
+        id: parseInt(id),
+        status: 'active'
+      }
+    });
+
+    if (!pull) {
+      return res.status(404).json({
+        success: false,
+        error: "Cagnotte non trouvée"
+      });
+    }
+
+    // Vérifier les droits d'accès
+    const isOwner = req.user && req.user.id === pull.userId;
+    const isPrivate = pull.type === 'private';
+
+    // Pour les cagnottes privées, seuls les propriétaires peuvent voir les contributions
+    if (isPrivate && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        error: "Accès refusé - Cette cagnotte est privée"
+      });
+    }
+
+    // Récupérer les contributions avec les informations des contributeurs
+    const contributions = await Contribution.findAll({
+      where: {
+        pullId: parseInt(id),
+        status: 'completed'
+      },
+      include: [{
+        model: User,
+        as: 'contributor',
+        attributes: ['id', 'name', 'email']
+      }],
+      order: [['createdAt', 'DESC']]
+    });
+
+    console.log(`✅ ${contributions.length} contributions récupérées pour la cagnotte ${id}`);
+
+    res.json({
+      success: true,
+      data: contributions,
+      message: `${contributions.length} contributions trouvées`
+    });
+
+  } catch (err) {
+    console.error(`❌ Erreur lors de la récupération des contributions de la cagnotte ${req.params.id}:`, err);
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de la récupération des contributions",
+      details: err.message
+    });
+  }
+};
+
+// ====================
 // 📋 RÉCUPÉRER UNE CAGNOTTE PUBLIQUE PAR ID
 // ====================
 export const getPublicCagnotteById = async (req, res) => {

@@ -378,7 +378,12 @@ export const getPublicCagnottes = async (req, res) => {
           as: 'contributions',
           attributes: ['id', 'amount', 'contributorName', 'createdAt'],
           where: { status: 'completed' }, // Uniquement les contributions complétées
-          required: false
+          required: false,
+          include: [{
+            model: User,
+            as: 'contributor',
+            attributes: ['id', 'name', 'email']
+          }]
         },
         {
           model: User,
@@ -477,7 +482,12 @@ export const getAllCagnottes = async (req, res) => {
           as: 'contributions',
           attributes: ['id', 'amount', 'contributorName', 'createdAt'],
           where: { status: 'completed' },
-          required: false
+          required: false,
+          include: [{
+            model: User,
+            as: 'contributor',
+            attributes: ['id', 'name', 'email']
+          }]
         },
         {
           model: User,
@@ -595,7 +605,12 @@ export const getCagnotteById = async (req, res) => {
           as: 'contributions',
           attributes: ['id', 'amount', 'contributorName', 'message', 'createdAt'],
           where: { status: 'completed' },
-          required: false
+          required: false,
+          include: [{
+            model: User,
+            as: 'contributor',
+            attributes: ['id', 'name', 'email']
+          }]
         },
         {
           model: User,
@@ -705,7 +720,12 @@ export const getPublicCagnotteById = async (req, res) => {
           as: 'contributions',
           attributes: ['id', 'amount', 'contributorName', 'message', 'createdAt'],
           where: { status: 'completed' },
-          required: false
+          required: false,
+          include: [{
+            model: User,
+            as: 'contributor',
+            attributes: ['id', 'name', 'email']
+          }]
         },
         {
           model: User,

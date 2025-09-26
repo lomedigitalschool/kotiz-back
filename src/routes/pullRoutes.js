@@ -34,4 +34,11 @@ router.get('/:id', pullController.getCagnotteById); // Avec contrôle d'accès
 router.get('/', firebaseAuth, pullController.getAll); // Cagnottes de l'utilisateur
 router.put('/:id', firebaseAuth, requireEmailVerification, pullController.update);
 router.delete('/:id', firebaseAuth, requireEmailVerification, pullController.remove);
+
+// ====================
+// 💰 ROUTES DE RETRAIT DES FONDS
+// ====================
+router.post('/:id/withdraw', firebaseAuth, requireEmailVerification, pullController.withdrawFunds);
+router.get('/:id/withdrawals', firebaseAuth, requireEmailVerification, pullController.getWithdrawalsByPullId);
+
 export default router;

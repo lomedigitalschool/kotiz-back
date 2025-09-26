@@ -594,11 +594,20 @@ export const getCagnotteById = async (req, res) => {
       });
     }
 
+    // Conditions de recherche de base
+    const whereConditions = {
+      id: parseInt(id)
+    };
+
+    // Si l'utilisateur n'est pas authentifié, seulement les cagnottes actives publiques
+    if (!req.user) {
+      whereConditions.status = 'active';
+      whereConditions.type = 'public';
+    }
+    // Si authentifié, on récupère d'abord la cagnotte puis on vérifie les droits
+
     const pull = await Pull.findOne({
-      where: {
-        id: parseInt(id),
-        status: 'active'
-      },
+      where: whereConditions,
       include: [
         {
           model: Contribution,
@@ -628,8 +637,33 @@ export const getCagnotteById = async (req, res) => {
     }
 
     // Vérifier les droits d'accès
-    const isOwner = req.user && req.user.id === pull.userId;
+    const isAuthenticated = !!req.user;
+    const isOwner = isAuthenticated && req.user.id === pull.userId;
     const isPrivate = pull.type === 'private';
+    const isActive = pull.status === 'active';
+
+    // Contrôles d'accès :
+    // - Cagnottes publiques actives : accessibles à tous
+    // - Cagnottes privées actives : accessibles aux propriétaires
+    // - Cagnottes fermées : accessibles uniquement aux propriétaires
+    if (!isAuthenticated) {
+      // Utilisateur non authentifié : seulement publiques actives
+      if (isPrivate || !isActive) {
+        return res.status(404).json({
+          success: false,
+          error: "Cagnotte non trouvée"
+        });
+      }
+    } else {
+      // Utilisateur authentifié
+      if (!isOwner && (isPrivate || !isActive)) {
+        // Pas propriétaire et (privée ou fermée)
+        return res.status(404).json({
+          success: false,
+          error: "Cagnotte non trouvée"
+        });
+      }
+    }
 
     // Pour les cagnottes privées, on autorise l'accès mais on masque les détails sensibles
     // Seuls les propriétaires peuvent voir tous les détails
@@ -691,13 +725,223 @@ export const getCagnotteById = async (req, res) => {
     });
 
   } catch (err) {
-    console.error(`❌ Erreur lors de la récupération de la cagnotte ${req.params.id}:`, err);
-    res.status(500).json({
-      success: false,
-      error: "Erreur lors de la récupération de la cagnotte",
-      details: err.message
-    });
-  }
+   console.error(`❌ Erreur lors de la récupération de la cagnotte ${req.params.id}:`, err);
+   res.status(500).json({
+     success: false,
+     error: "Erreur lors de la récupération de la cagnotte",
+     details: err.message
+   });
+ }
+};
+
+// ====================
+// 💰 RETRAIT DES FONDS D'UNE CAGNOTTE
+// ====================
+export const withdrawFunds = async (req, res) => {
+ try {
+   const { id } = req.params;
+   const { amount, paymentMethodId, reason } = req.body;
+   const userId = req.user.id;
+
+   console.log(`=== RETRAIT CAGNOTTE ${id} ===`);
+   console.log('Utilisateur:', userId, 'Montant:', amount);
+
+   // Validation
+   if (!amount || amount <= 0) {
+     return res.status(400).json({
+       success: false,
+       error: "Montant de retrait invalide"
+     });
+   }
+
+   // Vérifier que la cagnotte existe et appartient à l'utilisateur
+   const pull = await Pull.findOne({
+     where: {
+       id: parseInt(id),
+       userId: userId
+     },
+     include: [{
+       model: Contribution,
+       as: 'contributions',
+       where: { status: 'completed' },
+       required: false
+     }]
+   });
+
+   if (!pull) {
+     return res.status(404).json({
+       success: false,
+       error: "Cagnotte non trouvée ou accès non autorisé"
+     });
+   }
+
+   // VÉRIFICATION KYC : L'utilisateur doit avoir une vérification KYC approuvée
+   const { Kyc } = db;
+   const approvedKyc = await Kyc.findOne({
+     where: {
+       userId: userId,
+       isActive: true,
+       statutVerification: 'APPROUVE'
+     }
+   });
+
+   if (!approvedKyc) {
+     return res.status(403).json({
+       success: false,
+       error: "Vérification d'identité requise",
+       message: "Vous devez soumettre et faire valider vos documents d'identité (KYC) avant de pouvoir retirer des fonds.",
+       kycRequired: true
+     });
+   }
+
+   // Vérifier les conditions de retrait
+   const totalCollected = pull.contributions?.reduce((sum, contrib) => {
+     return sum + parseFloat(contrib.amount || 0);
+   }, 0) || 0;
+
+   const isGoalReached = totalCollected >= parseFloat(pull.goalAmount);
+   const isDeadlinePassed = pull.deadline && new Date() > new Date(pull.deadline);
+   const isClosed = pull.status === 'closed';
+
+   if (!isClosed && !isGoalReached && !isDeadlinePassed) {
+     return res.status(400).json({
+       success: false,
+       error: "Conditions de retrait non remplies. La cagnotte doit être fermée, l'objectif atteint ou la date limite dépassée."
+     });
+   }
+
+   // Calculer le montant disponible (total collecté - retraits précédents)
+   // Pour simplifier, on considère que currentAmount représente le solde disponible
+   const availableAmount = parseFloat(pull.currentAmount || 0);
+
+   if (parseFloat(amount) > availableAmount) {
+     return res.status(400).json({
+       success: false,
+       error: `Montant demandé (${amount}) supérieur au solde disponible (${availableAmount})`
+     });
+   }
+
+   // Créer la transaction de retrait
+   const withdrawalTransaction = await Transaction.create({
+     contributionId: null, // Pas lié à une contribution spécifique
+     paymentMethodId: paymentMethodId || null,
+     transactionReference: `WD-${Date.now()}-${id}`,
+     amount: parseFloat(amount),
+     currency: pull.currency,
+     status: 'completed', // Retrait immédiat
+     providerReference: `withdrawal-${id}-${Date.now()}`,
+     providerResponse: {
+       type: 'withdrawal',
+       pullId: id,
+       reason: reason || 'Retrait par le propriétaire'
+     },
+     metadata: {
+       pullId: id,
+       withdrawal: true,
+       reason: reason
+     }
+   });
+
+   // Mettre à jour le solde de la cagnotte
+   pull.currentAmount = availableAmount - parseFloat(amount);
+   await pull.save();
+
+   // Créer une notification pour l'utilisateur
+   const owner = await User.findByPk(userId);
+   if (owner && owner.email) {
+     try {
+       const subject = emailContent.subjects.withdrawalConfirmation.replace('{{pullTitle}}', pull.title);
+       const template = emailContent.templates.withdrawalConfirmation;
+       const variables = {
+         ownerName: owner.name,
+         amount: amount,
+         pullTitle: pull.title,
+         transactionId: withdrawalTransaction.transactionReference
+       };
+       await sendEmail(owner.email, subject, template, variables);
+     } catch (emailError) {
+       console.error('Error sending withdrawal confirmation email:', emailError);
+     }
+   }
+
+   console.log(`✅ Retrait de ${amount} ${pull.currency} effectué pour la cagnotte ${id}`);
+
+   res.json({
+     success: true,
+     message: "Retrait effectué avec succès",
+     withdrawal: {
+       id: withdrawalTransaction.id,
+       amount: withdrawalTransaction.amount,
+       currency: withdrawalTransaction.currency,
+       transactionReference: withdrawalTransaction.transactionReference,
+       createdAt: withdrawalTransaction.createdAt
+     },
+     remainingBalance: pull.currentAmount
+   });
+
+ } catch (err) {
+   console.error(`❌ Erreur lors du retrait de la cagnotte ${req.params.id}:`, err);
+   res.status(500).json({
+     success: false,
+     error: "Erreur lors du retrait",
+     details: err.message
+   });
+ }
+};
+
+// ====================
+// 📋 RÉCUPÉRER LES RETRAITS D'UNE CAGNOTTE
+// ====================
+export const getWithdrawalsByPullId = async (req, res) => {
+ try {
+   const { id } = req.params;
+   const userId = req.user.id;
+
+   console.log(`=== RÉCUPÉRATION RETRAITS CAGNOTTE ${id} ===`);
+
+   // Vérifier que la cagnotte appartient à l'utilisateur
+   const pull = await Pull.findOne({
+     where: {
+       id: parseInt(id),
+       userId: userId
+     }
+   });
+
+   if (!pull) {
+     return res.status(404).json({
+       success: false,
+       error: "Cagnotte non trouvée ou accès non autorisé"
+     });
+   }
+
+   // Récupérer les transactions de retrait
+   const withdrawals = await Transaction.findAll({
+     where: {
+       // Filtrer par metadata.withdrawal = true et pullId
+       [Op.and]: [
+         sequelize.literal(`JSON_EXTRACT(metadata, '$.withdrawal') = true`),
+         sequelize.literal(`JSON_EXTRACT(metadata, '$.pullId') = ${id}`)
+       ]
+     },
+     order: [['createdAt', 'DESC']]
+   });
+
+   console.log(`✅ ${withdrawals.length} retraits récupérés pour la cagnotte ${id}`);
+
+   res.json({
+     success: true,
+     data: withdrawals,
+     message: `${withdrawals.length} retraits trouvés`
+   });
+
+ } catch (err) {
+   console.error(`❌ Erreur lors de la récupération des retraits de la cagnotte ${req.params.id}:`, err);
+   res.status(500).json({
+     success: false,
+     error: "Erreur lors de la récupération des retraits",
+     details: err.message
+   });
+ }
 };
 
 // ====================

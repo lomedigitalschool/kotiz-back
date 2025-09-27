@@ -11,7 +11,7 @@ export const getStats = async (req, res) => {
     const totalCount = await Pull.count();
 
     // Top 5 cagnottes par montant collecté
-    const [topCagnottesResult] = await sequelize.query(
+    const topCagnottesResult = await sequelize.query(
       'SELECT p.id, p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c."pullId" AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
       { type: QueryTypes.SELECT }
     );
@@ -594,20 +594,9 @@ export const getCagnotteById = async (req, res) => {
       });
     }
 
-    // Conditions de recherche de base
-    const whereConditions = {
-      id: parseInt(id)
-    };
-
-    // Si l'utilisateur n'est pas authentifié, seulement les cagnottes actives publiques
-    if (!req.user) {
-      whereConditions.status = 'active';
-      whereConditions.type = 'public';
-    }
-    // Si authentifié, on récupère d'abord la cagnotte puis on vérifie les droits
-
+    // Récupérer la cagnotte sans restriction pour vérifier la propriété d'abord
     const pull = await Pull.findOne({
-      where: whereConditions,
+      where: { id: parseInt(id) },
       include: [
         {
           model: Contribution,
@@ -636,33 +625,27 @@ export const getCagnotteById = async (req, res) => {
       });
     }
 
-    // Vérifier les droits d'accès
+    // Vérifier si l'utilisateur est propriétaire
     const isAuthenticated = !!req.user;
     const isOwner = isAuthenticated && req.user.id === pull.userId;
-    const isPrivate = pull.type === 'private';
-    const isActive = pull.status === 'active';
 
-    // Contrôles d'accès :
-    // - Cagnottes publiques actives : accessibles à tous
-    // - Cagnottes privées actives : accessibles aux propriétaires
-    // - Cagnottes fermées : accessibles uniquement aux propriétaires
-    if (!isAuthenticated) {
-      // Utilisateur non authentifié : seulement publiques actives
-      if (isPrivate || !isActive) {
-        return res.status(404).json({
-          success: false,
-          error: "Cagnotte non trouvée"
-        });
-      }
+    // Nouvelle logique d'accès simplifiée :
+    // - Propriétaire : accès complet à toutes ses cagnottes
+    // - Non-propriétaire : accès à toutes les cagnottes avec masquage selon le type
+    // - Seule exception : cagnottes publiques fermées sont bloquées pour les non-propriétaires
+    
+    if (isOwner) {
+      console.log(`✅ Accès propriétaire complet pour la cagnotte ${id} (${pull.type}, ${pull.status})`);
+    } else if (pull.type === 'public' && pull.status !== 'active') {
+      // Bloquer uniquement les cagnottes publiques fermées pour les non-propriétaires
+      console.log(`❌ Accès refusé à la cagnotte publique fermée ${id}`);
+      return res.status(404).json({
+        success: false,
+        error: "Cagnotte non trouvée"
+      });
     } else {
-      // Utilisateur authentifié
-      if (!isOwner && (isPrivate || !isActive)) {
-        // Pas propriétaire et (privée ou fermée)
-        return res.status(404).json({
-          success: false,
-          error: "Cagnotte non trouvée"
-        });
-      }
+      // Autoriser l'accès à toutes les autres cagnottes (publiques actives + privées)
+      console.log(`✅ Accès ${pull.type === 'private' ? 'limité' : 'complet'} autorisé pour la cagnotte ${pull.type} ${id}`);
     }
 
     // Pour les cagnottes privées, on autorise l'accès mais on masque les détails sensibles
@@ -691,7 +674,7 @@ export const getCagnotteById = async (req, res) => {
     let cagnotteData;
 
     // Pour les cagnottes privées, masquer les détails sensibles si pas propriétaire
-    if (isPrivate && !isOwner) {
+    if (pull.type === 'private' && !isOwner) {
       cagnotteData = {
         ...baseData,
         // 🔒 Champs sensibles masqués pour les non-propriétaires
@@ -960,11 +943,10 @@ export const getContributionsByPullId = async (req, res) => {
       });
     }
 
-    // Vérifier que la cagnotte existe et est active
+    // Vérifier que la cagnotte existe (active ou fermée)
     const pull = await Pull.findOne({
       where: {
-        id: parseInt(id),
-        status: 'active'
+        id: parseInt(id)
       }
     });
 
@@ -976,8 +958,10 @@ export const getContributionsByPullId = async (req, res) => {
     }
 
     // Vérifier les droits d'accès
-    const isOwner = req.user && req.user.id === pull.userId;
+    const isAuthenticated = !!req.user;
+    const isOwner = isAuthenticated && req.user.id === pull.userId;
     const isPrivate = pull.type === 'private';
+    const isClosed = pull.status === 'closed';
 
     // Pour les cagnottes privées, seuls les propriétaires peuvent voir les contributions
     if (isPrivate && !isOwner) {
@@ -986,6 +970,16 @@ export const getContributionsByPullId = async (req, res) => {
         error: "Accès refusé - Cette cagnotte est privée"
       });
     }
+
+    // Pour les cagnottes publiques fermées, seuls les propriétaires peuvent voir les contributions
+    if (isClosed && pull.type === 'public' && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        error: "Accès refusé - Cette cagnotte est fermée"
+      });
+    }
+
+    console.log(`✅ Accès autorisé aux contributions de la cagnotte ${pull.type} ${pull.status} ${id}`);
 
     // Récupérer les contributions avec les informations des contributeurs
     const contributions = await Contribution.findAll({

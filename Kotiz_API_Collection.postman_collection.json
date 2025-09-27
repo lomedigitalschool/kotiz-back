@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Kotiz API Collection",
-    "description": "Collection complète des endpoints de l'API Kotiz avec système KYC multi-soumissions et endpoints publics (v2.0)",
-    "version": "2.0.0",
+    "description": "Collection complète des endpoints de l'API Kotiz avec authentification Firebase, système de retrait automatique, KYC multi-soumissions et endpoints publics (v3.0)",
+    "version": "3.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -10,7 +10,7 @@
     "bearer": [
       {
         "key": "token",
-        "value": "{{auth_token}}",
+        "value": "{{firebase_id_token}}",
         "type": "string"
       }
     ]
@@ -22,20 +22,38 @@
     "type": "string"
   },
     {
+      "key": "firebase_id_token",
+      "value": "",
+      "type": "string",
+      "description": "Firebase ID Token obtenu après authentification côté client"
+    },
+    {
       "key": "auth_token",
       "value": "",
-      "type": "string"
+      "type": "string",
+      "description": "Token JWT (pour compatibilité avec anciens endpoints)"
+    },
+    {
+      "key": "cagnotte_id",
+      "value": "",
+      "type": "string",
+      "description": "ID de la cagnotte créée pour les tests"
     }
   ],
   "item": [
     {
-      "name": "Authentication",
+      "name": "Firebase Authentication",
       "item": [
         {
-          "name": "Register User",
+          "name": "Firebase Sync (Auto User Creation)",
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}",
+                "description": "Firebase ID Token from client authentication"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -43,53 +61,167 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33123456789\",\n  \"password\": \"SecurePassword123!\",\n  \"notificationType\": \"email\",\n  \"defaultCurrency\": \"XOF\"\n}"
+              "raw": "{}"
             },
             "url": {
-              "raw": "{{base_url}}/auth/register",
+              "raw": "{{base_url}}/auth/firebase-sync",
               "host": ["{{base_url}}"],
-              "path": ["auth", "register"]
-            }
+              "path": ["auth", "firebase-sync"]
+            },
+            "description": "Synchronise l'utilisateur Firebase avec la base PostgreSQL. Crée automatiquement un utilisateur s'il n'existe pas."
           },
           "response": []
         },
         {
-          "name": "Login User",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"identifier\": \"john.doe@example.com\",\n  \"password\": \"SecurePassword123!\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "login"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Current User",
+          "name": "Get Current User (Firebase)",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{auth_token}}"
+                "value": "Bearer {{firebase_id_token}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/auth/me",
               "host": ["{{base_url}}"],
               "path": ["auth", "me"]
-            }
+            },
+            "description": "Récupère les informations de l'utilisateur connecté via Firebase"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"email\": \"john.updated@example.com\",\n  \"phone\": \"+22501020304\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            },
+            "description": "Met à jour le profil utilisateur"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Phone Number",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+22501020304\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/update-phone",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "update-phone"]
+            },
+            "description": "Met à jour le numéro de téléphone après inscription"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Admin Access",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/admin-check",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "admin-check"]
+            },
+            "description": "Vérifie si l'utilisateur a les droits administrateur"
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Demande de réinitialisation de mot de passe (rate limited)"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Password Changed Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/send-password-changed-email",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "send-password-changed-email"]
+            },
+            "description": "Envoie un email de confirmation après changement de mot de passe"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Déconnexion utilisateur"
           },
           "response": []
         }
@@ -424,7 +556,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{auth_token}}"
+                "value": "Bearer {{firebase_id_token}}"
               },
               {
                 "key": "Content-Type",
@@ -446,6 +578,122 @@
                 }
               ]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw Funds from Cagnotte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 25000,\n  \"reason\": \"Retrait des fonds collectés pour l'événement\",\n  \"paymentMethodId\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pulls/:id/withdraw",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", ":id", "withdraw"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cagnotte-id"
+                }
+              ]
+            },
+            "description": "Retirer des fonds d'une cagnotte. Conditions requises: 1) Être propriétaire, 2) KYC approuvé, 3) Objectif atteint OU deadline dépassée OU cagnotte fermée"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Withdrawal History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pulls/:id/withdrawals",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", ":id", "withdrawals"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cagnotte-id"
+                }
+              ]
+            },
+            "description": "Récupérer l'historique des retraits d'une cagnotte (propriétaire uniquement)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cagnotte Contributions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pulls/:id/contributions",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", ":id", "contributions"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cagnotte-id"
+                }
+              ]
+            },
+            "description": "Récupérer les contributions d'une cagnotte spécifique"
+          },
+          "response": []
+        },
+        {
+          "name": "Close Cagnotte (Update Status)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"closed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pulls/:id",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "cagnotte-id"
+                }
+              ]
+            },
+            "description": "Fermer une cagnotte en changeant son statut (active → closed)"
           },
           "response": []
         }
@@ -1031,6 +1279,214 @@
                 }
               ]
             }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Complete User Journey",
+      "item": [
+        {
+          "name": "🚀 1. Firebase Authentication (Get ID Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"returnSecureToken\": true\n}"
+            },
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=YOUR_FIREBASE_API_KEY",
+              "protocol": "https",
+              "host": ["identitytoolkit", "googleapis", "com"],
+              "path": ["v1", "accounts:signInWithPassword"],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "YOUR_FIREBASE_API_KEY"
+                }
+              ]
+            },
+            "description": "Obtenir un Firebase ID Token (nécessaire pour tous les appels API). Remplacer YOUR_FIREBASE_API_KEY par votre clé API Firebase."
+          },
+          "response": []
+        },
+        {
+          "name": "👤 2. Sync Firebase User (Auto Create)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/firebase-sync",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "firebase-sync"]
+            },
+            "description": "Synchronise l'utilisateur Firebase avec PostgreSQL. Crée automatiquement l'utilisateur s'il n'existe pas."
+          },
+          "response": []
+        },
+        {
+          "name": "📋 3. Create Cagnotte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Test Cagnotte Retrait",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Cagnotte pour tester le système de retrait",
+                  "type": "text"
+                },
+                {
+                  "key": "goalAmount",
+                  "value": "50000",
+                  "type": "text"
+                },
+                {
+                  "key": "currency",
+                  "value": "XOF",
+                  "type": "text"
+                },
+                {
+                  "key": "deadline",
+                  "value": "2025-12-31",
+                  "type": "text"
+                },
+                {
+                  "key": "type",
+                  "value": "public",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/pulls",
+              "host": ["{{base_url}}"],
+              "path": ["pulls"]
+            },
+            "description": "Créer une nouvelle cagnotte pour les tests"
+          },
+          "response": []
+        },
+        {
+          "name": "💰 4. Make Contribution",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"message\": \"Test contribution pour retrait\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pulls/{{cagnotte_id}}/contribute",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", "{{cagnotte_id}}", "contribute"]
+            },
+            "description": "Faire une contribution pour atteindre l'objectif et permettre le retrait"
+          },
+          "response": []
+        },
+        {
+          "name": "🔒 5. Close Cagnotte (Optional)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"closed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pulls/{{cagnotte_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", "{{cagnotte_id}}"]
+            },
+            "description": "Fermer la cagnotte manuellement (optionnel si objectif atteint)"
+          },
+          "response": []
+        },
+        {
+          "name": "💸 6. Withdraw Funds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 25000,\n  \"reason\": \"Retrait des fonds pour l'événement\",\n  \"paymentMethodId\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pulls/{{cagnotte_id}}/withdraw",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", "{{cagnotte_id}}", "withdraw"]
+            },
+            "description": "Retirer des fonds de la cagnotte (possible si objectif atteint OU deadline dépassée OU cagnotte fermée)"
+          },
+          "response": []
+        },
+        {
+          "name": "📊 7. Check Withdrawal History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebase_id_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pulls/{{cagnotte_id}}/withdrawals",
+              "host": ["{{base_url}}"],
+              "path": ["pulls", "{{cagnotte_id}}", "withdrawals"]
+            },
+            "description": "Vérifier l'historique des retraits de la cagnotte"
           },
           "response": []
         }

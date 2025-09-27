@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import * as pullController from '../controllers/pullController.js';
 import firebaseAuth, { requireEmailVerification } from '../middleware/firebaseAuth.js';
+import optionalFirebaseAuth from '../middleware/optionalAuth.js';
 import { uploadCagnotteImage } from '../middleware/multerConfig.js';
 import { authenticate, isAdmin } from '../middleware/auth.js';
 
@@ -24,9 +25,9 @@ router.get('/public/:id', pullController.getPublicCagnotteById);
 // 📋 ROUTES MIXTES (PUBLIQUES + PRIVÉES SELON AUTHENTIFICATION)
 // ====================
 // ⚠️ IMPORTANT : Les routes statiques doivent être AVANT les routes dynamiques
-router.get('/all', pullController.getAllCagnottes); // Toutes les cagnottes selon auth
-router.get('/:id/contributions', pullController.getContributionsByPullId); // Contributions d'une cagnotte
-router.get('/:id', pullController.getCagnotteById); // Avec contrôle d'accès
+router.get('/all', optionalFirebaseAuth, pullController.getAllCagnottes); // Toutes les cagnottes selon auth
+router.get('/:id/contributions', optionalFirebaseAuth, pullController.getContributionsByPullId); // Contributions d'une cagnotte
+router.get('/:id', optionalFirebaseAuth, pullController.getCagnotteById); // Avec contrôle d'accès
 
 // ====================
 // 📋 ROUTES PROTÉGÉES (UTILISATEUR CONNECTÉ UNIQUEMENT)

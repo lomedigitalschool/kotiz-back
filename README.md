@@ -31,10 +31,13 @@ API backend pour l'application Kotiz développée par Lome Digital School avec s
 - Gestion des utilisateurs et KYC
 - Statistiques et rapports
 
-### Nouvelles fonctionnalités (v2.0)
+### Nouvelles fonctionnalités (v2.1)
 - **Endpoints publics** : Accès aux cagnottes sans authentification
 - **Contributions anonymes** : Possibilité de contribuer sans créer de compte
 - **API optimisée** : Pagination et recherche avancées
+- **Accès mixte aux cagnottes** : Cagnottes privées accessibles avec données masquées
+- **Authentification optionnelle** : Routes fonctionnant avec ou sans authentification
+- **Accès propriétaire étendu** : Propriétaires peuvent accéder à leurs cagnottes fermées
 
 ## 📋 Installation
 
@@ -154,9 +157,14 @@ src/
 - `GET /api/v1/auth/me` - Profil utilisateur
 
 ### Public Endpoints (No Authentication Required)
-- `GET /api/v1/public/pulls` - Liste cagnottes publiques *(nouveau)*
-- `GET /api/v1/public/pulls/:id` - Détails cagnotte publique *(nouveau)*
-- `POST /api/v1/public/contributions/anonymous/:pullId` - Contribution anonyme *(nouveau)*
+- `GET /api/v1/public/pulls` - Liste cagnottes publiques
+- `GET /api/v1/public/pulls/:id` - Détails cagnotte publique
+- `POST /api/v1/public/contributions/anonymous/:pullId` - Contribution anonyme
+
+### Mixed Endpoints (Public + Private Access) *(nouveau)*
+- `GET /api/v1/pulls/:id` - Détails cagnotte avec contrôle d'accès *(amélioré)*
+- `GET /api/v1/pulls/:id/contributions` - Contributions avec contrôle d'accès *(amélioré)*
+- `GET /api/v1/pulls/all` - Toutes les cagnottes selon authentification *(amélioré)*
 
 ### KYC Management
 - `POST /api/v1/kyc/submit` - Soumettre documents KYC
@@ -230,7 +238,9 @@ uploads/
 ### Authentification
 - JWT avec expiration
 - Middleware d'authentification sur routes protégées
+- **Middleware d'authentification optionnelle** pour routes mixtes
 - Vérification des rôles (user/admin)
+- Accès public aux cagnottes avec contrôles d'accès appropriés
 
 ### Upload de fichiers
 - Validation des types MIME

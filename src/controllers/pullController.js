@@ -118,24 +118,36 @@ export const create = async (req, res) => {
 export const getAll = async (req, res) => {
   try {
     console.log('=== RÉCUPÉRATION CAGNOTTES UTILISATEUR ===');
+
+    // Vérifier que l'utilisateur est authentifié
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        error: 'Authentification requise',
+        message: 'Vous devez être connecté pour accéder à vos cagnottes'
+      });
+    }
+
     console.log('Utilisateur connecté:', req.user.id, req.user.email);
-    
+
     const pulls = await Pull.findAll({
       where: { userId: req.user.id }, // ✅ Filtrer par utilisateur connecté
       include: [
         { model: Contribution, as: 'contributions' } // ← alias exact défini dans le modèle
       ]
     });
-    
+
     console.log(`Nombre de cagnottes trouvées pour l'utilisateur ${req.user.id}:`, pulls.length);
     pulls.forEach(pull => {
       console.log(`  - Cagnotte ID: ${pull.id} | Titre: ${pull.title} | Propriétaire: ${pull.userId}`);
     });
-    
+
     res.json(pulls);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('Erreur getAll pulls:', err);
+    res.status(500).json({
+      error: 'Erreur interne du serveur',
+      message: err.message
+    });
   }
 };
 

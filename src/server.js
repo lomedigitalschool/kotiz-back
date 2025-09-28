@@ -305,9 +305,8 @@ const PORT = process.env.PORT || 5000;
     console.log('✅ Base de données connectée');
 
     // Exécuter les migrations automatiquement
-    // const migrator = await import('./utils/migrator.js');
-    // await migrator.default.runMigrations();
-    console.log('⚠️ Migrations automatiques désactivées - exécutez manuellement si nécessaire');
+    const migrator = await import('./utils/migrator.js');
+    await migrator.default.runMigrations();
 
     // AdminJS déjà chargé plus haut dans le fichier
 

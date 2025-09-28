@@ -53,7 +53,7 @@ async function runMigrations() {
     const migrations = [];
     for (const file of migrationFiles) {
       const module = await import(`../migrations/${file}`);
-      migrations.push({ name: file.replace('.js', ''), ...module });
+      migrations.push({ name: file.replace('.js', ''), ...module.default });
     }
     
     // Récupération des migrations déjà exécutées
@@ -64,14 +64,24 @@ async function runMigrations() {
     for (const migration of migrations) {
       if (!executedNames.includes(migration.name)) {
         console.log(`📋 Migration: ${migration.name}`);
-        
-        // Exécution de la migration
-        await migration.up(sequelize.getQueryInterface(), Sequelize);
-        
-        // Enregistrement dans la table de suivi
-        await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?)', { replacements: [migration.name] });
-        
-        console.log(`✅ ${migration.name} terminée`);
+
+        try {
+          // Exécution de la migration
+          await migration.up(sequelize.getQueryInterface(), Sequelize);
+
+          // Enregistrement dans la table de suivi
+          await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?)', { replacements: [migration.name] });
+
+          console.log(`✅ ${migration.name} terminée`);
+        } catch (error) {
+          // Si la migration échoue parce que les changements existent déjà, on la marque comme exécutée
+          if (error.message && (error.message.includes('existe déjà') || error.message.includes('already exists') || error.message.includes('duplicate'))) {
+            console.log(`⚠️ ${migration.name} déjà appliquée, marquage comme terminée`);
+            await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?) ON CONFLICT (name) DO NOTHING', { replacements: [migration.name] });
+          } else {
+            throw error;
+          }
+        }
       }
     }
     

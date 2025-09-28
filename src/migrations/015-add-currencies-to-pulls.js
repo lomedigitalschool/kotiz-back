@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   up: async (queryInterface, Sequelize) => {
     // Ajouter les nouvelles devises à l'ENUM currency de la table pulls
     await queryInterface.sequelize.query(`

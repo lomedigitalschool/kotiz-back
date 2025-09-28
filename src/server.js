@@ -304,9 +304,27 @@ const PORT = process.env.PORT || 5000;
     await sequelize.authenticate();
     console.log('✅ Base de données connectée');
 
-    // Exécuter les migrations automatiquement
-    const { runMigrations } = await import('./utils/migrator.js');
-    await runMigrations();
+    // Ajouter la colonne anonymous manquante si elle n'existe pas
+    try {
+      console.log('🔧 Vérification de la colonne anonymous dans contributions...');
+      const [columns] = await sequelize.query(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'contributions' AND column_name = 'anonymous'
+      `);
+
+      if (columns.length === 0) {
+        console.log('📋 Colonne anonymous manquante, ajout en cours...');
+        await sequelize.query(`
+          ALTER TABLE contributions ADD COLUMN "anonymous" BOOLEAN DEFAULT false;
+        `);
+        console.log('✅ Colonne anonymous ajoutée avec succès');
+      } else {
+        console.log('✅ Colonne anonymous déjà présente');
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'ajout de la colonne anonymous:', error);
+      // Ne pas arrêter le serveur pour une erreur de migration
+    }
 
     // AdminJS déjà chargé plus haut dans le fichier
 

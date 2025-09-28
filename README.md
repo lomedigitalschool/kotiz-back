@@ -38,11 +38,13 @@ API backend pour l'application Kotiz développée par Lome Digital School avec s
 - **Accès mixte aux cagnottes** : Cagnottes privées accessibles avec données masquées
 - **Authentification optionnelle** : Routes fonctionnant avec ou sans authentification
 - **Accès propriétaire étendu** : Propriétaires peuvent accéder à leurs cagnottes fermées
+- **Temps réel** : Mises à jour en temps réel avec Socket.io
+- **Clôture automatique** : Vérification automatique des cagnottes expirées
 
 ## 📋 Installation
 
 ### Prérequis
-- Node.js (v16+)
+- Node.js (v18+)
 - PostgreSQL
 - npm ou yarn
 
@@ -255,34 +257,90 @@ uploads/
 
 ## 🛠️ Développement
 
+### Technologies utilisées
+- **Node.js** : Runtime JavaScript
+- **Express.js** : Framework web
+- **Sequelize** : ORM pour PostgreSQL
+- **AdminJS** : Interface d'administration
+- **JWT** : Authentification
+- **Socket.io** : Communications temps réel
+- **Multer** : Gestion des fichiers
+- **Cloudinary** : Stockage d'images
+- **Nodemailer** : Envoi d'emails
+- **Helmet** : Sécurité HTTP
+- **Rate Limiting** : Protection contre les abus
+
 ### Scripts disponibles
 ```bash
+npm start            # Production
 npm run dev          # Développement avec nodemon
-npm start           # Production
-npm test            # Tests unitaires
+npm test             # Tests unitaires
+npm run test:admin   # Tests AdminJS
 npm run create-admin # Créer un administrateur
+npm run create-secure-admin # Créer un administrateur sécurisé
+npm run migrate      # Lancer les migrations (si disponible)
 ```
 
 ### Variables d'environnement
 ```env
-# Base de données
-DB_NAME=kotiz_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_HOST=localhost
-DB_PORT=5432
-
-# JWT
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=7d
-
-# Serveur
-PORT=3000
+# Configuration de base
+PORT=5000
 NODE_ENV=development
 
-# AdminJS
+# Base de données PostgreSQL
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=kotiz_db
+DB_USER=postgres
+DB_PASSWORD=your_password_here
+
+# Authentification JWT
+JWT_SECRET=your_jwt_secret_key_here
+JWT_EXPIRES_IN=7d
+
+# Sessions (requis pour AdminJS)
+SESSION_SECRET=your_session_secret_here
+
+# URLs des applications
+FRONTEND_URL=http://localhost:5173
+BASE_URL=http://localhost:5000
+
+# Administration
 ADMIN_EMAIL=admin@kotiz.com
 ADMIN_PASSWORD=admin123
+
+# Services externes (optionnel)
+# Cloudinary pour les images
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+
+# Email (optionnel)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+
+# SMS (optionnel)
+SMS_API_KEY=your_sms_api_key
+SMS_API_SECRET=your_sms_api_secret
+
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your-project-id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+
+# Firebase Admin (pour le backend)
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n....\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxx@your-project.iam.gserviceaccount.com
+FIREBASE_PROJECT_ID=your-project-id
+
+# Production (Render)
+# RENDER_EXTERNAL_URL=https://your-app.onrender.com
+# DATABASE_URL=postgresql://user:password@host:port/database (fourni automatiquement par Render)
 ```
 
 ## 📊 Administration

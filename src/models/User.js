@@ -15,10 +15,45 @@ class User extends Model {
 function initUser(sequelize) {
   User.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    name: { type: DataTypes.STRING, allowNull: false },
-    email: { type: DataTypes.STRING, allowNull: true, unique: true },
-    phone: { type: DataTypes.STRING, allowNull: true, unique: true },
-    passwordHash: { type: DataTypes.STRING, allowNull: true },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [2, 255] // Assure que le nom a une longueur raisonnable
+      }
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+      validate: {
+        isEmail: { // Validation du format de l'e-mail
+          msg: 'Le format de l\'e-mail est invalide.'
+        }
+      }
+    },
+    phone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+      validate: {
+        // Validation basique d'un numéro de téléphone
+        is: {
+          args: /^\+?[0-9]{8,15}$/,
+          msg: 'Le format du numéro de téléphone est invalide.'
+        }
+      }
+    },
+    passwordHash: {
+      type: DataTypes.STRING,
+      allowNull: true, // Le hachage du mot de passe est obligatoire pour les comptes locaux
+      validate: {
+        notEmpty: {
+          msg: 'Le hachage du mot de passe est requis pour les comptes locaux.'
+        }
+      }
+    },
     role: { type: DataTypes.ENUM('user', 'admin'), defaultValue: 'user', allowNull: false },
     avatarUrl: { type: DataTypes.STRING, allowNull: true },
     isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
@@ -35,7 +70,15 @@ function initUser(sequelize) {
     sequelize,
     modelName: 'User',
     tableName: 'users',
-    timestamps: true
+    timestamps: true,
+    validate: {
+      // Validateur personnalisé pour assurer la présence d'un identifiant unique
+      mustHaveUniqueIdentifier() {
+        if (!this.email && !this.phone && !this.firebaseUid) {
+          throw new Error('Un utilisateur doit avoir soit un e-mail, soit un numéro de téléphone, soit un UID Firebase.');
+        }
+      }
+    }
   });
 
   return User;

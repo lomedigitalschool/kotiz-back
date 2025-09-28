@@ -262,11 +262,9 @@ app.use('/api/v1/webhooks', webhookRoutes);
 // 1️⃣6️⃣ Route racine
 app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));
 
-// 1️⃣7️⃣ Gestionnaire d'erreurs
-app.use((err, req, res, next) => {
-  console.error('Erreur:', err.message);
-  res.status(500).json({ error: 'Erreur interne du serveur', message: err.message });
-});
+// 1️⃣7️⃣ Gestionnaire d'erreurs centralisé
+import errorHandler from './middleware/errorHandler.js';
+app.use(errorHandler);
 
 // 1️⃣9️⃣ Configuration Socket.io pour données temps réel
 io.on('connection', (socket) => {

@@ -313,13 +313,25 @@ export const checkContributionStatus = async (req, res) => {
 
 export const getMyContributions = async (req, res) => {
   try {
+    // Vérifier que l'utilisateur est authentifié
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        error: 'Authentification requise',
+        message: 'Vous devez être connecté pour accéder à vos contributions'
+      });
+    }
+
     const contributions = await Contribution.findAll({
       where: { userId: req.user.id },
       include: [{ model: Pull, as: 'Pull' }] // Pour renvoyer aussi le pull lié
     });
     res.json(contributions);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Erreur getMyContributions:', err);
+    res.status(500).json({
+      error: 'Erreur interne du serveur',
+      message: err.message
+    });
   }
 };
 

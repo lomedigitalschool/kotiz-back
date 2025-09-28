@@ -42,7 +42,11 @@ async function runMigrations() {
       { name: '010-seed-payment-methods', ...require('../migrations/010-seed-payment-methods') },
       { name: '011-update-kyc-table', ...require('../migrations/011-update-kyc-table') },
       { name: '012-create-reports-table', ...require('../migrations/012-create-reports-table') },
-      { name: '013-add-firebase-fields-to-users', ...require('../migrations/013-add-firebase-fields-to-users') }
+      { name: '013-add-firebase-fields-to-users', ...require('../migrations/013-add-firebase-fields-to-users') },
+      { name: '014-make-password-hash-nullable', ...require('../migrations/014-make-password-hash-nullable') },
+      { name: '015-add-currencies-to-pulls', ...require('../migrations/015-add-currencies-to-pulls') },
+      { name: '016-add-missing-fields-to-contributions', ...require('../migrations/016-add-missing-fields-to-contributions') },
+      { name: '20250928220632-add-anonymous-to-contributions', ...require('../migrations/20250928220632-add-anonymous-to-contributions') }
     ];
     
     // Récupération des migrations déjà exécutées

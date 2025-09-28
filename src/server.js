@@ -304,6 +304,10 @@ const PORT = process.env.PORT || 5000;
     await sequelize.authenticate();
     console.log('✅ Base de données connectée');
 
+    // Exécuter les migrations automatiquement
+    const { runMigrations } = await import('./utils/migrator.js');
+    await runMigrations();
+
     // AdminJS déjà chargé plus haut dans le fichier
 
     // 1️⃣9️⃣ VÉRIFICATION AUTOMATIQUE DES CAGNOTTES (toutes les heures)

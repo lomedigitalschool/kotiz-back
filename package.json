@@ -23,8 +23,7 @@
     "test-complete": "node test-complete.js",
     "test-firebase": "node test-firebase.js",
     "audit:adminjs": "node -e \"console.log('📋 Voir AUDIT_ADMINJS_REPORT.md pour le rapport complet')\"",
-    "security:adminjs": "node -e \"console.log('🔒 Voir ADMINJS_SECURITY_FIXES.js pour les corrections')\"",
-    "render-postbuild": "echo '🚀 Build terminé pour Render'"
+    "security:adminjs": "node -e \"console.log('🔒 Voir ADMINJS_SECURITY_FIXES.js pour les corrections')\""
   },
   "dependencies": {
     "@adminjs/design-system": "^4.0.5",

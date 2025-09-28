@@ -209,7 +209,7 @@ export const checkAndCloseExpiredCagnottes = async () => {
           as: 'contributions',
           where: { status: 'completed' },
           required: false,
-          attributes: { exclude: ['anonymous'] } // Exclure la colonne anonymous si elle n'existe pas
+          attributes: ['id', 'amount', 'userId', 'pullId', 'status'] // Exclure anonymous et autres colonnes non essentielles
         }
       ]
     });

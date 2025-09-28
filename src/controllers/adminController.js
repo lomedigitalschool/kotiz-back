@@ -204,7 +204,13 @@ export const checkAndCloseExpiredCagnottes = async () => {
     const activeCagnottes = await Pull.findAll({
       where: { status: 'active' },
       include: [
-        { model: Contribution, as: 'contributions', where: { status: 'completed' }, required: false }
+        {
+          model: Contribution,
+          as: 'contributions',
+          where: { status: 'completed' },
+          required: false,
+          attributes: { exclude: ['anonymous'] } // Exclure la colonne anonymous si elle n'existe pas
+        }
       ]
     });
 

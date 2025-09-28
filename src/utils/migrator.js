@@ -1,17 +1,20 @@
 /**
  * 🔄 Migrator - Système de migration automatique
- * 
+ *
  * Ce module exécute automatiquement les migrations de base de données au démarrage.
  * Il maintient un suivi des migrations exécutées pour éviter les doublons.
- * 
+ *
  * Fonctionnalités:
  * - Création automatique de la table SequelizeMeta
  * - Exécution séquentielle des migrations
  * - Suivi des migrations déjà appliquées
  */
 
-const { Sequelize } = require('sequelize');
-const sequelize = require('../config/database');
+import { Sequelize } from 'sequelize';
+import { createRequire } from 'module';
+import sequelize from '../config/database.js';
+
+const require = createRequire(import.meta.url);
 
 /**
  * Exécute toutes les migrations en attente
@@ -20,30 +23,38 @@ const sequelize = require('../config/database');
 async function runMigrations() {
   try {
     console.log('🔄 Exécution automatique des migrations...');
-    
+
     // Création de la table de suivi des migrations (si elle n'existe pas)
     await sequelize.query(`
       CREATE TABLE IF NOT EXISTS "SequelizeMeta" (
         name VARCHAR(255) NOT NULL PRIMARY KEY
       );
     `);
-    
+
     // Liste ordonnée de toutes les migrations à exécuter
-    const migrations = [
-      { name: '001-create-users', ...require('../migrations/001-create-users') },
-      { name: '002-create-payment-methods', ...require('../migrations/002-create-payment-methods') },
-      { name: '003-create-pulls', ...require('../migrations/003-create-pulls') },
-      { name: '004-create-contributions', ...require('../migrations/004-create-contributions') },
-      { name: '005-create-transactions', ...require('../migrations/005-create-transactions') },
-      { name: '006-create-user-payment-methods', ...require('../migrations/006-create-user-payment-methods') },
-      { name: '007-create-notifications', ...require('../migrations/007-create-notifications') },
-      { name: '008-create-logs', ...require('../migrations/008-create-logs') },
-      { name: '009-create-kyc', ...require('../migrations/009-create-kyc') },
-      { name: '010-seed-payment-methods', ...require('../migrations/010-seed-payment-methods') },
-      { name: '011-update-kyc-table', ...require('../migrations/011-update-kyc-table') },
-      { name: '012-create-reports-table', ...require('../migrations/012-create-reports-table') },
-      { name: '013-add-firebase-fields-to-users', ...require('../migrations/013-add-firebase-fields-to-users') }
+    const migrationFiles = [
+      '001-create-users.js',
+      '002-create-payment-methods.js',
+      '003-create-pulls.js',
+      '004-create-contributions.js',
+      '005-create-transactions.js',
+      '006-create-user-payment-methods.js',
+      '007-create-notifications.js',
+      '008-create-logs.js',
+      '009-create-kyc.js',
+      '010-seed-payment-methods.js',
+      '011-update-kyc-table.js',
+      '012-create-reports-table.js',
+      '013-add-firebase-fields-to-users.js',
+      '014-make-password-hash-nullable.js',
+      '015-add-currencies-to-pulls.js'
     ];
+
+    const migrations = [];
+    for (const file of migrationFiles) {
+      const module = await import(`../migrations/${file}`);
+      migrations.push({ name: file.replace('.js', ''), ...module });
+    }
     
     // Récupération des migrations déjà exécutées
     const [executedMigrations] = await sequelize.query('SELECT name FROM "SequelizeMeta"');
@@ -72,4 +83,4 @@ async function runMigrations() {
   }
 }
 
-module.exports = { runMigrations };
+export default { runMigrations };

@@ -262,7 +262,7 @@ app.use('/api/v1/webhooks', webhookRoutes);
 // 1️⃣6️⃣ Route racine
 app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));
 
-// 1️⃣7️⃣ Gestionnaire d'erreurs
+// 1️⃣7️⃣ Gestionnaire d'erreurs centralisé
 import errorHandler from './middleware/errorHandler.js';
 app.use(errorHandler);
 

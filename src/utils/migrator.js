@@ -53,13 +53,34 @@ async function runMigrations() {
     for (const migration of migrations) {
       if (!executedNames.includes(migration.name)) {
         console.log(`📋 Migration: ${migration.name}`);
-        
+
+        // Vérifications spéciales avant exécution
+        if (migration.name === '004-create-contributions') {
+          // Vérifier si la colonne anonymous existe dans contributions
+          try {
+            const [columns] = await sequelize.query(`
+              SELECT column_name FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'contributions' AND column_name = 'anonymous'
+            `);
+            if (columns.length > 0) {
+              console.log(`⚠️ Colonne anonymous existe déjà dans contributions, migration 004 ignorée`);
+              await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?) ON CONFLICT (name) DO NOTHING', { replacements: [migration.name] });
+              continue;
+            } else {
+              console.log(`🔧 Colonne anonymous manquante, exécution forcée de la migration 004`);
+            }
+          } catch (error) {
+            // Si la table n'existe pas, on peut exécuter la migration
+            console.log(`🔧 Table contributions n'existe pas, exécution de la migration 004`);
+          }
+        }
+
         // Exécution de la migration
         await migration.up(sequelize.getQueryInterface(), Sequelize);
-        
+
         // Enregistrement dans la table de suivi
         await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?)', { replacements: [migration.name] });
-        
+
         console.log(`✅ ${migration.name} terminée`);
       }
     }

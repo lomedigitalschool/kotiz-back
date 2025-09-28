@@ -147,10 +147,10 @@ class SMSService {
 
   /**
    * 🔐 GÉNÉRER ET ENVOYER UN CODE OTP
-   * 
+   *
    * POINT D'INTÉGRATION pour l'authentification à deux facteurs
    * À appeler depuis authController.js lors de l'inscription ou connexion
-   * 
+   *
    * @param {string} phoneNumber - Numéro de téléphone
    * @param {string} purpose - Objectif de l'OTP (registration, login, password_reset)
    * @returns {Promise<Object>} Résultat de l'envoi OTP
@@ -159,8 +159,23 @@ class SMSService {
     try {
       console.log(`🔐 Génération OTP pour ${phoneNumber} (${purpose})`);
 
-      // Générer le code OTP
-      const otpCode = this.generateOTP();
+      // Codes de test Firebase fixes
+      const firebaseTestNumbers = {
+        '+16505553434': '654321',
+        '+22899974644': '974644',
+        '+22899659018': '567890',
+        '+22891573017': '123456'
+      };
+
+      // Vérifier si c'est un numéro de test Firebase
+      let otpCode;
+      if (firebaseTestNumbers[phoneNumber]) {
+        otpCode = firebaseTestNumbers[phoneNumber];
+        console.log(`🧪 NUMÉRO DE TEST FIREBASE détecté - Utilisation du code fixe: ${otpCode}`);
+      } else {
+        // Générer le code OTP normalement
+        otpCode = this.generateOTP();
+      }
 
       // MODE TEST - Afficher le code OTP généré
       if (process.env.NODE_ENV !== 'production') {

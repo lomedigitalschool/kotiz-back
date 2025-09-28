@@ -9,4 +9,39 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: 5000
+      - key: DB_HOST
+        fromDatabase:
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          property: password
+      - key: DATABASE_URL
+        fromDatabase:
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@kotiz.com
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://kotiz-web.onrender.com
+      - key: BASE_URL
+        value: https://kotiz-back.onrender.com
+databases:
+  - name: kotiz-db
+    databaseName: kotiz_db
+    user: kotiz_user
+    plan: free

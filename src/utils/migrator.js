@@ -66,6 +66,30 @@ async function runMigrations() {
         console.log(`📋 Migration: ${migration.name}`);
 
         try {
+          // Vérifications spéciales avant exécution
+          if (migration.name === '002-create-payment-methods') {
+            // Vérifier si la table payment_methods existe déjà
+            const [tables] = await sequelize.query(`
+              SELECT table_name FROM information_schema.tables
+              WHERE table_schema = 'public' AND table_name = 'payment_methods'
+            `);
+            if (tables.length > 0) {
+              console.log(`⚠️ Table payment_methods existe déjà, migration 002 ignorée`);
+              await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?) ON CONFLICT (name) DO NOTHING', { replacements: [migration.name] });
+              continue;
+            }
+          }
+
+          if (migration.name === '010-seed-payment-methods') {
+            // Vérifier si les données de seed existent déjà
+            const [existingData] = await sequelize.query('SELECT COUNT(*) as count FROM payment_methods');
+            if (existingData[0].count > 0) {
+              console.log(`⚠️ Données payment_methods existent déjà, migration 010 ignorée`);
+              await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?) ON CONFLICT (name) DO NOTHING', { replacements: [migration.name] });
+              continue;
+            }
+          }
+
           // Exécution de la migration
           await migration.up(sequelize.getQueryInterface(), Sequelize);
 
@@ -75,8 +99,8 @@ async function runMigrations() {
           console.log(`✅ ${migration.name} terminée`);
         } catch (error) {
           // Si la migration échoue parce que les changements existent déjà, on la marque comme exécutée
-          if (error.message && (error.message.includes('existe déjà') || error.message.includes('already exists') || error.message.includes('duplicate'))) {
-            console.log(`⚠️ ${migration.name} déjà appliquée, marquage comme terminée`);
+          if (error.message && (error.message.includes('existe déjà') || error.message.includes('already exists') || error.message.includes('duplicate') || error.message.includes('does not exist'))) {
+            console.log(`⚠️ ${migration.name} déjà appliquée ou table inexistante, marquage comme terminée`);
             await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?) ON CONFLICT (name) DO NOTHING', { replacements: [migration.name] });
           } else {
             throw error;

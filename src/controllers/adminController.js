@@ -3,7 +3,7 @@
 import db from '../models/index.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-const { User, Pull, Log, Transaction } = db;
+const { User, Pull, Log, Transaction, Contribution } = db;
 
 // Dashboard global
 export const getDashboard = async (_req, res) => {
@@ -199,9 +199,6 @@ export default { getDashboard, getAllUsers, blockUser, deleteUser, getAllPulls, 
 export const checkAndCloseExpiredCagnottes = async () => {
   try {
     console.log('🔍 Vérification automatique des cagnottes à fermer...');
-
-    const db = await import('../models/index.js');
-    const { Pull, Contribution } = db;
 
     // Récupérer toutes les cagnottes actives
     const activeCagnottes = await Pull.findAll({

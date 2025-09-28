@@ -118,24 +118,38 @@ export const create = async (req, res) => {
 export const getAll = async (req, res) => {
   try {
     console.log('=== RÉCUPÉRATION CAGNOTTES UTILISATEUR ===');
+
+    // Vérification de sécurité : s'assurer que req.user existe
+    if (!req.user || !req.user.id) {
+      console.error('❌ Utilisateur non authentifié ou req.user.id manquant');
+      return res.status(401).json({
+        success: false,
+        error: "Utilisateur non authentifié"
+      });
+    }
+
     console.log('Utilisateur connecté:', req.user.id, req.user.email);
-    
+
     const pulls = await Pull.findAll({
       where: { userId: req.user.id }, // ✅ Filtrer par utilisateur connecté
       include: [
         { model: Contribution, as: 'contributions' } // ← alias exact défini dans le modèle
       ]
     });
-    
+
     console.log(`Nombre de cagnottes trouvées pour l'utilisateur ${req.user.id}:`, pulls.length);
     pulls.forEach(pull => {
       console.log(`  - Cagnotte ID: ${pull.id} | Titre: ${pull.title} | Propriétaire: ${pull.userId}`);
     });
-    
+
     res.json(pulls);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Erreur dans getAll:', err);
+    // Ne pas exposer les détails d'erreur en production
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de la récupération des cagnottes"
+    });
   }
 };
 
@@ -963,17 +977,9 @@ export const getContributionsByPullId = async (req, res) => {
 
     // Vérifier les droits d'accès
     const isAuthenticated = !!req.user;
-    const isOwner = isAuthenticated && req.user.id === pull.userId;
+    const isOwner = isAuthenticated && req.user && req.user.id === pull.userId;
     const isPrivate = pull.type === 'private';
     const isClosed = pull.status === 'closed';
-
-    // Pour les cagnottes privées, seuls les propriétaires peuvent voir les contributions
-    if (isPrivate && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        error: "Accès refusé - Cette cagnotte est privée"
-      });
-    }
 
     // Pour les cagnottes privées, seuls les propriétaires peuvent voir les contributions
     if (isPrivate && !isOwner) {
@@ -1012,10 +1018,10 @@ export const getContributionsByPullId = async (req, res) => {
 
   } catch (err) {
     console.error(`❌ Erreur lors de la récupération des contributions de la cagnotte ${req.params.id}:`, err);
+    // Ne pas exposer les détails d'erreur en production
     res.status(500).json({
       success: false,
-      error: "Erreur lors de la récupération des contributions",
-      details: err.message
+      error: "Erreur lors de la récupération des contributions"
     });
   }
 };

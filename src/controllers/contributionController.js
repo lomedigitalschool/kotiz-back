@@ -313,13 +313,27 @@ export const checkContributionStatus = async (req, res) => {
 
 export const getMyContributions = async (req, res) => {
   try {
+    // Vérification de sécurité : s'assurer que req.user existe
+    if (!req.user || !req.user.id) {
+      console.error('❌ Utilisateur non authentifié ou req.user.id manquant');
+      return res.status(401).json({
+        success: false,
+        error: "Utilisateur non authentifié"
+      });
+    }
+
     const contributions = await Contribution.findAll({
       where: { userId: req.user.id },
       include: [{ model: Pull, as: 'Pull' }] // Pour renvoyer aussi le pull lié
     });
     res.json(contributions);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ Erreur dans getMyContributions:', err);
+    // Ne pas exposer les détails d'erreur en production
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de la récupération des contributions"
+    });
   }
 };
 

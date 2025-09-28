@@ -418,38 +418,18 @@ const adminOptions = {
       tableBorder: '#E0E0E0'
     }
   },
-  dashboard: {
-    component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx'))
-  },
+  // dashboard: {
+  //   component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx'))
+  // },
   pages: {
-    'Dashboard Avancé': {
-      component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx')),
-      icon: 'Home'
-    },
-    'Contributions': {
-      component: componentLoader.add('Contributions', join(projectRoot, 'src/config/components/Contributions.jsx')),
-      icon: 'Currency'
-    },
-    'Retraits': {
-      component: componentLoader.add('Retraits', join(projectRoot, 'src/config/components/Retraits.jsx')),
-      icon: 'Money'
-    },
-    'Statistiques Détaillées': {
-      component: componentLoader.add('AdvancedStats', join(projectRoot, 'src/config/components/AdvancedStats.jsx')),
-      icon: 'TrendingUp'
-    },
-    'Exports': {
-      component: componentLoader.add('Export', join(projectRoot, 'src/config/components/Export.jsx')),
-      icon: 'Download'
-    },
-    'Logs d\'Activité': {
-      component: componentLoader.add('AdminLogs', join(projectRoot, 'src/config/components/AdminLogs.jsx')),
-      icon: 'FileText'
-    },
-    'Modération': {
-      component: componentLoader.add('ModerationPanel', join(projectRoot, 'src/config/components/ModerationPanel.jsx')),
-      icon: 'Shield'
-    }
+    // Pages personnalisées désactivées pour éviter les timeouts de déploiement
+    // 'Dashboard Avancé': { component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx')), icon: 'Home' },
+    // 'Contributions': { component: componentLoader.add('Contributions', join(projectRoot, 'src/config/components/Contributions.jsx')), icon: 'Currency' },
+    // 'Retraits': { component: componentLoader.add('Retraits', join(projectRoot, 'src/config/components/Retraits.jsx')), icon: 'Money' },
+    // 'Statistiques Détaillées': { component: componentLoader.add('AdvancedStats', join(projectRoot, 'src/config/components/AdvancedStats.jsx')), icon: 'TrendingUp' },
+    // 'Exports': { component: componentLoader.add('Export', join(projectRoot, 'src/config/components/Export.jsx')), icon: 'Download' },
+    // 'Logs d\'Activité': { component: componentLoader.add('AdminLogs', join(projectRoot, 'src/config/components/AdminLogs.jsx')), icon: 'FileText' },
+    // 'Modération': { component: componentLoader.add('ModerationPanel', join(projectRoot, 'src/config/components/ModerationPanel.jsx')), icon: 'Shield' }
   }
 };
 

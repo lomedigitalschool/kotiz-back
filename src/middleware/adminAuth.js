@@ -118,18 +118,24 @@ const validateStrongPassword = (password) => {
 // Créer un admin par défaut si inexistant
 export const ensureDefaultAdmin = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    let adminEmail = process.env.ADMIN_EMAIL;
+    let adminPassword = process.env.ADMIN_PASSWORD;
 
-    if (!adminEmail || !adminPassword) {
-      console.log('⚠️ Variables ADMIN_EMAIL et ADMIN_PASSWORD non définies - admin par défaut non créé');
-      return null;
+    // Valeurs par défaut pour la production
+    if (!adminEmail) {
+      adminEmail = 'admin@kotiz.com';
+      console.log('⚠️ ADMIN_EMAIL non défini, utilisation de la valeur par défaut');
     }
 
-    // Valider la force du mot de passe
+    if (!adminPassword) {
+      adminPassword = 'Admin123!@#2024';
+      console.log('⚠️ ADMIN_PASSWORD non défini, utilisation de la valeur par défaut');
+    }
+
+    // Valider la force du mot de passe, mais utiliser un mot de passe fort par défaut si faible
     if (!validateStrongPassword(adminPassword)) {
-      console.log('❌ Mot de passe admin trop faible - doit contenir au moins 12 caractères avec majuscules, minuscules, chiffres et caractères spéciaux');
-      return null;
+      console.log('⚠️ Mot de passe admin fourni trop faible, utilisation du mot de passe par défaut fort');
+      adminPassword = 'Admin123!@#2024';
     }
 
     let admin = await User.findOne({

@@ -11,6 +11,8 @@ import session from 'express-session';
 import PgSession from 'connect-pg-simple';
 const PgSimpleStore = PgSession(session);
 import bodyParser from 'body-parser';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import db from './models/index.js';
 
 const { sequelize } = db;
@@ -18,7 +20,26 @@ const { sequelize } = db;
 // 3️⃣ Initialisation de l'application Express
 const app = express();
 
-// 4️⃣ Configuration de base AVANT les routes
+// 4️⃣ Création du serveur HTTP pour Socket.io
+const server = createServer(app);
+
+// 5️⃣ Configuration de Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'http://localhost:5000',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      'http://localhost:8080',
+      'https://kotiz-web.onrender.com',
+      'https://kotiz-web.netlify.app'
+    ],
+    credentials: true
+  }
+});
+
+// 6️⃣ Configuration de base AVANT les routes
 app.set('trust proxy', 1);
 
 // 6️⃣ Sessions
@@ -40,32 +61,48 @@ app.use(session({
   }
 }));
 
-// 7️⃣ CORS
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:5173',
-      'http://localhost:8080',
-      'https://kotiz-web.onrender.com',
-      'https://kotiz-web.netlify.app',
-      process.env.FRONTEND_URL
-    ].filter(Boolean);
-    
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
+// 7️⃣ ADMINJS IMMÉDIATEMENT APRÈS LES SESSIONS
+try {
+  // Initialiser l'admin par défaut avant AdminJS
+  const { ensureDefaultAdmin } = await import('./middleware/adminAuth.js');
+  await ensureDefaultAdmin();
+
+  const { default: initAdmin } = await import('./config/admin.js');
+  const { admin, adminRouter } = await initAdmin();
+
+  // Middleware pour logger les requêtes POST /admin/login
+  app.use('/admin/login', (req, res, next) => {
+    if (req.method === 'POST') {
+      console.log('🔐 POST /admin/login reçu:', req.body);
     }
-    return callback(new Error('Not allowed by CORS'));
-  },
+    next();
+  });
+
+  app.use(admin.options.rootPath, adminRouter);
+  console.log('✅ AdminJS monté immédiatement après sessions sur:', admin.options.rootPath);
+} catch (error) {
+  console.error('❌ Erreur lors du chargement d\'AdminJS:', error);
+}
+
+// 8️⃣ CORS (APRÈS AdminJS)
+app.use(cors({
+  origin: [
+    'http://localhost:5000', // AdminJS
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'https://kotiz-web.onrender.com',
+    'https://kotiz-web.netlify.app',
+    'null' // Autoriser origin null pour AdminJS
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   optionsSuccessStatus: 200
 }));
 
-// 8️⃣ Sécurité
+// 9️⃣ Sécurité (APRÈS AdminJS)
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
@@ -77,7 +114,7 @@ app.use(helmet({
   },
 }));
 
-// 9️⃣ Rate limiting
+// 🔟 Rate limiting (APRÈS AdminJS)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -87,10 +124,14 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// 🔟 Fichiers statiques
+// 1️⃣1️⃣ Fichiers statiques
 app.use('/uploads', express.static('uploads'));
 
-// 1️⃣1️⃣ Middleware de débogage
+// 1️⃣2️⃣ BODY PARSER
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// 1️⃣3️⃣ Middleware de débogage
 if (process.env.NODE_ENV !== 'production') {
   app.use((req, res, next) => {
     console.log(`📍 ${req.method} ${req.url}`);
@@ -98,7 +139,7 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// 1️⃣2️⃣ ROUTES DE TEST (AVANT AdminJS)
+// 1️⃣4️⃣ ROUTES DE TEST
 app.get('/test', (req, res) => {
   console.log('🧪 Route de test appelée');
   res.json({ message: 'Test réussi', timestamp: new Date() });
@@ -113,96 +154,12 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// 1️⃣3️⃣ ROUTES ADMINJS SANS AUTHENTIFICATION
+// 1️⃣3️⃣ ROUTES ADMINJS PROTÉGÉES
 import UserController from './controllers/userController.js';
 import * as ContributionController from './controllers/contributionController.js';
 import * as PullController from './controllers/pullController.js';
 
-app.get('/api/v1/adminjs/users/admin-stats', (req, res, next) => {
-  console.log('🔍 Route admin-stats appelée');
-  UserController.getAdminStats(req, res, next);
-});
-
-app.get('/api/v1/adminjs/users/admin-chart-data', (req, res, next) => {
-  console.log('🔍 Route admin-chart-data appelée');
-  UserController.getAdminChartData(req, res, next);
-});
-
-app.get('/api/v1/adminjs/contributions/admin-stats', (req, res, next) => {
-  console.log('🔍 Route contributions admin-stats appelée');
-  ContributionController.getStats(req, res, next);
-});
-
-app.get('/api/v1/adminjs/pulls/admin-stats', (req, res, next) => {
-  console.log('🔍 Route pulls admin-stats appelée');
-  PullController.getStats(req, res, next);
-});
-
-// Routes pour le dashboard AdminJS (sans authentification)
-app.get('/api/v1/users/stats', UserController.getAdminStats);
-app.get('/api/v1/contributions/stats', ContributionController.getStats);
-app.get('/api/v1/pulls/stats', PullController.getStats);
-app.get('/api/v1/admin/export/users', (req, res) => {
-  res.json({ message: 'Export non implémenté', users: [] });
-});
-
-// Route de test temporaire pour AdminJS (avec session simulée)
-app.get('/api/v1/admin/test-session', (req, res) => {
-  // Simuler une session AdminJS pour les tests
-  req.session.adminUser = {
-    id: 1,
-    email: 'admin@kotiz.com',
-    name: 'Admin Kotiz',
-    role: 'admin'
-  };
-  res.json({ message: 'Session AdminJS simulée', user: req.session.adminUser });
-});
-
-// Route de test temporaire pour accéder aux contributions sans auth (pour debug)
-app.get('/api/v1/admin/test-contributions', async (req, res) => {
-  try {
-    const { page = 1, limit = 50, status, startDate, endDate } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const whereConditions = {};
-    if (status) whereConditions.status = status;
-    if (startDate || endDate) {
-      whereConditions.createdAt = {};
-      if (startDate) whereConditions.createdAt[db.Sequelize.Op.gte] = new Date(startDate);
-      if (endDate) whereConditions.createdAt[db.Sequelize.Op.lte] = new Date(endDate);
-    }
-
-    const { count, rows: contributions } = await db.Contribution.findAndCountAll({
-      where: whereConditions,
-      include: [
-        { model: db.Pull, as: 'Pull', attributes: ['id', 'title'] },
-        { model: db.User, as: 'contributor', attributes: ['id', 'name', 'email'] }
-      ],
-      limit: parseInt(limit),
-      offset,
-      order: [['createdAt', 'DESC']]
-    });
-
-    res.json({
-      success: true,
-      data: contributions,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(count / parseInt(limit)),
-        totalItems: count,
-        itemsPerPage: parseInt(limit)
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 1️⃣4️⃣ BODY PARSER AVANT LES ROUTES
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// 1️⃣5️⃣ ROUTES API AVEC AUTHENTIFICATION
+// Import des middlewares d'authentification
 import firebaseAuth from './middleware/firebaseAuth.js';
 import { isAdmin } from './middleware/auth.js';
 
@@ -222,6 +179,61 @@ const adminJSAuth = (req, res, next) => {
   // Sinon, utiliser l'authentification Firebase normale
   return firebaseAuth(req, res, next);
 };
+
+// ✅ ROUTES ADMINJS PROTÉGÉES AVEC AUTHENTIFICATION
+app.get('/api/v1/adminjs/users/admin-stats', 
+  adminJSAuth, isAdmin,
+  (req, res, next) => {
+    console.log('🔍 Route admin-stats appelée (protégée)');
+    UserController.getAdminStats(req, res, next);
+  }
+);
+
+app.get('/api/v1/adminjs/users/admin-chart-data', 
+  adminJSAuth, isAdmin,
+  (req, res, next) => {
+    console.log('🔍 Route admin-chart-data appelée (protégée)');
+    UserController.getAdminChartData(req, res, next);
+  }
+);
+
+app.get('/api/v1/adminjs/contributions/admin-stats', 
+  adminJSAuth, isAdmin,
+  (req, res, next) => {
+    console.log('🔍 Route contributions admin-stats appelée (protégée)');
+    ContributionController.getStats(req, res, next);
+  }
+);
+
+app.get('/api/v1/adminjs/pulls/admin-stats', 
+  adminJSAuth, isAdmin,
+  (req, res, next) => {
+    console.log('🔍 Route pulls admin-stats appelée (protégée)');
+    PullController.getStats(req, res, next);
+  }
+);
+
+// ✅ Routes pour le dashboard AdminJS (PROTÉGÉES)
+app.get('/api/v1/users/stats', adminJSAuth, isAdmin, UserController.getAdminStats);
+app.get('/api/v1/contributions/stats', adminJSAuth, isAdmin, ContributionController.getStats);
+app.get('/api/v1/pulls/stats', adminJSAuth, isAdmin, PullController.getStats);
+app.get('/api/v1/admin/export/users', adminJSAuth, isAdmin, (req, res) => {
+  res.json({ message: 'Export non implémenté', users: [] });
+});
+
+// ❌ ROUTES DE TEST SUPPRIMÉES POUR LA SÉCURITÉ
+// Ces routes étaient dangereuses car elles exposaient des données sensibles
+// et permettaient de simuler des sessions admin
+
+// Anciennement :
+// - /api/v1/admin/test-session (simulation de session admin)
+// - /api/v1/admin/test-contributions (accès aux contributions sans auth)
+// Ces routes ont été supprimées pour améliorer la sécurité
+
+
+
+// 1️⃣5️⃣ ROUTES API AVEC AUTHENTIFICATION
+// Les imports et le middleware adminJSAuth sont déjà définis plus haut
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -256,7 +268,34 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erreur interne du serveur', message: err.message });
 });
 
-// 1️⃣9️⃣ Démarrage du serveur
+// 1️⃣9️⃣ Configuration Socket.io pour données temps réel
+io.on('connection', (socket) => {
+  console.log('🔌 Client connecté:', socket.id);
+
+  // Rejoindre une room pour les mises à jour admin
+  socket.on('join-admin-dashboard', () => {
+    socket.join('admin-dashboard');
+    console.log('👤 Client rejoint admin-dashboard');
+  });
+
+  // Rejoindre une room pour les mises à jour générales
+  socket.on('join-public-updates', () => {
+    socket.join('public-updates');
+    console.log('👤 Client rejoint public-updates');
+  });
+
+  socket.on('disconnect', () => {
+    console.log('🔌 Client déconnecté:', socket.id);
+  });
+});
+
+// Fonction pour émettre des mises à jour temps réel
+export const emitRealtimeUpdate = (event, data) => {
+  io.to('admin-dashboard').emit(event, data);
+  io.to('public-updates').emit(event, data);
+};
+
+// 2️⃣0️⃣ Démarrage du serveur
 const PORT = process.env.PORT || 5000;
 
 (async () => {
@@ -267,14 +306,22 @@ const PORT = process.env.PORT || 5000;
     await sequelize.authenticate();
     console.log('✅ Base de données connectée');
 
-    try {
-      const { default: initAdmin } = await import('./config/admin.js');
-      const { admin, adminRouter } = await initAdmin();
-      app.use(admin.options.rootPath, adminRouter);
-      console.log('✅ AdminJS chargé avec succès');
-    } catch (error) {
-      console.error('❌ Erreur lors du chargement d\'AdminJS:', error);
-    }
+    // AdminJS déjà chargé plus haut dans le fichier
+
+    // 1️⃣9️⃣ VÉRIFICATION AUTOMATIQUE DES CAGNOTTES (toutes les heures)
+    const { checkAndCloseExpiredCagnottes } = await import('./controllers/adminController.js');
+
+    // Vérification immédiate au démarrage
+    console.log('🔍 Vérification initiale des cagnottes à fermer...');
+    await checkAndCloseExpiredCagnottes();
+
+    // Vérification toutes les heures
+    setInterval(async () => {
+      console.log('🔄 Vérification périodique des cagnottes...');
+      await checkAndCloseExpiredCagnottes();
+    }, 60 * 60 * 1000); // 1 heure
+
+    console.log('✅ Vérification automatique des cagnottes programmée (toutes les heures)');
 
     // 1️⃣8️⃣ Route 404 (APRÈS AdminJS)
     app.use('*', (req, res) => {
@@ -282,12 +329,14 @@ const PORT = process.env.PORT || 5000;
       res.status(404).json({ error: 'Route non trouvée', path: req.originalUrl });
     });
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
       console.log(`🔑 AdminJS disponible sur http://localhost:${PORT}/admin`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🧪 Test route: http://localhost:${PORT}/test`);
       console.log(`📈 AdminJS Stats: http://localhost:${PORT}/api/v1/adminjs/users/admin-stats`);
+      console.log(`🔌 Socket.io activé pour données temps réel`);
+      console.log(`⏰ Clôture automatique des cagnottes activée`);
     });
   } catch (error) {
     console.error('❌ Erreur démarrage serveur:', error);

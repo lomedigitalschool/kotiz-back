@@ -15,7 +15,7 @@ function initPull(sequelize) {
     description: { type: DataTypes.TEXT, allowNull: true },
     goalAmount: { type: DataTypes.DECIMAL(12,2), allowNull: false },
     currentAmount: { type: DataTypes.DECIMAL(12,2), defaultValue: 0 },
-    currency: { type: DataTypes.ENUM('XOF','EUR','USD'), defaultValue: 'XOF', allowNull: false },
+    currency: { type: DataTypes.ENUM('XOF','EUR','USD','GNF','NGN','GHS','KES'), defaultValue: 'XOF', allowNull: false },
     startDate: { type: DataTypes.DATE, allowNull: true },
     deadline: { type: DataTypes.DATE, allowNull: true },
     type: { type: DataTypes.ENUM('public','private'), defaultValue: 'public' },

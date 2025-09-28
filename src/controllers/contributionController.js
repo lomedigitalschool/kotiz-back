@@ -4,6 +4,7 @@ const { Contribution, Pull, Transaction } = db;
 import { Op, QueryTypes } from 'sequelize';
 import paymentService from '../services/paymentService.js';
 import sequelize from '../config/database.js';
+import { emitRealtimeUpdate } from '../server.js';
 
 export const getStats = async (req, res) => {
   try {
@@ -217,6 +218,16 @@ export const handlePaymentWebhook = async (req, res) => {
         },
         { where: { contributionId: contribution.id } }
       );
+
+      // Émettre un événement temps réel
+      emitRealtimeUpdate('contribution-completed', {
+        contributionId: contribution.id,
+        pullId: pull.id,
+        amount: contribution.amount,
+        contributorName: contribution.contributorName || 'Anonyme',
+        pullTitle: pull.title,
+        timestamp: new Date()
+      });
 
       console.log('✅ Contribution confirmée:', contribution.id);
 

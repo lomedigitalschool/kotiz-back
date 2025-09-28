@@ -7,13 +7,23 @@
   "scripts": {
     "start": "node --max-old-space-size=400 --optimize-for-size src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest",
+    "test": "jest --testEnvironment=node",
+    "test:admin": "jest src/tests/admin.test.js --testEnvironment=node",
+    "test:adminjs": "node src/tests/adminjs-test-suite.js",
+    "test:adminjs-integration": "jest src/tests/adminjs-integration.test.js --testEnvironment=node",
+    "test:adminjs-security": "jest src/tests/adminjs-security.test.js --testEnvironment=node",
+    "test:adminjs-routes": "jest src/tests/adminjs-routes.test.js --testEnvironment=node",
+    "test:adminjs-session": "jest src/tests/adminjs-session.test.js --testEnvironment=node",
+    "test:watch": "jest --watch --testEnvironment=node",
     "create-admin": "node scripts/createAdmin.js",
+    "create-secure-admin": "node src/scripts/create-secure-admin.js",
     "test-routes": "node test-routes.js",
     "debug-adminjs": "node debug-adminjs.js",
     "fix-server": "node fix-server.js all",
     "test-complete": "node test-complete.js",
-    "test-firebase": "node test-firebase.js"
+    "test-firebase": "node test-firebase.js",
+    "audit:adminjs": "node -e \"console.log('📋 Voir AUDIT_ADMINJS_REPORT.md pour le rapport complet')\"",
+    "security:adminjs": "node -e \"console.log('🔒 Voir ADMINJS_SECURITY_FIXES.js pour les corrections')\""
   },
   "dependencies": {
     "@adminjs/design-system": "^4.0.5",
@@ -35,10 +45,12 @@
     "express-validator": "^7.0.1",
     "firebase-admin": "^13.5.0",
     "helmet": "^8.1.0",
+    "jsdom": "^27.0.0",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
     "multer-storage-cloudinary": "^4.0.0",
+    "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.6",
     "pdfkit": "^0.17.2",
     "pg": "^8.11.3",
@@ -47,11 +59,24 @@
     "react-dom": "^18.3.1",
     "react-select": "^5.10.2",
     "recharts": "^3.2.1",
-    "sequelize": "^6.32.1"
+    "sequelize": "^6.32.1",
+    "socket.io": "^4.8.1",
+    "tough-cookie": "^6.0.0"
   },
   "devDependencies": {
     "jest": "^29.6.4",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "supertest": "^6.3.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {},
+    "extensionsToTreatAsEsm": [
+      ".js"
+    ],
+    "globals": {
+      "NODE_OPTIONS": "--experimental-vm-modules"
+    }
   },
   "keywords": [
     "kotiz",

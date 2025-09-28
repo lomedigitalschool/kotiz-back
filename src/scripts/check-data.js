@@ -1,4 +1,5 @@
-const { User, Pull, Contribution } = require('../models');
+import db from '../models/index.js';
+const { User, Pull, Contribution } = db;
 
 async function checkData() {
   try {
@@ -48,9 +49,9 @@ async function checkData() {
   }
 }
 
-module.exports = { checkData };
+export { checkData };
 
 // Exécuter si appelé directement
-if (require.main === module) {
+if (process.argv[1].endsWith('check-data.js')) {
   checkData().then(() => process.exit(0));
 }

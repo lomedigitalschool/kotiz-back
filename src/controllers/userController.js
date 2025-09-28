@@ -2,6 +2,7 @@ import db from '../models/index.js';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 import jwt from 'jsonwebtoken';
+import { emitRealtimeUpdate } from '../server.js';
 
 const { User, Pull, Contribution, Transaction } = db;
 
@@ -212,7 +213,7 @@ const getChartData = async (req, res) => {
       const monthName = date.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
       monthlyData.push({
         month: monthName,
-        amount: parseFloat(result.total) / 100 // Convertir en euros/FCFA
+        amount: parseFloat(result.total) || 0 // Garder en FCFA
       });
     }
 
@@ -227,12 +228,12 @@ const getChartData = async (req, res) => {
 
     const paymentData = Array.isArray(paymentMethods) ? paymentMethods.map(item => ({
       name: item.paymentmethod || 'Non spécifié',
-      value: parseFloat(item.total) / 100
+      value: parseFloat(item.total) || 0
     })) : [];
 
     // Top 5 cagnottes par montant collecté
     const [topCagnottes] = await sequelize.query(
-      'SELECT p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
+      'SELECT p.title, COALESCE(SUM(CAST(c.amount AS DECIMAL(10,2))), 0) as totalcollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalcollected DESC LIMIT 5',
       {
         type: QueryTypes.SELECT
       }
@@ -240,7 +241,7 @@ const getChartData = async (req, res) => {
 
     const topCagnottesData = Array.isArray(topCagnottes) ? topCagnottes.map(item => ({
       title: item.title || 'Sans titre',
-      amount: parseFloat(item.totalcollected) / 100
+      amount: parseFloat(item.totalcollected) || 0
     })) : [];
 
     res.json({
@@ -319,7 +320,7 @@ const getAdminChartData = async (req, res) => {
       const monthName = date.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
       monthlyData.push({
         month: monthName,
-        amount: parseFloat(result.total) / 100 // Convertir en euros/FCFA
+        amount: parseFloat(result.total) || 0 // Garder en FCFA
       });
     }
 
@@ -334,12 +335,12 @@ const getAdminChartData = async (req, res) => {
 
     const paymentData = Array.isArray(paymentMethods) ? paymentMethods.map(item => ({
       name: item.paymentmethod || 'Non spécifié',
-      value: parseFloat(item.total) / 100
+      value: parseFloat(item.total) || 0
     })) : [];
 
     // Top 5 cagnottes par montant collecté
     const [topCagnottes] = await sequelize.query(
-      'SELECT p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
+      'SELECT p.title, COALESCE(SUM(CAST(c.amount AS DECIMAL(10,2))), 0) as totalcollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalcollected DESC LIMIT 5',
       {
         type: QueryTypes.SELECT
       }
@@ -347,7 +348,7 @@ const getAdminChartData = async (req, res) => {
 
     const topCagnottesData = Array.isArray(topCagnottes) ? topCagnottes.map(item => ({
       title: item.title || 'Sans titre',
-      amount: parseFloat(item.totalcollected) / 100
+      amount: parseFloat(item.totalcollected) || 0
     })) : [];
 
     res.json({

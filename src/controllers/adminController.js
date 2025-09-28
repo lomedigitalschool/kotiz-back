@@ -194,3 +194,67 @@ export const unblockUser = async (req, res) => {
 };
 
 export default { getDashboard, getAllUsers, blockUser, deleteUser, getAllPulls, validatePull, deletePull, getLogs, exportTransactions, resetUserPassword, generateResetToken, unblockUser };
+
+// Fonction pour vérifier et fermer automatiquement les cagnottes
+export const checkAndCloseExpiredCagnottes = async () => {
+  try {
+    console.log('🔍 Vérification automatique des cagnottes à fermer...');
+
+    const db = await import('../models/index.js');
+    const { Pull, Contribution } = db;
+
+    // Récupérer toutes les cagnottes actives
+    const activeCagnottes = await Pull.findAll({
+      where: { status: 'active' },
+      include: [
+        { model: Contribution, as: 'contributions', where: { status: 'completed' }, required: false }
+      ]
+    });
+
+    let closedCount = 0;
+
+    for (const cagnotte of activeCagnottes) {
+      const currentAmount = cagnotte.contributions?.reduce((sum, contrib) =>
+        sum + parseFloat(contrib.amount || 0), 0) || 0;
+      const goalAmount = parseFloat(cagnotte.goalAmount);
+      const deadline = cagnotte.deadline ? new Date(cagnotte.deadline) : null;
+      const now = new Date();
+      const participantLimit = cagnotte.participantLimit;
+      const nbContribs = cagnotte.contributions?.length || 0;
+
+      // Conditions de clôture automatique
+      const isGoalReached = currentAmount >= goalAmount;
+      const isDeadlinePassed = deadline && now > deadline;
+      const isParticipantLimitReached = participantLimit && nbContribs >= participantLimit;
+
+      const shouldClose = isGoalReached || isDeadlinePassed || isParticipantLimitReached;
+
+      if (shouldClose) {
+        console.log(`🔒 Fermeture automatique de la cagnotte ${cagnotte.id} (${cagnotte.title}):`, {
+          isGoalReached,
+          currentAmount,
+          goalAmount,
+          isDeadlinePassed,
+          deadline,
+          isParticipantLimitReached,
+          participantLimit,
+          nbContribs
+        });
+
+        await cagnotte.update({ status: 'closed' });
+        closedCount++;
+      }
+    }
+
+    if (closedCount > 0) {
+      console.log(`✅ ${closedCount} cagnotte(s) fermée(s) automatiquement`);
+    } else {
+      console.log('✅ Aucune cagnotte à fermer');
+    }
+
+    return { success: true, closedCount };
+  } catch (error) {
+    console.error('❌ Erreur lors de la vérification automatique des cagnottes:', error);
+    return { success: false, error: error.message };
+  }
+};

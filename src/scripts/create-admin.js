@@ -31,8 +31,8 @@ async function createAdmin() {
     
     console.log('✅ Administrateur créé avec succès !');
     console.log(`📧 Email: ${adminEmail}`);
-    console.log(`🔑 Mot de passe: ${adminPassword}`);
-    console.log(`🌐 Interface admin: http://localhost:3000/admin`);
+    console.log(`🔑 Mot de passe: [SÉCURISÉ - défini dans les variables d'environnement]`);
+    console.log(`🌐 Interface admin: http://localhost:5000/admin`);
     
   } catch (error) {
     console.error('❌ Erreur création admin:', error);

@@ -12,10 +12,14 @@ export const getStats = async (req, res) => {
 
     // Top 5 cagnottes par montant collecté
     const topCagnottesResult = await sequelize.query(
-      'SELECT p.id, p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c."pullId" AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
+      'SELECT p.id, p.title, COALESCE(SUM(CAST(c.amount AS DECIMAL(10,2))), 0) as totalcollected FROM pulls p LEFT JOIN contributions c ON p.id = c."pullId" AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalcollected DESC LIMIT 5',
       { type: QueryTypes.SELECT }
     );
-    const topCagnottes = Array.isArray(topCagnottesResult) ? topCagnottesResult : [];
+    const topCagnottes = Array.isArray(topCagnottesResult) ? topCagnottesResult.map(row => ({
+      id: row.id,
+      title: row.title,
+      totalCollected: parseFloat(row.totalcollected || 0)
+    })) : [];
 
     res.json({
       activeCount: activeCount || 0,
@@ -636,15 +640,15 @@ export const getCagnotteById = async (req, res) => {
     
     if (isOwner) {
       console.log(`✅ Accès propriétaire complet pour la cagnotte ${id} (${pull.type}, ${pull.status})`);
-    } else if (pull.type === 'public' && pull.status !== 'active') {
-      // Bloquer uniquement les cagnottes publiques fermées pour les non-propriétaires
-      console.log(`❌ Accès refusé à la cagnotte publique fermée ${id}`);
+    } else if (pull.type === 'private' && pull.status !== 'active') {
+      // Bloquer uniquement les cagnottes privées fermées pour les non-propriétaires
+      console.log(`❌ Accès refusé à la cagnotte privée fermée ${id}`);
       return res.status(404).json({
         success: false,
         error: "Cagnotte non trouvée"
       });
     } else {
-      // Autoriser l'accès à toutes les autres cagnottes (publiques actives + privées)
+      // Autoriser l'accès à toutes les autres cagnottes (publiques actives + publiques fermées + privées actives)
       console.log(`✅ Accès ${pull.type === 'private' ? 'limité' : 'complet'} autorisé pour la cagnotte ${pull.type} ${id}`);
     }
 
@@ -971,13 +975,16 @@ export const getContributionsByPullId = async (req, res) => {
       });
     }
 
-    // Pour les cagnottes publiques fermées, seuls les propriétaires peuvent voir les contributions
-    if (isClosed && pull.type === 'public' && !isOwner) {
+    // Pour les cagnottes privées, seuls les propriétaires peuvent voir les contributions
+    if (isPrivate && !isOwner) {
       return res.status(403).json({
         success: false,
-        error: "Accès refusé - Cette cagnotte est fermée"
+        error: "Accès refusé - Cette cagnotte est privée"
       });
     }
+
+    // Les propriétaires peuvent toujours voir les contributions de leurs cagnottes (même fermées)
+    // Les cagnottes publiques fermées permettent à tout le monde de voir les contributions finales
 
     console.log(`✅ Accès autorisé aux contributions de la cagnotte ${pull.type} ${pull.status} ${id}`);
 

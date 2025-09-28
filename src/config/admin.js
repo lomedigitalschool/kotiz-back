@@ -6,6 +6,7 @@ import { QueryTypes } from 'sequelize';
 import db from '../models/index.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { authenticateAdmin, ensureDefaultAdmin } from '../middleware/adminAuth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -84,7 +85,7 @@ const getDashboardMetrics = async () => {
 
     // Top 5 cagnottes par montant collecté
     const [topCagnottesResult] = await sequelize.query(
-      'SELECT p.id, p.title, COALESCE(SUM(c.amount), 0) as totalCollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalCollected DESC LIMIT 5',
+      'SELECT p.id, p.title, COALESCE(SUM(CAST(c.amount AS DECIMAL(10,2))), 0) as totalcollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalcollected DESC LIMIT 5',
       {
         type: QueryTypes.SELECT
       }
@@ -123,39 +124,43 @@ const adminOptions = {
   databases: [],
   auth: {
     authenticate: async (email, password) => {
-      try {
-        const User = db.User;
-        const user = await User.findOne({ where: { email } });
-        if (!user || user.role !== 'admin') return false;
+      console.log('🔐 AdminJS auth appelée:', email);
 
-        // Pour la démo, vérifier un mot de passe simple
-        // En production, utiliser bcrypt
-        if (password === process.env.ADMIN_PASSWORD || password === 'admin123') {
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-          };
+      try {
+        // Vérification simple et directe pour AdminJS
+        const adminEmail = 'admin@kotiz.com';
+        const adminPassword = 'Admin123!@#';
+
+        if (email !== adminEmail) {
+          console.log('❌ Email admin incorrect');
+          return null;
         }
-        return false;
+
+        // Comparaison directe (sans hash)
+        if (password !== adminPassword) {
+          console.log('❌ Mot de passe admin incorrect');
+          return null;
+        }
+
+        const adminUser = {
+          id: 1,
+          email: adminEmail,
+          name: 'Administrateur Kotiz',
+          role: 'admin'
+        };
+
+        console.log('✅ AdminJS auth succès pour:', email);
+        return adminUser;
+
       } catch (error) {
-        console.error('Erreur authentification AdminJS:', error);
-        return false;
+        console.error('❌ Erreur AdminJS auth:', error);
+        return null;
       }
     },
-    cookieName: 'adminjs',
-    cookiePassword: process.env.SESSION_SECRET || 'adminjs-cookie-password-long-enough'
+    cookieName: 'kotiz-admin',
+    cookiePassword: process.env.SESSION_SECRET || 'kotiz-admin-cookie-password-secure-2024'
   },
-  sessionOptions: {
-    resave: false,
-    saveUninitialized: false,
-    secret: process.env.SESSION_SECRET || 'adminjs-session-secret',
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production'
-    }
-  },
+
   resources: [
     {
       resource: User,
@@ -414,11 +419,11 @@ const adminOptions = {
     }
   },
   dashboard: {
-    component: componentLoader.add('Dashboard', join(projectRoot, 'src/config/components/Dashboard.jsx'))
+    component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx'))
   },
   pages: {
     'Dashboard Avancé': {
-      component: componentLoader.add('Dashboard', join(projectRoot, 'src/config/components/Dashboard.jsx')),
+      component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx')),
       icon: 'Home'
     },
     'Contributions': {
@@ -430,17 +435,28 @@ const adminOptions = {
       icon: 'Money'
     },
     'Statistiques Détaillées': {
-      component: componentLoader.add('Stats', join(projectRoot, 'src/config/components/Stats.jsx')),
+      component: componentLoader.add('AdvancedStats', join(projectRoot, 'src/config/components/AdvancedStats.jsx')),
       icon: 'TrendingUp'
     },
     'Exports': {
       component: componentLoader.add('Export', join(projectRoot, 'src/config/components/Export.jsx')),
       icon: 'Download'
+    },
+    'Logs d\'Activité': {
+      component: componentLoader.add('AdminLogs', join(projectRoot, 'src/config/components/AdminLogs.jsx')),
+      icon: 'FileText'
+    },
+    'Modération': {
+      component: componentLoader.add('ModerationPanel', join(projectRoot, 'src/config/components/ModerationPanel.jsx')),
+      icon: 'Shield'
     }
   }
 };
 
 // Création de l'instance AdminJS
+// Créer l'admin par défaut si nécessaire
+await ensureDefaultAdmin();
+
 console.log('🔧 Création instance AdminJS...');
 const admin = new AdminJS(adminOptions);
 console.log('✅ Instance AdminJS créée');
@@ -449,10 +465,43 @@ console.log('🔧 Initialisation AdminJS...');
 await admin.initialize();
 console.log('✅ AdminJS initialisé');
 
-// Routeur AdminJS (sans authentification pour stabilité)
+// Routeur AdminJS avec authentification DIRECTE
 console.log('🔧 Création routeur AdminJS...');
-const adminRouter = AdminJSExpress.buildRouter(admin);
-console.log('✅ Routeur AdminJS créé');
+const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
+  admin,
+  {
+    authenticate: async (email, password) => {
+      console.log('🚨 AUTH DIRECTE - Email:', email, 'Password:', password);
+
+      // Validation simple et directe
+      if (email === 'admin@kotiz.com' && password === 'Admin123!@#') {
+        console.log('✅ AUTH RÉUSSIE');
+        return {
+          id: 1,
+          email: 'admin@kotiz.com',
+          name: 'Admin Kotiz',
+          role: 'admin'
+        };
+      }
+
+      console.log('❌ AUTH ÉCHOUÉE');
+      return null;
+    },
+    cookieName: 'adminjs',
+    cookiePassword: 'simple-secret-key-12345'
+  },
+  null,
+  {
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: false,
+      httpOnly: false, // ← ESSAYEZ false POUR DÉBOGUER
+      maxAge: 24 * 60 * 60 * 1000
+    }
+  }
+);
+console.log('✅ Routeur AdminJS créé avec authentification');
 
   return { admin, adminRouter };
 };

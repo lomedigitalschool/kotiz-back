@@ -28,3 +28,13 @@ test-routes.js
 fix-sql-queries.js
 restart-server.js
 test-admin.js
+ADMINJS_SECURITY_FIXES.js
+ADMINJS_TESTS_README.md
+ADMIN_IMPROVEMENTS_SUMMARY.md
+ADMIN_SYSTEM.md
+AUDIT_ADMINJS_REPORT.md
+SECURITY_FIXES_APPLIED.md
+api_models_info.md
+api_models_info.pdf
+src/scripts/list-active-pulls.js
+src/scripts/seed-sample-data.js

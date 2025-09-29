@@ -1,275 +1,204 @@
-/**
- * Service de gestion des paiements externes
- * 
- * Ce service centralise toutes les interactions avec les APIs de paiement externes
- * comme Orange Money, MTN Mobile Money, Moov Money, etc.
- * 
- * INSTRUCTIONS D'INTÉGRATION :
- * 1. Remplacer les URLs de base par celles de votre fournisseur de paiement
- * 2. Configurer les clés API dans les variables d'environnement
- * 3. Adapter les structures de données selon votre API
- * 4. Implémenter la logique de webhook pour les notifications de paiement
- */
+// src/services/payment.service.js
 
 import axios from 'axios';
 import crypto from 'crypto';
 
 class PaymentService {
   constructor() {
-    // 🔧 CONFIGURATION À ADAPTER
-    this.baseURL = process.env.PAYMENT_API_BASE_URL || 'https://api.votre-fournisseur-paiement.com';
-    this.apiKey = process.env.PAYMENT_API_KEY || 'your-api-key';
-    this.merchantId = process.env.PAYMENT_MERCHANT_ID || 'your-merchant-id';
-    this.secretKey = process.env.PAYMENT_SECRET_KEY || 'your-secret-key';
+    this.apiUrl = process.env.SEMOA_API_URL; // e.g., https://api.semoa-payments.ovh/sandbox
+    this.apiKey = process.env.SEMOA_API_KEY;
+    this.secretKey = process.env.SEMOA_SECRET_KEY;
+    this.username = process.env.SEMOA_USERNAME; 
+    this.password = process.env.SEMOA_PASSWORD;
+    this.clientId = process.env.SEMOA_CLIENT_ID;
+    this.clientSecret = process.env.SEMOA_CLIENT_SECRET;
     
-    // Configuration Axios
-    this.client = axios.create({
-      baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        'X-Merchant-ID': this.merchantId
-      },
-      timeout: 30000 // 30 secondes
-    });
+    // NOUVELLE HYPOTHÈSE : L'endpoint d'authentification est sous l'URL complète du Sandbox.
+    this.authUrl = this.apiUrl; // Utilisation de https://api.semoa-payments.ovh/sandbox
+    this.paymentUrl = this.apiUrl; // URL complète pour le paiement (/sandbox)
+
+    this.accessToken = null;
+    this.tokenExpiryTime = 0; // Timestamp en millisecondes
   }
 
   /**
-   * 💳 POINT D'INTÉGRATION PRINCIPAL - INITIER UN PAIEMENT
-   * 
-   * Cette méthode doit être appelée depuis contributionController.js
-   * pour initier un paiement via l'API externe
-   * 
-   * @param {Object} paymentData - Données du paiement
-   * @param {number} paymentData.amount - Montant en centimes
-   * @param {string} paymentData.currency - Devise (XOF, GNF, etc.)
-   * @param {string} paymentData.phoneNumber - Numéro de téléphone du payeur
-   * @param {string} paymentData.paymentMethod - Méthode de paiement (orange_money, mtn_money, etc.)
-   * @param {string} paymentData.reference - Référence unique de la transaction
-   * @param {string} paymentData.description - Description du paiement
-   * @param {string} paymentData.callbackUrl - URL de callback pour les notifications
-   * @returns {Promise<Object>} Réponse de l'API de paiement
+   * Tente d'obtenir un nouveau jeton d'accès auprès de Semoa si l'actuel est expiré.
+   * @returns {Promise<string|null>} Le jeton d'accès ou null en cas d'échec.
+   */
+  async getAccessToken() {
+    // Vérifier si le jeton actuel est toujours valide (avec une marge de 60s)
+    if (this.accessToken && (Date.now() < this.tokenExpiryTime - 60000)) {
+      console.log('✅ Jeton Semoa existant toujours valide. Réutilisation.');
+      return this.accessToken;
+    }
+
+    console.log('🔄 Obtention d\'un nouveau jeton Semoa...');
+    try {
+      // Endpoint de jeton : Utilisation de l'URL complète du Sandbox + /oauth/token
+      const tokenEndpoint = `${this.authUrl}/oauth/token`;
+
+      // 🚨 TENTATIVE N°7 : Basic Auth (Client ID:Secret) + Corps (Username/Password + grant_type:password)
+      // C'est la configuration standard pour le Resource Owner Password Credentials Grant.
+      const authString = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+      
+      const tokenPayload = new URLSearchParams({
+        grant_type: 'password', // Le type d'accès est "password"
+        username: this.username,
+        password: this.password,
+        // Les identifiants Client ID/Secret sont dans l'en-tête Basic
+      }).toString();
+
+      const response = await axios.post(tokenEndpoint, 
+        tokenPayload,
+        {
+          headers: {
+            'Authorization': `Basic ${authString}`, // Basic Auth avec Client ID et Secret
+            'Content-Type': 'application/x-www-form-urlencoded', // Format standard OAuth
+          }
+        }
+      );
+
+      // Si la réponse est OK
+      this.accessToken = response.data.access_token;
+      // Calcul du temps d'expiration : Date.now() + expiresIn (en secondes) * 1000
+      this.tokenExpiryTime = Date.now() + (response.data.expires_in * 1000); 
+
+      console.log('✅ Jeton Semoa obtenu avec succès.');
+      return this.accessToken;
+
+    } catch (error) {
+      // Afficher les données brutes de la réponse en cas d'échec
+      console.error('❌ ERREUR FATALE LORS DE L\'OBTENTION DU JETON SEMOA:', error.response?.data || error.message);
+      
+      // Afficher les détails de l'erreur pour un meilleur débogage
+      if (error.response?.data) {
+          console.error('Détails de l\'erreur Semoa:', error.response.data);
+      }
+      
+      this.accessToken = null;
+      this.tokenExpiryTime = 0;
+      return null;
+    }
+  }
+
+  /**
+   * Initialise une transaction de paiement auprès de Semoa.
+   * @param {object} paymentData - Données de la transaction.
+   * @returns {Promise<object>} Réponse de l'API de Semoa.
    */
   async initiatePayment(paymentData) {
-    try {
-      console.log('🚀 Initiation du paiement:', paymentData);
+    const token = await this.getAccessToken();
+    if (!token) {
+      return { success: false, error: 'Impossible d\'obtenir le jeton d\'accès Semoa.' };
+    }
 
-      // 🔧 ADAPTER CETTE STRUCTURE SELON VOTRE API
+    try {
       const payload = {
-        merchant_id: this.merchantId,
         amount: paymentData.amount,
-        currency: paymentData.currency,
         phone_number: paymentData.phoneNumber,
-        payment_method: paymentData.paymentMethod,
-        reference: paymentData.reference,
         description: paymentData.description,
+        transaction_id: paymentData.reference,
         callback_url: paymentData.callbackUrl,
-        return_url: paymentData.returnUrl,
-        timestamp: new Date().toISOString()
+        return_url: paymentData.returnUrl
       };
 
-      // 🔧 REMPLACER PAR L'ENDPOINT RÉEL DE VOTRE API
-      const response = await this.client.post('/payments/initiate', payload);
+      // 🚨 Utilisation du Jeton d'Accès 🚨
+      const headers = {
+        'x-api-key': this.apiKey, // Ces clés sont souvent requises même avec le jeton
+        'x-secret-key': this.secretKey, 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      
+      // L'endpoint de paiement utilise l'API URL complète avec '/sandbox'
+      const response = await axios.post(`${this.paymentUrl}/payment/initiate`, payload, { headers });
 
-      console.log('✅ Paiement initié avec succès:', response.data);
+      console.log('✅ Paiement Semoa initié, URL de redirection reçue.');
       return {
         success: true,
         transactionId: response.data.transaction_id,
         paymentUrl: response.data.payment_url,
-        status: response.data.status,
-        reference: response.data.reference,
-        providerResponse: response.data
+        providerResponse: response.data,
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors de l\'initiation du paiement:', error.response?.data || error.message);
-      
+      console.error('❌ Erreur lors de l\'initiation du paiement Semoa:', error.response?.data || error.message);
       return {
         success: false,
-        error: error.response?.data?.message || 'Erreur lors de l\'initiation du paiement',
-        code: error.response?.status || 500,
-        providerError: error.response?.data
+        error: error.response?.data?.message || error.message,
+        details: error.response?.data
       };
     }
   }
 
   /**
-   * 🔍 VÉRIFIER LE STATUT D'UN PAIEMENT
-   * 
-   * @param {string} transactionId - ID de la transaction
-   * @returns {Promise<Object>} Statut du paiement
+   * Vérifie le statut d'une transaction directement auprès de Semoa.
+   * @param {string} providerTransactionId - L'ID de transaction de Semoa.
+   * @returns {Promise<object>} Le statut de la transaction.
    */
-  async checkPaymentStatus(transactionId) {
+  async checkPaymentStatus(providerTransactionId) {
+    const token = await this.getAccessToken();
+    if (!token) {
+      return { success: false, status: 'unknown', error: 'Impossible d\'obtenir le jeton d\'accès Semoa.' };
+    }
+    
     try {
-      console.log('🔍 Vérification du statut pour:', transactionId);
-
-      // 🔧 ADAPTER L'ENDPOINT SELON VOTRE API
-      const response = await this.client.get(`/payments/${transactionId}/status`);
+      const headers = {
+        'x-api-key': this.apiKey,
+        'x-secret-key': this.secretKey,
+        'Authorization': `Bearer ${token}`,
+      };
+      
+      const response = await axios.get(`${this.paymentUrl}/payment/status/${providerTransactionId}`, { headers });
 
       return {
         success: true,
-        status: response.data.status, // pending, completed, failed, cancelled
-        transactionId: response.data.transaction_id,
-        amount: response.data.amount,
-        currency: response.data.currency,
-        providerResponse: response.data
+        status: response.data.status,
+        providerResponse: response.data,
       };
 
     } catch (error) {
       console.error('❌ Erreur lors de la vérification du statut:', error.response?.data || error.message);
-      
       return {
         success: false,
-        error: error.response?.data?.message || 'Erreur lors de la vérification du statut',
-        code: error.response?.status || 500
+        status: 'unknown',
+        error: error.response?.data || error.message
       };
     }
   }
 
   /**
-   * 🔄 TRAITER LES WEBHOOKS DE PAIEMENT
-   * 
-   * Cette méthode doit être appelée depuis un endpoint webhook
-   * pour traiter les notifications de paiement
-   * 
-   * @param {Object} webhookData - Données du webhook
-   * @returns {Promise<Object>} Résultat du traitement
+   * Traite les données reçues de l'API de paiement via un webhook.
+   * @param {object} webhookData - Les données brutes du webhook de Semoa.
+   * @param {string} signature - La signature de l'en-tête de la requête.
+   * @returns {object} Un objet standardisé avec la référence et le statut du paiement.
    */
-  async processWebhook(webhookData) {
-    try {
-      console.log('📨 Traitement du webhook:', webhookData);
-
-      // 🔧 ADAPTER LA VALIDATION SELON VOTRE API
-      const isValid = this.validateWebhookSignature(webhookData);
-      if (!isValid) {
-        throw new Error('Signature du webhook invalide');
-      }
-
-      return {
-        success: true,
-        transactionId: webhookData.transaction_id,
-        status: webhookData.status,
-        amount: webhookData.amount,
-        reference: webhookData.reference,
-        processedAt: new Date().toISOString()
-      };
-
-    } catch (error) {
-      console.error('❌ Erreur lors du traitement du webhook:', error.message);
-      
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * 🔐 VALIDER LA SIGNATURE DU WEBHOOK
-   * 
-   * @param {Object} webhookData - Données du webhook
-   * @returns {boolean} Signature valide ou non
-   */
-  validateWebhookSignature(webhookData) {
-    // 🔧 IMPLÉMENTER LA VALIDATION SELON VOTRE API
-    // Exemple avec HMAC SHA256
-    const signature = webhookData.signature;
-    const payload = JSON.stringify(webhookData.data);
-    
+  async processWebhook(webhookData, signature) {
+    // ⚠️ Étape 1 : Vérification de la signature (CRUCIALE POUR LA SÉCURITÉ !)
+    const body = JSON.stringify(webhookData);
     const expectedSignature = crypto
       .createHmac('sha256', this.secretKey)
-      .update(payload)
+      .update(body)
       .digest('hex');
 
-    return signature === expectedSignature;
-  }
-
-  /**
-   * 💰 REMBOURSER UN PAIEMENT
-   * 
-   * @param {string} transactionId - ID de la transaction à rembourser
-   * @param {number} amount - Montant à rembourser (optionnel, remboursement total par défaut)
-   * @param {string} reason - Raison du remboursement
-   * @returns {Promise<Object>} Résultat du remboursement
-   */
-  async refundPayment(transactionId, amount = null, reason = '') {
-    try {
-      console.log('💰 Initiation du remboursement pour:', transactionId);
-
-      const payload = {
-        transaction_id: transactionId,
-        amount: amount,
-        reason: reason,
-        timestamp: new Date().toISOString()
-      };
-
-      // 🔧 ADAPTER L'ENDPOINT SELON VOTRE API
-      const response = await this.client.post(`/payments/${transactionId}/refund`, payload);
-
-      return {
-        success: true,
-        refundId: response.data.refund_id,
-        status: response.data.status,
-        amount: response.data.amount,
-        providerResponse: response.data
-      };
-
-    } catch (error) {
-      console.error('❌ Erreur lors du remboursement:', error.response?.data || error.message);
-      
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Erreur lors du remboursement',
-        code: error.response?.status || 500
-      };
+    if (signature !== expectedSignature) {
+      console.error('❌ Signature du webhook invalide !');
+      return { success: false, error: 'Signature invalide.' };
     }
-  }
+    
+    // Étape 2 : Extraction des données
+    const { transaction_id, status } = webhookData;
 
-  /**
-   * 📋 OBTENIR LES MÉTHODES DE PAIEMENT DISPONIBLES
-   * 
-   * @param {string} country - Code pays (SN, GN, CI, etc.)
-   * @returns {Promise<Array>} Liste des méthodes de paiement
-   */
-  async getAvailablePaymentMethods(country = 'SN') {
-    try {
-      // 🔧 ADAPTER SELON VOTRE API
-      const response = await this.client.get(`/payment-methods?country=${country}`);
-
-      return {
-        success: true,
-        methods: response.data.methods || [
-          // Exemple de structure
-          { id: 'orange_money', name: 'Orange Money', icon: 'orange-money.png' },
-          { id: 'mtn_money', name: 'MTN Mobile Money', icon: 'mtn-money.png' },
-          { id: 'moov_money', name: 'Moov Money', icon: 'moov-money.png' },
-          { id: 'wave', name: 'Wave', icon: 'wave.png' }
-        ]
-      };
-
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération des méthodes:', error.message);
-      
-      // Retourner des méthodes par défaut en cas d'erreur
-      return {
-        success: false,
-        methods: [
-          { id: 'orange_money', name: 'Orange Money', icon: 'orange-money.png' },
-          { id: 'mtn_money', name: 'MTN Mobile Money', icon: 'mtn-money.png' }
-        ]
-      };
+    if (!transaction_id || !status) {
+      return { success: false, error: 'Données de webhook manquantes.' };
     }
+
+    return {
+      success: true,
+      reference: transaction_id,
+      status: status,
+    };
   }
 }
-
-// 🔧 VARIABLES D'ENVIRONNEMENT À CONFIGURER DANS .env
-/*
-# API de paiement externe
-PAYMENT_API_BASE_URL=https://api.votre-fournisseur.com
-PAYMENT_API_KEY=your-api-key
-PAYMENT_MERCHANT_ID=your-merchant-id
-PAYMENT_SECRET_KEY=your-secret-key
-PAYMENT_WEBHOOK_URL=https://votre-domaine.com/api/v1/webhooks/payment
-*/
 
 export default new PaymentService();

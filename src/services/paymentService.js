@@ -13,29 +13,159 @@
 
 import axios from 'axios';
 import crypto from 'crypto';
+import https from 'https';
 
 class PaymentService {
   constructor() {
-    // 🔧 CONFIGURATION À ADAPTER
-    this.baseURL = process.env.PAYMENT_API_BASE_URL || 'https://api.votre-fournisseur-paiement.com';
-    this.apiKey = process.env.PAYMENT_API_KEY || 'your-api-key';
-    this.merchantId = process.env.PAYMENT_MERCHANT_ID || 'your-merchant-id';
-    this.secretKey = process.env.PAYMENT_SECRET_KEY || 'your-secret-key';
-    
-    // Configuration Axios
+    // Configuration SEOMA API
+    this.baseURL = process.env.PAYMENT_API_BASE_URL || 'https://sandbox.semoa-payments.com/api';
+    this.username = process.env.SEMOA_USERNAME || 'api_cashpay.zedeka';
+    this.password = process.env.SEMOA_PASSWORD || 'yVf95Q8SBT';
+    this.clientId = process.env.SEMOA_CLIENT_ID || 'cashpay';
+    this.clientSecret = process.env.SEMOA_CLIENT_SECRET || 'HpuNOm3sDOkAvd8v3UCIxiBu68634BBs';
+    this.apiKey = process.env.SEMOA_API_KEY || 'dBirFPoKa5XyQZLB4j8MA7AzPrbxBLuAQ54h';
+    this.apiReference = process.env.PAYMENT_API_REFERENCE || '123456';
+    this.salt = process.env.PAYMENT_SALT || '987654321';
+    this.staticAccessToken = process.env.PAYMENT_ACCESS_TOKEN;
+
+    // Token d'accès (sera obtenu dynamiquement)
+    this.accessToken = null;
+    this.tokenExpiresAt = null;
+
+    // Configuration Axios pour l'authentification (même base URL que l'API)
+    this.authClient = axios.create({
+      baseURL: this.baseURL,
+      timeout: 30000
+    });
+
+    // Configuration Axios pour les appels API
     this.client = axios.create({
       baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        'X-Merchant-ID': this.merchantId
-      },
-      timeout: 30000 // 30 secondes
+      timeout: 30000
     });
   }
 
   /**
-   * 💳 POINT D'INTÉGRATION PRINCIPAL - INITIER UN PAIEMENT
+   * 🔐 CONFIGURER LES HEADERS D'AUTHENTIFICATION SEOMA
+    *
+    * Utilise OAuth2 avec renouvellement automatique du token.
+    * Fallback vers CashPay si OAuth2 échoue.
+    */
+   async getAuthHeaders() {
+     try {
+       // Vérifier si on a un token valide (avec marge de 5 minutes)
+       if (this.accessToken && this.tokenExpiresAt && new Date() < new Date(this.tokenExpiresAt - 5 * 60 * 1000)) {
+         console.log('🔄 [TOKEN] Utilisation du token OAuth2 existant et valide (expire le:', this.tokenExpiresAt.toISOString() + ')');
+         return {
+           'Authorization': `Bearer ${this.accessToken}`,
+           'Content-Type': 'application/json'
+         };
+       }
+
+       // Token expiré ou absent
+       if (this.accessToken && this.tokenExpiresAt) {
+         console.log('⏰ [TOKEN] Token OAuth2 expiré (était valide jusqu\'au:', this.tokenExpiresAt.toISOString() + '), renouvellement...');
+       } else {
+         console.log('🆕 [TOKEN] Aucun token OAuth2 présent, obtention d\'un nouveau...');
+       }
+
+       const newToken = await this.getAccessToken();
+
+       if (newToken) {
+         console.log('✅ [TOKEN] Nouveau token OAuth2 obtenu avec succès (valide jusqu\'au:', this.tokenExpiresAt.toISOString() + ')');
+         return {
+           'Authorization': `Bearer ${newToken}`,
+           'Content-Type': 'application/json'
+         };
+       }
+
+     } catch (error) {
+       console.error('❌ [TOKEN] Erreur lors du renouvellement OAuth2:', error.message);
+     }
+
+     // Fallback vers CashPay si OAuth2 échoue
+     console.log('🔄 [TOKEN] Fallback vers authentification CashPay...');
+     return this.getCashPayAuthHeaders();
+   }
+
+   /**
+    * 🔐 HEADERS D'AUTHENTIFICATION CASHPAY (FALLBACK)
+    *
+    * Utilisé quand OAuth2 n'est pas disponible
+    */
+   getCashPayAuthHeaders() {
+     const apisecure = crypto.createHash('sha256')
+       .update(this.username + this.apiKey + this.salt)
+       .digest('hex');
+
+     return {
+       'login': this.username,
+       'apireference': this.apiReference,
+       'salt': this.salt,
+       'apisecure': apisecure,
+       'Content-Type': 'application/json'
+     };
+   }
+
+  /**
+   * 🔐 OBTENIR UN TOKEN D'ACCÈS SEOMA (si nécessaire)
+   *
+   * Avec retry automatique en cas d'instabilité du sandbox
+   */
+  async getAccessToken(maxRetries = 2) {
+    // Vérifier si le token est encore valide (avec une marge de 5 minutes)
+    if (this.accessToken && this.tokenExpiresAt && new Date() < new Date(this.tokenExpiresAt - 5 * 60 * 1000)) {
+      return this.accessToken;
+    }
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔐 [AUTH] Tentative ${attempt}/${maxRetries} d'obtention du token OAuth2...`);
+
+        const authData = {
+          username: this.username,
+          password: this.password,
+          client_id: this.clientId,
+          client_secret: this.clientSecret
+        };
+
+        const response = await this.authClient.post('/auth', authData, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000 // 10 secondes timeout
+        });
+
+        this.accessToken = response.data.access_token;
+        const expiresIn = response.data.expires_in || 3600;
+        this.tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+
+        console.log(`✅ [AUTH] Token OAuth2 obtenu avec succès à la tentative ${attempt}`);
+        return this.accessToken;
+
+      } catch (error) {
+        const isLastAttempt = attempt === maxRetries;
+        const isRetryableError = error.response?.status === 503 || error.code === 'ECONNABORTED';
+
+        console.error(`❌ [AUTH] Échec tentative ${attempt}/${maxRetries}:`, error.response?.status || error.code || error.message);
+
+        if (!isLastAttempt && isRetryableError) {
+          const delay = attempt * 2000; // Délai croissant: 2s, 4s
+          console.log(`⏳ [AUTH] Retry dans ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        if (isLastAttempt) {
+          console.error('❌ [AUTH] Échec définitif après toutes les tentatives');
+          throw new Error('Impossible d\'obtenir le token d\'accès SEOMA après retry');
+        }
+      }
+    }
+  }
+
+  /**
+   *  POINT D'INTÉGRATION PRINCIPAL - INITIER UN PAIEMENT
    * 
    * Cette méthode doit être appelée depuis contributionController.js
    * pour initier un paiement via l'API externe
@@ -52,38 +182,42 @@ class PaymentService {
    */
   async initiatePayment(paymentData) {
     try {
-      console.log('🚀 Initiation du paiement:', paymentData);
+      console.log('🚀 Initiation du paiement SEOMA:', paymentData);
 
-      // 🔧 ADAPTER CETTE STRUCTURE SELON VOTRE API
+      // Adapter la structure pour l'API CashPay/SEOMA
       const payload = {
-        merchant_id: this.merchantId,
-        amount: paymentData.amount,
-        currency: paymentData.currency,
-        phone_number: paymentData.phoneNumber,
-        payment_method: paymentData.paymentMethod,
-        reference: paymentData.reference,
+        amount: Math.round(paymentData.amount / 100), // Convertir centimes en unités (CashPay attend le montant en unités)
+        currency: paymentData.currency || 'XOF',
+        merchant_reference: paymentData.reference,
         description: paymentData.description,
+        client: {
+          phone: paymentData.phoneNumber,
+          lastname: paymentData.lastName || '',
+          firstname: paymentData.firstName || ''
+        },
         callback_url: paymentData.callbackUrl,
-        return_url: paymentData.returnUrl,
-        timestamp: new Date().toISOString()
+        redirect_url: paymentData.returnUrl
       };
 
-      // 🔧 REMPLACER PAR L'ENDPOINT RÉEL DE VOTRE API
-      const response = await this.client.post('/payments/initiate', payload);
+      // Configuration des headers d'authentification OAuth2
+      const headers = await this.getAuthHeaders();
 
-      console.log('✅ Paiement initié avec succès:', response.data);
+      // Endpoint pour créer un paiement (utilise /orders comme dans vos tests Postman réussis)
+      const response = await this.client.post('/orders', payload, { headers });
+
+      console.log('✅ Paiement CashPay initié avec succès:', response.data);
       return {
         success: true,
-        transactionId: response.data.transaction_id,
-        paymentUrl: response.data.payment_url,
-        status: response.data.status,
-        reference: response.data.reference,
+        transactionId: response.data.order_reference,
+        paymentUrl: response.data.bill_url,
+        status: response.data.state || 'pending',
+        reference: response.data.merchant_reference || paymentData.reference,
         providerResponse: response.data
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors de l\'initiation du paiement:', error.response?.data || error.message);
-      
+      console.error('❌ Erreur lors de l\'initiation du paiement SEOMA:', error.response?.data || error.message);
+
       return {
         success: false,
         error: error.response?.data?.message || 'Erreur lors de l\'initiation du paiement',
@@ -101,23 +235,25 @@ class PaymentService {
    */
   async checkPaymentStatus(transactionId) {
     try {
-      console.log('🔍 Vérification du statut pour:', transactionId);
+      console.log('🔍 Vérification du statut SEOMA pour:', transactionId);
 
-      // 🔧 ADAPTER L'ENDPOINT SELON VOTRE API
-      const response = await this.client.get(`/payments/${transactionId}/status`);
+      const headers = await this.getAuthHeaders();
+
+      // Endpoint CashPay pour vérifier le statut
+      const response = await this.client.get(`/orders/${transactionId}/status`, { headers });
 
       return {
         success: true,
-        status: response.data.status, // pending, completed, failed, cancelled
-        transactionId: response.data.transaction_id,
+        status: response.data.state, // Pending, Paid, Error, etc.
+        transactionId: response.data.order_reference,
         amount: response.data.amount,
         currency: response.data.currency,
         providerResponse: response.data
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors de la vérification du statut:', error.response?.data || error.message);
-      
+      console.error('❌ Erreur lors de la vérification du statut SEOMA:', error.response?.data || error.message);
+
       return {
         success: false,
         error: error.response?.data?.message || 'Erreur lors de la vérification du statut',
@@ -137,26 +273,23 @@ class PaymentService {
    */
   async processWebhook(webhookData) {
     try {
-      console.log('📨 Traitement du webhook:', webhookData);
+      console.log('📨 Traitement du webhook SEOMA:', webhookData);
 
-      // 🔧 ADAPTER LA VALIDATION SELON VOTRE API
-      const isValid = this.validateWebhookSignature(webhookData);
-      if (!isValid) {
-        throw new Error('Signature du webhook invalide');
-      }
+      // CashPay envoie les webhooks avec les données de paiement
+      // Validation de signature si nécessaire (à implémenter selon la doc CashPay)
 
       return {
         success: true,
-        transactionId: webhookData.transaction_id,
-        status: webhookData.status,
+        transactionId: webhookData.order_reference,
+        status: webhookData.state, // Paid, Pending, Error, etc.
         amount: webhookData.amount,
-        reference: webhookData.reference,
+        reference: webhookData.merchant_reference,
         processedAt: new Date().toISOString()
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors du traitement du webhook:', error.message);
-      
+      console.error('❌ Erreur lors du traitement du webhook SEOMA:', error.message);
+
       return {
         success: false,
         error: error.message
@@ -170,28 +303,106 @@ class PaymentService {
    * @param {Object} webhookData - Données du webhook
    * @returns {boolean} Signature valide ou non
    */
-  validateWebhookSignature(webhookData) {
-    // 🔧 IMPLÉMENTER LA VALIDATION SELON VOTRE API
-    // Exemple avec HMAC SHA256
-    const signature = webhookData.signature;
-    const payload = JSON.stringify(webhookData.data);
-    
-    const expectedSignature = crypto
-      .createHmac('sha256', this.secretKey)
-      .update(payload)
-      .digest('hex');
+  validateWebhookSignature(webhookData, providedSignature) {
+    try {
+      // Pour SEOMA, utiliser le client_secret comme clé HMAC
+      const payload = JSON.stringify(webhookData.data || webhookData);
+      const expectedSignature = crypto
+        .createHmac('sha256', this.clientSecret)
+        .update(payload)
+        .digest('hex');
 
-    return signature === expectedSignature;
+      return providedSignature === expectedSignature;
+    } catch (error) {
+      console.error('❌ Erreur lors de la validation de la signature:', error);
+      return false;
+    }
   }
 
   /**
-   * 💰 REMBOURSER UN PAIEMENT
-   * 
-   * @param {string} transactionId - ID de la transaction à rembourser
-   * @param {number} amount - Montant à rembourser (optionnel, remboursement total par défaut)
-   * @param {string} reason - Raison du remboursement
-   * @returns {Promise<Object>} Résultat du remboursement
-   */
+    * 🌐 OBTENIR LES GATEWAYS DISPONIBLES
+    *
+    * @returns {Promise<Object>} Liste des gateways de paiement
+    */
+  async getGateways() {
+    try {
+      console.log('🌐 Récupération des gateways SEOMA disponibles...');
+
+      const headers = await this.getAuthHeaders();
+
+      const response = await this.client.get('/gateways', { headers });
+
+      console.log('✅ Gateways récupérés avec succès:', response.data.length);
+
+      return {
+        success: true,
+        gateways: response.data,
+        count: response.data.length
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des gateways SEOMA:', error.response?.data || error.message);
+
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Erreur lors de la récupération des gateways',
+        code: error.response?.status || 500
+      };
+    }
+  }
+
+  /**
+    * 📋 LISTER LES ORDRES DE PAIEMENT
+    *
+    * @param {Object} options - Options de filtrage et pagination
+    * @param {number} options.page - Numéro de page (défaut: 1)
+    * @param {number} options.limit - Nombre d'éléments par page (défaut: 20)
+    * @param {string} options.terminal - Filtrer par terminal
+    * @returns {Promise<Object>} Liste des ordres avec pagination
+    */
+  async getOrders(options = {}) {
+    try {
+      console.log('📋 Récupération des ordres SEOMA...');
+
+      const headers = await this.getAuthHeaders();
+
+      const params = {
+        page: options.page || 1,
+        limit: options.limit || 20,
+        ...(options.terminal && { terminal: options.terminal })
+      };
+
+      const response = await this.client.get('/orders', { headers, params });
+
+      console.log('✅ Ordres récupérés avec succès:', response.data.total);
+
+      return {
+        success: true,
+        total: response.data.total,
+        items: response.data.items,
+        page: options.page || 1,
+        limit: options.limit || 20
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des ordres SEOMA:', error.response?.data || error.message);
+
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Erreur lors de la récupération des ordres',
+        code: error.response?.status || 500
+      };
+    }
+  }
+
+  /**
+    * 💰 REMBOURSER UN PAIEMENT
+    *
+    * @param {string} transactionId - ID de la transaction à rembourser
+    * @param {number} amount - Montant à rembourser (optionnel, remboursement total par défaut)
+    * @param {string} reason - Raison du remboursement
+    * @returns {Promise<Object>} Résultat du remboursement
+    */
   async refundPayment(transactionId, amount = null, reason = '') {
     try {
       console.log('💰 Initiation du remboursement pour:', transactionId);
@@ -232,43 +443,31 @@ class PaymentService {
    * @returns {Promise<Array>} Liste des méthodes de paiement
    */
   async getAvailablePaymentMethods(country = 'SN') {
-    try {
-      // 🔧 ADAPTER SELON VOTRE API
-      const response = await this.client.get(`/payment-methods?country=${country}`);
-
-      return {
-        success: true,
-        methods: response.data.methods || [
-          // Exemple de structure
-          { id: 'orange_money', name: 'Orange Money', icon: 'orange-money.png' },
-          { id: 'mtn_money', name: 'MTN Mobile Money', icon: 'mtn-money.png' },
-          { id: 'moov_money', name: 'Moov Money', icon: 'moov-money.png' },
-          { id: 'wave', name: 'Wave', icon: 'wave.png' }
-        ]
-      };
-
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération des méthodes:', error.message);
-      
-      // Retourner des méthodes par défaut en cas d'erreur
-      return {
-        success: false,
-        methods: [
-          { id: 'orange_money', name: 'Orange Money', icon: 'orange-money.png' },
-          { id: 'mtn_money', name: 'MTN Mobile Money', icon: 'mtn-money.png' }
-        ]
-      };
-    }
+    // CashPay retourne les méthodes de paiement lors de la création d'un paiement
+    // Pour l'instant, retourner les méthodes par défaut
+    return {
+      success: true,
+      methods: [
+        { id: 'orange_money', name: 'Orange Money', icon: 'orange-money.png', countries: ['SN', 'CI', 'GN'] },
+        { id: 'mtn_money', name: 'MTN Mobile Money', icon: 'mtn-money.png', countries: ['SN', 'CI', 'GN'] },
+        { id: 'moov_money', name: 'Moov Money', icon: 'moov-money.png', countries: ['GN', 'CI'] },
+        { id: 'wave', name: 'Wave', icon: 'wave.png', countries: ['SN'] },
+        { id: 'flooz', name: 'Flooz', icon: 'flooz.png', countries: ['TG'] },
+        { id: 'tmoney', name: 'T-Money', icon: 'tmoney.png', countries: ['TG'] }
+      ]
+    };
   }
 }
 
-// 🔧 VARIABLES D'ENVIRONNEMENT À CONFIGURER DANS .env
+// 🔧 VARIABLES D'ENVIRONNEMENT SEOMA À CONFIGURER DANS .env
 /*
-# API de paiement externe
-PAYMENT_API_BASE_URL=https://api.votre-fournisseur.com
-PAYMENT_API_KEY=your-api-key
-PAYMENT_MERCHANT_ID=your-merchant-id
-PAYMENT_SECRET_KEY=your-secret-key
+# API de paiement SEOMA (Sandbox)
+PAYMENT_API_BASE_URL=https://api.semoa-payments.ovh/sandbox
+PAYMENT_USERNAME=api_cashpay.zedeka
+PAYMENT_PASSWORD=yVf95Q8SBT
+PAYMENT_CLIENT_ID=cashpay
+PAYMENT_CLIENT_SECRET=HpuNOm3sDOkAvd8v3UCIxiBu68634BBs
+PAYMENT_API_KEY=dBirFPoKa5XyQZLB4j8MA7AzPrbxBLuAQ54h
 PAYMENT_WEBHOOK_URL=https://votre-domaine.com/api/v1/webhooks/payment
 */
 

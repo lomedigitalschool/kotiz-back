@@ -51,10 +51,9 @@ src/scripts/testMinimal.js
 src/scripts/testProdUrl.js
 src/scripts/testRealContribution.js
 src/scripts/testSeoma.js
-env.seoma.example
+.env.seoma.example
 B.postman_environment.json
 CashPay_Api V2.0.postman_collection.json
 Kotiz_SEOMA_API_Tests.postman_collection.json
 SEOMA_INTEGRATION_GUIDE.md
-.env.seoma.example
 check-user-pulls.js

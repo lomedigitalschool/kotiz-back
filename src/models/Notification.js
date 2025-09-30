@@ -9,9 +9,33 @@ class Notification extends Model {
 function initNotification(sequelize) {
   Notification.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: false },
-    message: { type: DataTypes.TEXT, allowNull: false },
-    read: { type: DataTypes.BOOLEAN, defaultValue: false }
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        notNull: {
+          msg: 'L\'ID de l\'utilisateur est requis.'
+        }
+      }
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      validate: {
+        notEmpty: {
+          msg: 'Le message de la notification ne peut pas être vide.'
+        },
+        len: {
+          args: [1, 500],
+          msg: 'Le message doit contenir entre 1 et 500 caractères.'
+        }
+      }
+    },
+    read: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    }
   }, {
     sequelize,
     modelName: 'Notification',
@@ -22,4 +46,4 @@ function initNotification(sequelize) {
   return Notification;
 }
 
-export default initNotification;
+module.exports = initNotification;

@@ -25,7 +25,6 @@ function initUser(sequelize) {
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: true,
       unique: true,
       validate: {
         isEmail: { // Validation du format de l'e-mail
@@ -35,7 +34,6 @@ function initUser(sequelize) {
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: true,
       unique: true,
       validate: {
         // Validation basique d'un numéro de téléphone
@@ -47,21 +45,24 @@ function initUser(sequelize) {
     },
     passwordHash: {
       type: DataTypes.STRING,
-      allowNull: true, // Le hachage du mot de passe est obligatoire pour les comptes locaux
+      allowNull: false, // Le hachage du mot de passe est obligatoire
       validate: {
         notEmpty: {
-          msg: 'Le hachage du mot de passe est requis pour les comptes locaux.'
+          msg: 'Le hachage du mot de passe est requis.'
         }
       }
     },
-    role: { type: DataTypes.ENUM('user', 'admin'), defaultValue: 'user', allowNull: false },
+    role: {
+      type: DataTypes.ENUM('user', 'admin'),
+      defaultValue: 'user',
+      allowNull: false
+    },
     avatarUrl: { type: DataTypes.STRING, allowNull: true },
     isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
     isBlocked: { type: DataTypes.BOOLEAN, defaultValue: false },
     lastLogin: { type: DataTypes.DATE, allowNull: true },
     resetToken: { type: DataTypes.STRING, allowNull: true },
     resetTokenExpiry: { type: DataTypes.DATE, allowNull: true },
-    // Firebase fields
     firebaseUid: { type: DataTypes.STRING, allowNull: true, unique: true },
     isPhoneVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
     phoneVerifiedAt: { type: DataTypes.DATE, allowNull: true },
@@ -74,8 +75,8 @@ function initUser(sequelize) {
     validate: {
       // Validateur personnalisé pour assurer la présence d'un identifiant unique
       mustHaveUniqueIdentifier() {
-        if (!this.email && !this.phone && !this.firebaseUid) {
-          throw new Error('Un utilisateur doit avoir soit un e-mail, soit un numéro de téléphone, soit un UID Firebase.');
+        if (!this.email && !this.phone) {
+          throw new Error('Un utilisateur doit avoir soit un e-mail, soit un numéro de téléphone.');
         }
       }
     }
@@ -84,4 +85,4 @@ function initUser(sequelize) {
   return User;
 }
 
-export default initUser;
+module.exports = initUser;

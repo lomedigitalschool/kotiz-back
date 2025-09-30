@@ -2,117 +2,135 @@
 import 'dotenv/config';
 
 // 2️⃣ Import des modules nécessaires
-import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import { ipKeyGenerator } from 'express-rate-limit';
-import session from 'express-session';
-import PgSession from 'connect-pg-simple';
-const PgSimpleStore = PgSession(session);
-import bodyParser from 'body-parser';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import db from './models/index.js';
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
+const { sequelize } = require('./models');
+const { admin, adminRouter } = require('./config/admin');
+const errorHandler = require("./middleware/errorHandler");
 
-const { sequelize } = db;
+// Middlewares maison (auth)
+const { isAdmin } = require('./middleware/auth');
+// Middleware Firebase
+const verifyFirebaseToken = require('./middleware/firebaseAuth');
+
+// Import des routes API
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const pullRoutes = require('./routes/pullRoutes');
+const contributionRoutes = require('./routes/contributionRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const kycRoutes = require('./routes/kycRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
+const otpRoutes = require('./routes/otpRoutes');
 
 // 3️⃣ Initialisation de l'application Express
 const app = express();
 
-// 4️⃣ Création du serveur HTTP pour Socket.io
-const server = createServer(app);
+// Middleware de gestion d'erreurs (le vôtre)
+// Il doit être appelé après l'initialisation de 'app' mais avant les autres middlewares.
+// On le place en premier pour qu'il soit le premier à traiter les erreurs
+app.use(errorHandler);
 
-// 5️⃣ Configuration de Socket.io
-const io = new Server(server, {
-  cors: {
-    origin: [
-      'http://localhost:5000',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:5173',
-      'http://localhost:8080',
-      'https://kotiz-web.onrender.com',
-      'https://kotiz-web.netlify.app'
-    ],
-    credentials: true
-  }
-});
+// Configuration pour les proxies (nécessaire pour Render et autres plateformes)
+app.set('trust proxy', 1); // Trust first proxy
 
-// 6️⃣ Configuration de base AVANT les routes
-app.set('trust proxy', 1);
-
-// 6️⃣ Sessions
+// Configuration des sessions (production-ready avec PostgreSQL)
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
-  store: isProduction ? new PgSimpleStore({
-    conString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
-    createTableIfMissing: true,
-    tableName: 'user_sessions'
-  }) : undefined,
-  secret: process.env.SESSION_SECRET || 'kotiz-session-secret-key-2024',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: isProduction,
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'lax'
-  }
+  store: isProduction ? new PgSession({
+    conString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+    createTableIfMissing: true,
+    tableName: 'user_sessions'
+  }) : undefined, // Utilise MemoryStore en développement
+  secret: process.env.SESSION_SECRET || 'kotiz-session-secret-key-2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: isProduction, // HTTPS only in production
+    httpOnly: true, // Prevent XSS attacks
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // CSRF protection
+  }
 }));
 
-// 7️⃣ ADMINJS IMMÉDIATEMENT APRÈS LES SESSIONS
-try {
-  // Initialiser l'admin par défaut avant AdminJS
-  const { ensureDefaultAdmin } = await import('./middleware/adminAuth.js');
-  await ensureDefaultAdmin();
+app.use(express.json());
 
-  const { default: initAdmin } = await import('./config/admin.js');
-  const { admin, adminRouter } = await initAdmin();
-
-  // Middleware pour logger les requêtes POST /admin/login
-  app.use('/admin/login', (req, res, next) => {
-    if (req.method === 'POST') {
-      console.log('🔐 POST /admin/login reçu:', req.body);
-    }
-    next();
-  });
-
-  app.use(admin.options.rootPath, adminRouter);
-  console.log('✅ AdminJS monté immédiatement après sessions sur:', admin.options.rootPath);
-} catch (error) {
-  console.error('❌ Erreur lors du chargement d\'AdminJS:', error);
+// Middleware de débogage pour les requêtes JSON (seulement en développement)
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+      console.log('🔍 Requête JSON reçue:');
+      console.log('  Method:', req.method);
+      console.log('  URL:', req.url);
+      console.log('  Content-Type:', req.headers['content-type']);
+      console.log('  Body parsé:', JSON.stringify(req.body, null, 2));
+    }
+    next();
+  });
 }
 
 // 8️⃣ CORS (APRÈS AdminJS)
 app.use(cors({
-  origin: [
-    'http://localhost:5000', // AdminJS
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:5173',
-    'http://localhost:8080',
-    'https://kotiz-web.onrender.com',
-    'https://kotiz-web.netlify.app',
-    'null' // Autoriser origin null pour AdminJS
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  optionsSuccessStatus: 200
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = [
+            'http://localhost:3000',      // Développement local
+            'http://localhost:5173',      // Vite dev server
+            'https://kotiz-web.onrender.com', // Production frontend
+            process.env.FRONTEND_URL       // Variable d'environnement
+        ].filter(Boolean); // Remove undefined values
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        // Allow all origins in development
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// 9️⃣ Sécurité (APRÈS AdminJS)
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: true,
-    directives: {
-      "script-src": ["'self'", "'unsafe-inline'", "https:"],
-      "style-src": ["'self'", "'unsafe-inline'", "https:"],
-      "img-src": ["'self'", "data:", "https:"],
-    },
-  },
-}));
+// Servir les fichiers statiques (images uploadées)
+app.use('/uploads', express.static('uploads'));
+
+// Limitation des requêtes (rate limiter)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 100, // 100 requêtes par IP
+  keyGenerator: ipKeyGenerator, // ✅ Utilise la fonction helper pour IPv4/IPv6
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// Helmet (⚠️ adapté pour AdminJS avec CSP custom)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "script-src": ["'self'", "'unsafe-inline'", "https:"],
+        "style-src": ["'self'", "'unsafe-inline'", "https:"],
+        "img-src": ["'self'", "data:", "https:"],
+      },
+    },
+  })
+);
 
 // 🔟 Rate limiting (APRÈS AdminJS)
 const limiter = rateLimit({
@@ -124,34 +142,28 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// 1️⃣1️⃣ Fichiers statiques
-app.use('/uploads', express.static('uploads'));
-
-// 1️⃣2️⃣ BODY PARSER
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// 1️⃣3️⃣ Middleware de débogage
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    console.log(`📍 ${req.method} ${req.url}`);
-    next();
-  });
+// Optimisation mémoire pour Render Free
+if (process.env.NODE_ENV === 'production') {
+  // Forcer le garbage collection plus fréquent
+  if (global.gc) {
+    setInterval(() => {
+      global.gc();
+    }, 15000); // Toutes les 15 secondes
+  }
+  
+  // Limiter la taille des logs en production
+  console.log = () => {};
+  console.debug = () => {};
 }
 
-// 1️⃣4️⃣ ROUTES DE TEST
-app.get('/test', (req, res) => {
-  console.log('🧪 Route de test appelée');
-  res.json({ message: 'Test réussi', timestamp: new Date() });
-});
-
+// 6️⃣ Endpoint de test /health
 app.get('/health', async (req, res) => {
-  try {
-    await sequelize.authenticate();
-    res.json({ status: 'ok', database: 'connected', timestamp: new Date() });
-  } catch (error) {
-    res.status(500).json({ status: 'error', database: 'disconnected', message: error.message });
-  }
+  try {
+    await sequelize.authenticate();
+    res.json({ status: 'ok', database: 'connected', timestamp: new Date() });
+  } catch (error) {
+    res.status(500).json({ status: 'error', database: 'disconnected', message: error.message });
+  }
 });
 
 // 1️⃣3️⃣ ROUTES ADMINJS PROTÉGÉES
@@ -259,106 +271,105 @@ app.use('/api/v1/otp', otpRoutes);
 app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/webhooks', webhookRoutes);
 
-// 1️⃣6️⃣ Route racine
-app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));
+// 8️⃣ Interface d'administration AdminJS (⚠️ après Helmet et autres middlewares)
+app.use(admin.options.rootPath, adminRouter);
 
-// 1️⃣7️⃣ Gestionnaire d'erreurs centralisé
-import errorHandler from './middleware/errorHandler.js';
-app.use(errorHandler);
+// 9️⃣ Route racine
+app.get('/', (req, res) =>
+  res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin')
+);
 
-// 1️⃣9️⃣ Configuration Socket.io pour données temps réel
-io.on('connection', (socket) => {
-  console.log('🔌 Client connecté:', socket.id);
+// 9️⃣1️⃣ Gestionnaire d'erreurs global amélioré
+app.use((err, req, res, next) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('=== ERREUR GLOBALE ===');
+    console.error('Message:', err.message);
+    console.error('Stack:', err.stack);
+    console.error('Type:', err.constructor.name);
+    console.error('URL:', req.url);
+    console.error('Method:', req.method);
+    console.error('Body:', JSON.stringify(req.body, null, 2));
+    console.error('===================');
+  }
 
-  // Rejoindre une room pour les mises à jour admin
-  socket.on('join-admin-dashboard', () => {
-    socket.join('admin-dashboard');
-    console.log('👤 Client rejoint admin-dashboard');
-  });
+  // Gestion spécifique des erreurs Multer
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        error: 'Fichier trop volumineux',
+        message: 'La taille maximale autorisée est de 10MB pour les images de cagnottes'
+      });
+    }
+  }
 
-  // Rejoindre une room pour les mises à jour générales
-  socket.on('join-public-updates', () => {
-    socket.join('public-updates');
-    console.log('👤 Client rejoint public-updates');
-  });
+  // Gestion des erreurs de validation
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: 'Erreur de validation',
+      message: err.message
+    });
+  }
 
-  socket.on('disconnect', () => {
-    console.log('🔌 Client déconnecté:', socket.id);
-  });
+  // Erreur par défaut
+  res.status(500).json({
+    error: 'Erreur interne du serveur',
+    message: err.message || 'Une erreur inattendue s\'est produite',
+    type: err.constructor.name
+  });
 });
 
-// Fonction pour émettre des mises à jour temps réel
-export const emitRealtimeUpdate = (event, data) => {
-  io.to('admin-dashboard').emit(event, data);
-  io.to('public-updates').emit(event, data);
-};
+// Middleware pour les routes non trouvées
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route non trouvée' });
+});
 
 // 2️⃣0️⃣ Démarrage du serveur
 const PORT = process.env.PORT || 5000;
 
 (async () => {
-  try {
-    console.log('⏳ Démarrage du serveur...');
+  try {
+    console.log('⏳ Tentative de connexion à la BDD...');
+    await sequelize.authenticate();
+    console.log('✅ Connexion PostgreSQL réussie !');
 
-    // 1️⃣5️⃣ ADMINJS (AVANT body parser)
-    await sequelize.authenticate();
-    console.log('✅ Base de données connectée');
+    // ⚠️ Synchronisation conditionnelle selon l'environnement
+    if (process.env.NODE_ENV === 'production') {
+      // En production, ne pas synchroniser automatiquement
+      console.log('🏭 Mode production - synchronisation manuelle requise');
+    } else {
+      // ⚠️ Attention : Utiliser `force: true` effacera toutes les données existantes pour cette table.
+      // C'est une solution rapide pour le développement pour éviter les erreurs de contrainte unique.
+      await sequelize.sync({ force: true });
+      console.log('✅ Tables synchronisées (force: true) - données précédentes effacées.');
+    }
 
-    // Ajouter la colonne anonymous manquante si elle n'existe pas
-    try {
-      console.log('🔧 Vérification de la colonne anonymous dans contributions...');
-      const [columns] = await sequelize.query(`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'contributions' AND column_name = 'anonymous'
-      `);
+    // Création de l'administrateur par défaut
+    const { createAdmin } = require('./scripts/create-admin');
+    await createAdmin();
 
-      if (columns.length === 0) {
-        console.log('📋 Colonne anonymous manquante, ajout en cours...');
-        await sequelize.query(`
-          ALTER TABLE contributions ADD COLUMN "anonymous" BOOLEAN DEFAULT false;
-        `);
-        console.log('✅ Colonne anonymous ajoutée avec succès');
-      } else {
-        console.log('✅ Colonne anonymous déjà présente');
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors de l\'ajout de la colonne anonymous:', error);
-      // Ne pas arrêter le serveur pour une erreur de migration
-    }
+    // Démarrage serveur
+    app.listen(PORT, () => {
+      const isProduction = process.env.NODE_ENV === 'production';
+      const baseUrl = isProduction ? `https://kotiz-back.onrender.com` : `http://localhost:${PORT}`;
 
-    // AdminJS déjà chargé plus haut dans le fichier
+      console.log(`🚀 Serveur démarré sur ${baseUrl}`);
+      console.log(`🔑 AdminJS disponible sur ${baseUrl}/admin`);
+      console.log(`📊 Health check: ${baseUrl}/health`);
+      console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔌 Port: ${PORT}`);
+      console.log(`💾 Sessions: ${isProduction ? 'PostgreSQL' : 'MemoryStore (dev)'}`);
 
-    // 1️⃣9️⃣ VÉRIFICATION AUTOMATIQUE DES CAGNOTTES (toutes les heures)
-    const { checkAndCloseExpiredCagnottes } = await import('./controllers/adminController.js');
-
-    // Vérification immédiate au démarrage
-    console.log('🔍 Vérification initiale des cagnottes à fermer...');
-    await checkAndCloseExpiredCagnottes();
-
-    // Vérification toutes les heures
-    setInterval(async () => {
-      console.log('🔄 Vérification périodique des cagnottes...');
-      await checkAndCloseExpiredCagnottes();
-    }, 60 * 60 * 1000); // 1 heure
-
-    console.log('✅ Vérification automatique des cagnottes programmée (toutes les heures)');
-
-    // 1️⃣8️⃣ Route 404 (APRÈS AdminJS)
-    app.use('*', (req, res) => {
-      console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
-      res.status(404).json({ error: 'Route non trouvée', path: req.originalUrl });
-    });
-
-    server.listen(PORT, () => {
-      console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
-      console.log(`🔑 AdminJS disponible sur http://localhost:${PORT}/admin`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`🧪 Test route: http://localhost:${PORT}/test`);
-      console.log(`📈 AdminJS Stats: http://localhost:${PORT}/api/v1/adminjs/users/admin-stats`);
-      console.log(`🔌 Socket.io activé pour données temps réel`);
-      console.log(`⏰ Clôture automatique des cagnottes activée`);
-    });
-  } catch (error) {
-    console.error('❌ Erreur démarrage serveur:', error);
-  }
+      if (isProduction) {
+        console.log(`✅ Configuration production activée`);
+        console.log(`🔒 Sessions sécurisées (HTTPS)`);
+        console.log(`🌐 CORS configuré pour les domaines autorisés`);
+        console.log(`🗄️ Base de données sessions: PostgreSQL`);
+      } else {
+        console.log(`🧪 Mode développement`);
+        console.log(`💾 Sessions: MemoryStore (temporaire)`);
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur connexion/synchro BDD :', error);
+  }
 })();

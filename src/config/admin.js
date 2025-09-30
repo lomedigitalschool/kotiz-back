@@ -1,17 +1,18 @@
 /**
- * 🛠️ Configuration AdminJS - Interface d'administration
+ * 🛠️ Configuration AdminJS - Interface d'administration (v7)
  */
-import bcrypt from 'bcryptjs';
-import { QueryTypes } from 'sequelize';
-import db from '../models/index.js';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { authenticateAdmin, ensureDefaultAdmin } from '../middleware/adminAuth.js';
+const AdminJS = require('adminjs').default;
+const AdminJSExpress = require('@adminjs/express');
+const AdminJSSequelize = require('@adminjs/sequelize');
+const bcrypt = require('bcryptjs');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const projectRoot = join(__dirname, '../..');
+// Enregistrement de l’adapter Sequelize
+AdminJS.registerAdapter({
+  Resource: AdminJSSequelize.Resource,
+  Database: AdminJSSequelize.Database,
+});
 
+// Import des modèles
 const {
   sequelize,
   User,
@@ -39,140 +40,48 @@ const initAdmin = async () => {
   // Component loader pour les composants personnalisés
   const componentLoader = new ComponentLoader();
 
-// Fonction pour calculer les métriques du dashboard
-const getDashboardMetrics = async () => {
-  try {
-    // Nombre total d'utilisateurs
-    const totalUsers = await User.count();
-
-    // Montant total collecté (en centimes)
-    const [totalResult] = await sequelize.query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\'',
-      {
-        type: QueryTypes.SELECT
-      }
-    );
-    const totalCollected = parseFloat(totalResult.total) || 0;
-
-    // Nombre de cagnottes actives
-    const activeCagnottes = await Pull.count({
-      where: { status: 'active' }
-    });
-
-    // Contributions du mois en cours
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    currentMonth.setHours(0, 0, 0, 0);
-
-    const [monthlyResult] = await sequelize.query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\' AND createdAt >= $1',
-      {
-        bind: [currentMonth],
-        type: QueryTypes.SELECT
-      }
-    );
-    const monthlyContributions = parseFloat(monthlyResult.total) || 0;
-
-    // Nombre de contributions ce mois
-    const [countResult] = await sequelize.query(
-      'SELECT COUNT(*) as count FROM contributions WHERE status = \'completed\' AND createdAt >= $1',
-      {
-        bind: [currentMonth],
-        type: QueryTypes.SELECT
-      }
-    );
-    const monthlyContributionCount = parseInt(countResult.count) || 0;
-
-    // Top 5 cagnottes par montant collecté
-    const [topCagnottesResult] = await sequelize.query(
-      'SELECT p.id, p.title, COALESCE(SUM(CAST(c.amount AS DECIMAL(10,2))), 0) as totalcollected FROM pulls p LEFT JOIN contributions c ON p.id = c.pullId AND c.status = \'completed\' GROUP BY p.id, p.title ORDER BY totalcollected DESC LIMIT 5',
-      {
-        type: QueryTypes.SELECT
-      }
-    );
-    const topCagnottes = Array.isArray(topCagnottesResult) ? topCagnottesResult : [];
-
-    return {
-      totalUsers,
-      totalCollected: totalCollected / 100, // Convertir en euros/FCFA
-      activeCagnottes,
-      monthlyContributions: monthlyContributions / 100,
-      monthlyContributionCount,
-      topCagnottes
-    };
-  } catch (error) {
-    console.error('Erreur calcul métriques dashboard:', error);
-    return {
-      totalUsers: 0,
-      totalCollected: 0,
-      activeCagnottes: 0,
-      monthlyContributions: 0,
-      monthlyContributionCount: 0,
-      topCagnottes: []
-    };
-  }
+// -------------------------
+// 1️⃣ Déclaration des composants React pour AdminJS v7
+// -------------------------
+AdminJS.UserComponents = {
+  Dashboard: '../components/Dashboard',       // chemin relatif vers ton fichier Dashboard.jsx
+  Reports: '../components/Reports',
+  Stats: '../components/Stats',
+  Export: '../components/Export',
+  Moderation: '../components/Moderation'
 };
 
-// Composant dashboard personnalisé
-// const dashboardComponent = {
-//   component: AdminJS.bundle('./components/HomeDashboard')
-// };
-
-// Configuration AdminJS
+// -------------------------
+// 2️⃣ Configuration AdminJS
+// -------------------------
 const adminOptions = {
-  componentLoader,
-  databases: [],
-  auth: {
-    authenticate: async (email, password) => {
-      console.log('🔐 AdminJS auth appelée:', email);
-
-      try {
-        // Vérification simple et directe pour AdminJS
-        const adminEmail = 'admin@kotiz.com';
-        const adminPassword = 'Admin123!@#';
-
-        if (email !== adminEmail) {
-          console.log('❌ Email admin incorrect');
-          return null;
-        }
-
-        // Comparaison directe (sans hash)
-        if (password !== adminPassword) {
-          console.log('❌ Mot de passe admin incorrect');
-          return null;
-        }
-
-        const adminUser = {
-          id: 1,
-          email: adminEmail,
-          name: 'Administrateur Kotiz',
-          role: 'admin'
-        };
-
-        console.log('✅ AdminJS auth succès pour:', email);
-        return adminUser;
-
-      } catch (error) {
-        console.error('❌ Erreur AdminJS auth:', error);
-        return null;
-      }
-    },
-    cookieName: 'kotiz-admin',
-    cookiePassword: process.env.SESSION_SECRET || 'kotiz-admin-cookie-password-secure-2024'
+  databases: [sequelize],
+  rootPath: '/admin',
+  branding: {
+    companyName: 'Kotiz Admin',
+    logo: false,
+    softwareBrothers: false,
   },
-
+  dashboard: {
+    component: AdminJS.UserComponents.Dashboard
+  },
+  pages: {
+    Rapports: { component: AdminJS.UserComponents.Reports, icon: 'BarChart' },
+    'Statistiques Détaillées': { component: AdminJS.UserComponents.Stats, icon: 'TrendingUp' },
+    'Export Données': { component: AdminJS.UserComponents.Export, icon: 'Download' },
+    Modération: { component: AdminJS.UserComponents.Moderation, icon: 'Shield' }
+  },
   resources: [
     {
       resource: User,
       options: {
         properties: {
           passwordHash: { isVisible: false },
-          id: { isId: true, type: 'number' },
-          name: { type: 'string', isTitle: true },
+          id: { isId: true },
+          name: { isTitle: true },
           email: { type: 'string' },
           phone: { type: 'string' },
           role: {
-            type: 'string',
             availableValues: [
               { value: 'user', label: 'Utilisateur' },
               { value: 'admin', label: 'Administrateur' }
@@ -185,259 +94,29 @@ const adminOptions = {
           updatedAt: { type: 'datetime', isVisible: { list: false, show: true } }
         },
         actions: {
-          new: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
-          edit: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
-          delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
-          bulkDelete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
+          new: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
+          edit: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
+          delete: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
+          bulkDelete: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' }
         },
-        navigation: { name: "Users" }
-      },
-    },
-    {
-      resource: Pull,
-      options: {
-        properties: {
-          id: { isId: true, type: 'number' },
-          title: { type: 'string', isTitle: true },
-          description: { type: 'textarea' },
-          goalAmount: { type: 'currency', props: { currency: 'XOF' } },
-          currentAmount: { type: 'currency', props: { currency: 'XOF' } },
-          status: {
-            type: 'string',
-            availableValues: [
-              { value: 'pending', label: 'En attente' },
-              { value: 'active', label: 'Active' },
-              { value: 'closed', label: 'Fermée' }
-            ]
-          },
-          type: {
-            type: 'string',
-            availableValues: [
-              { value: 'public', label: 'Publique' },
-              { value: 'private', label: 'Privée' }
-            ]
-          },
-          startDate: { type: 'datetime' },
-          deadline: { type: 'datetime' },
-          createdAt: { type: 'datetime', isVisible: { list: false, show: true } },
-          updatedAt: { type: 'datetime', isVisible: { list: false, show: true } }
-        },
-        actions: {
-          new: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
-          edit: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
-          delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
-          bulkDelete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
-        },
-        navigation: { name: "Pulls" }
-      },
-    },
-    {
-      resource: Contribution,
-      options: {
-        properties: {
-          id: { isId: true, type: 'number' },
-          amount: { type: 'currency', props: { currency: 'XOF' } },
-          status: {
-            type: 'string',
-            availableValues: [
-              { value: 'pending', label: 'En attente' },
-              { value: 'completed', label: 'Terminée' },
-              { value: 'failed', label: 'Échouée' }
-            ]
-          },
-          paymentMethod: { type: 'string' },
-          phoneNumber: { type: 'string' },
-          isAnonymous: { type: 'boolean' },
-          createdAt: { type: 'datetime' }
-        },
-        navigation: { name: "Contributions" }
-      },
-    },
-    {
-      resource: Transaction,
-      options: {
-        properties: {
-          id: { isId: true, type: 'number' },
-          amount: { type: 'currency', props: { currency: 'XOF' } },
-          status: {
-            type: 'string',
-            availableValues: [
-              { value: 'pending', label: 'En attente' },
-              { value: 'completed', label: 'Terminée' },
-              { value: 'failed', label: 'Échouée' }
-            ]
-          },
-          paymentMethod: { type: 'string' },
-          reference: { type: 'string' },
-          createdAt: { type: 'datetime' }
-        },
-        navigation: { name: "Transactions" }
-      },
-    },
-    {
-      resource: Log,
-      options: {
-        properties: {
-          id: { isId: true, type: 'number' },
-          action: { type: 'string' },
-          details: { type: 'textarea' },
-          userId: { type: 'number' },
-          createdAt: { type: 'datetime' }
-        },
-        navigation: { name: "Logs" }
-      },
-    },
-    {
-      resource: PaymentMethod,
-      options: {
-        navigation: { name: "Payment Methods" }
+        navigation: { name: 'Utilisateurs', icon: 'User' }
       }
     },
-    {
-      resource: UserPaymentMethod,
-      options: {
-        navigation: { name: "User Payment Methods" }
-      }
-    },
-    {
-      resource: Notification,
-      options: {
-        navigation: { name: "Notifications" }
-      }
-    },
-    {
-      resource: Kyc,
-      options: {
-        navigation: { name: "KYC" }
-      }
-    },
-    {
-      resource: Report,
-      options: {
-        properties: {
-          id: { isId: true, type: 'number' },
-          reporterId: { type: 'number', isVisible: { list: false, show: true } },
-          pullId: { type: 'number', isVisible: { list: false, show: true } },
-          contributionId: { type: 'number', isVisible: { list: false, show: true } },
-          type: {
-            type: 'string',
-            availableValues: [
-              { value: 'pull', label: 'Cagnotte' },
-              { value: 'contribution', label: 'Contribution' }
-            ]
-          },
-          reason: { type: 'string' },
-          description: { type: 'textarea' },
-          status: {
-            type: 'string',
-            availableValues: [
-              { value: 'pending', label: 'En attente' },
-              { value: 'resolved', label: 'Résolu' },
-              { value: 'dismissed', label: 'Rejeté' }
-            ]
-          },
-          adminResponse: { type: 'textarea' },
-          resolvedAt: { type: 'datetime' },
-          createdAt: { type: 'datetime' }
-        },
-        actions: {
-          new: { isAccessible: () => false },
-          edit: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
-          delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' }
-        },
-        navigation: { name: "Reports" }
-      },
-    }
-  ],
-  rootPath: '/admin',
-  branding: {
-    companyName: 'Kotiz Admin',
-    logo: false,
-    softwareBrothers: false,
-  },
-  theme: {
-    colors: {
-      // Couleurs primaires Kotiz
-      primary100: '#4CA260',
-      primary80: '#5CAF6E',
-      primary60: '#6DBB7C',
-      primary40: '#7EC78A',
-      primary20: '#8FD398',
-      primary: '#4CA260', // Alias pour compatibilité
-
-      // Couleur secondaire Kotiz
-      accent: '#3B5BAB',
-      secondary100: '#3B5BAB',
-      secondary80: '#4C6BCF',
-      secondary60: '#5D7DF3',
-      secondary40: '#6E8FF7',
-      secondary20: '#7FA1FB',
-      secondary: '#3B5BAB', // Alias
-
-      // États et feedback
-      success: '#4CA260',
-      info: '#3B5BAB',
-      warning: '#FF9800',
-      error: '#F44336',
-      danger: '#F44336',
-
-      // Fonds et arrière-plans
-      bg: '#F8F9FA',
-      grey100: '#1A1A1A',
-      grey80: '#333333',
-      grey60: '#666666',
-      grey40: '#999999',
-      grey20: '#CCCCCC',
-      grey0: '#FFFFFF',
-      white: '#FFFFFF',
-      black: '#000000',
-
-      // Composants spécifiques
-      filterBg: '#4CA260',
-      hoverBg: '#5CAF6E',
-      border: '#E0E0E0',
-      inputBorder: '#CCCCCC',
-      buttonPrimary: '#4CA260',
-      buttonSecondary: '#3B5BAB',
-      textPrimary: '#1A1A1A',
-      textSecondary: '#666666',
-
-      // Icônes et éléments décoratifs
-      love: '#4CA260',
-      contrastText: '#FFFFFF',
-
-      // Navigation et menus
-      sidebarBg: '#FFFFFF',
-      sidebarText: '#1A1A1A',
-      sidebarHover: '#F8F9FA',
-      sidebarActive: '#4CA260',
-
-      // Tableaux et listes
-      tableHeader: '#F8F9FA',
-      tableRowHover: '#F8F9FA',
-      tableBorder: '#E0E0E0'
-    }
-  },
-  // dashboard: {
-  //   component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx'))
-  // },
-  pages: {
-    // Pages personnalisées désactivées pour éviter les timeouts de déploiement
-    // 'Dashboard Avancé': { component: componentLoader.add('AdminDashboard', join(projectRoot, 'src/config/components/AdminDashboard.jsx')), icon: 'Home' },
-    // 'Contributions': { component: componentLoader.add('Contributions', join(projectRoot, 'src/config/components/Contributions.jsx')), icon: 'Currency' },
-    // 'Retraits': { component: componentLoader.add('Retraits', join(projectRoot, 'src/config/components/Retraits.jsx')), icon: 'Money' },
-    // 'Statistiques Détaillées': { component: componentLoader.add('AdvancedStats', join(projectRoot, 'src/config/components/AdvancedStats.jsx')), icon: 'TrendingUp' },
-    // 'Exports': { component: componentLoader.add('Export', join(projectRoot, 'src/config/components/Export.jsx')), icon: 'Download' },
-    // 'Logs d\'Activité': { component: componentLoader.add('AdminLogs', join(projectRoot, 'src/config/components/AdminLogs.jsx')), icon: 'FileText' },
-    // 'Modération': { component: componentLoader.add('ModerationPanel', join(projectRoot, 'src/config/components/ModerationPanel.jsx')), icon: 'Shield' }
-  }
+    Pull,
+    Contribution,
+    Transaction,
+    Log,
+    PaymentMethod,
+    UserPaymentMethod,
+    Notification,
+    Kyc,
+    Report
+  ]
 };
 
-// Création de l'instance AdminJS
-// Créer l'admin par défaut si nécessaire
-await ensureDefaultAdmin();
-
-console.log('🔧 Création instance AdminJS...');
+// -------------------------
+// 3️⃣ Création instance AdminJS et routeur sécurisé
+// -------------------------
 const admin = new AdminJS(adminOptions);
 console.log('✅ Instance AdminJS créée');
 
@@ -445,45 +124,19 @@ console.log('🔧 Initialisation AdminJS...');
 await admin.initialize();
 console.log('✅ AdminJS initialisé');
 
-// Routeur AdminJS avec authentification DIRECTE
-console.log('🔧 Création routeur AdminJS...');
 const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
   admin,
   {
     authenticate: async (email, password) => {
-      console.log('🚨 AUTH DIRECTE - Email:', email, 'Password:', password);
-
-      // Validation simple et directe
-      if (email === 'admin@kotiz.com' && password === 'Admin123!@#') {
-        console.log('✅ AUTH RÉUSSIE');
-        return {
-          id: 1,
-          email: 'admin@kotiz.com',
-          name: 'Admin Kotiz',
-          role: 'admin'
-        };
-      }
-
-      console.log('❌ AUTH ÉCHOUÉE');
+      const user = await User.findOne({ where: { email, role: 'admin' } });
+      if (user && await bcrypt.compare(password, user.passwordHash)) return user;
       return null;
     },
     cookieName: 'adminjs',
-    cookiePassword: 'simple-secret-key-12345'
+    cookiePassword: process.env.SESSION_SECRET || 'kotiz-session-secret',
   },
   null,
-  {
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-      secure: false,
-      httpOnly: false, // ← ESSAYEZ false POUR DÉBOGUER
-      maxAge: 24 * 60 * 60 * 1000
-    }
-  }
+  { resave: false, saveUninitialized: false }
 );
-console.log('✅ Routeur AdminJS créé avec authentification');
 
-  return { admin, adminRouter };
-};
-
-export default initAdmin;
+module.exports = { admin, adminRouter };

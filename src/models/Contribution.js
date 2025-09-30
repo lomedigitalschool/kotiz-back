@@ -1,11 +1,11 @@
 import { Model, DataTypes } from 'sequelize';
 
 class Contribution extends Model {
-  static associate(models) {
-    Contribution.belongsTo(models.User, { foreignKey: 'userId', as: 'contributor' });
-    Contribution.belongsTo(models.Pull, { foreignKey: 'pullId', as: 'Pull' });
-    Contribution.hasOne(models.Transaction, { foreignKey: 'contributionId', as: 'transaction' });
-  }
+  static associate(models) {
+    Contribution.belongsTo(models.User, { foreignKey: 'userId', as: 'contributor' });
+    Contribution.belongsTo(models.Pull, { foreignKey: 'pullId', as: 'Pull' });
+    Contribution.hasOne(models.Transaction, { foreignKey: 'contributionId', as: 'transaction' });
+  }
 }
 
 function initContribution(sequelize) {
@@ -124,7 +124,7 @@ function initContribution(sequelize) {
     }
   });
 
-  return Contribution;
+  return Contribution;
 }
 
 export default initContribution;

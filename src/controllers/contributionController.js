@@ -311,7 +311,6 @@ export const getMyContributions = async (req, res) => {
   }
 };
 
-// ====================
 // 🎭 CRÉER UNE CONTRIBUTION ANONYME (SANS COMPTE)
 // ====================
 export const createAnonymous = async (req, res) => {

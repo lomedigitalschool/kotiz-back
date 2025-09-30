@@ -10,7 +10,7 @@ class Transaction extends Model {
 function initTransaction(sequelize) {
   Transaction.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    contributionId: { type: DataTypes.INTEGER, allowNull: false },
+    contributionId: { type: DataTypes.INTEGER, allowNull: true },
     paymentMethodId: { type: DataTypes.INTEGER, allowNull: true },
     transactionReference: { type: DataTypes.STRING, allowNull: false, unique: true },
     amount: { type: DataTypes.DECIMAL(12,2), allowNull: false, validate: { min: 0 } },

@@ -246,6 +246,8 @@ import kycRoutes from './routes/kycRoutes.js';
 import otpRoutes from './routes/otpRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
+import testRoutes from './routes/testRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', firebaseAuth, userRoutes);
@@ -258,6 +260,13 @@ app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/otp', otpRoutes);
 app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/webhooks', webhookRoutes);
+app.use('/api/v1/payment', paymentRoutes);
+
+// Routes de test (développement uniquement)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/v1/test', testRoutes);
+  console.log('🧪 Routes de test activées sur /api/v1/test');
+}
 
 // 1️⃣6️⃣ Route racine
 app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));

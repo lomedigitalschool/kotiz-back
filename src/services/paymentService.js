@@ -18,15 +18,15 @@ import https from 'https';
 class PaymentService {
   constructor() {
     // Configuration SEOMA API
-    this.baseURL = process.env.PAYMENT_API_BASE_URL || 'https://sandbox.semoa-payments.com/api';
+    this.baseURL = process.env.PAYMENT_API_BASE_URL || 'https://api.semoa-payments.ovh/sandbox';
     this.username = process.env.SEMOA_USERNAME || 'api_cashpay.zedeka';
     this.password = process.env.SEMOA_PASSWORD || 'yVf95Q8SBT';
     this.clientId = process.env.SEMOA_CLIENT_ID || 'cashpay';
     this.clientSecret = process.env.SEMOA_CLIENT_SECRET || 'HpuNOm3sDOkAvd8v3UCIxiBu68634BBs';
     this.apiKey = process.env.SEMOA_API_KEY || 'dBirFPoKa5XyQZLB4j8MA7AzPrbxBLuAQ54h';
-    this.apiReference = process.env.PAYMENT_API_REFERENCE || '123456';
-    this.salt = process.env.PAYMENT_SALT || '987654321';
+    this.apiReference = process.env.PAYMENT_API_REFERENCE || '123456789';
     this.staticAccessToken = process.env.PAYMENT_ACCESS_TOKEN;
+    this.gatewayReference = process.env.SEMOA_GATEWAY_REFERENCE || '016eb63c-f29d-4384-92e4-b1bd37ef69f8';
 
     // Token d'accès (sera obtenu dynamiquement)
     this.accessToken = null;
@@ -92,16 +92,18 @@ class PaymentService {
     * 🔐 HEADERS D'AUTHENTIFICATION CASHPAY (FALLBACK)
     *
     * Utilisé quand OAuth2 n'est pas disponible
+    * Génère un nouveau salt pour chaque requête comme dans Postman
     */
    getCashPayAuthHeaders() {
+     const salt = Date.now().toString();
      const apisecure = crypto.createHash('sha256')
-       .update(this.username + this.apiKey + this.salt)
+       .update(this.username + this.apiKey + salt)
        .digest('hex');
 
      return {
        'login': this.username,
        'apireference': this.apiReference,
-       'salt': this.salt,
+       'salt': salt,
        'apisecure': apisecure,
        'Content-Type': 'application/json'
      };
@@ -184,43 +186,52 @@ class PaymentService {
     try {
       console.log('🚀 Initiation du paiement SEOMA:', paymentData);
 
-      // Adapter la structure pour l'API CashPay/SEOMA
+      // Préparer le payload pour l'API SEOMA
       const payload = {
-        amount: Math.round(paymentData.amount / 100), // Convertir centimes en unités (CashPay attend le montant en unités)
-        currency: paymentData.currency || 'XOF',
-        merchant_reference: paymentData.reference,
-        description: paymentData.description,
+        amount: Math.round(paymentData.amount / 100), // Convertir centimes en unités
         client: {
-          phone: paymentData.phoneNumber,
-          lastname: paymentData.lastName || '',
-          firstname: paymentData.firstName || ''
+          phone: paymentData.phoneNumber
         },
-        callback_url: paymentData.callbackUrl,
-        redirect_url: paymentData.returnUrl
+        gateway: {
+          reference: this.gatewayReference
+        },
+        callback_url: paymentData.callbackUrl || `${process.env.BASE_URL}/api/v1/webhooks/payment`,
+        merchant_reference: paymentData.reference
       };
 
-      // Configuration des headers d'authentification OAuth2
+      console.log('📤 Payload SEOMA:', JSON.stringify(payload, null, 2));
+
+      // Obtenir les headers d'authentification
       const headers = await this.getAuthHeaders();
+      console.log('🔐 Headers d\'authentification configurés');
 
-      // Endpoint pour créer un paiement (utilise /orders comme dans vos tests Postman réussis)
-      const response = await this.client.post('/orders', payload, { headers });
+      // Appel à l'API SEOMA
+      const response = await this.client.post('/orders', payload, { 
+        headers,
+        timeout: 30000
+      });
 
-      console.log('✅ Paiement CashPay initié avec succès:', response.data);
+      console.log('✅ Réponse SEOMA:', response.data);
+
       return {
         success: true,
-        transactionId: response.data.order_reference,
-        paymentUrl: response.data.bill_url,
+        transactionId: response.data.order_reference || response.data.id,
+        paymentUrl: response.data.bill_url || response.data.payment_url,
         status: response.data.state || 'pending',
         reference: response.data.merchant_reference || paymentData.reference,
         providerResponse: response.data
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors de l\'initiation du paiement SEOMA:', error.response?.data || error.message);
+      console.error('❌ Erreur SEOMA:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
 
       return {
         success: false,
-        error: error.response?.data?.message || 'Erreur lors de l\'initiation du paiement',
+        error: error.response?.data?.message || error.response?.data?.error || 'Erreur lors de l\'initiation du paiement',
         code: error.response?.status || 500,
         providerError: error.response?.data
       };
@@ -238,13 +249,21 @@ class PaymentService {
       console.log('🔍 Vérification du statut SEOMA pour:', transactionId);
 
       const headers = await this.getAuthHeaders();
+      const response = await this.client.get(`/orders/${transactionId}`, { headers });
 
-      // Endpoint CashPay pour vérifier le statut
-      const response = await this.client.get(`/orders/${transactionId}/status`, { headers });
+      console.log('📊 Statut SEOMA:', response.data);
+
+      // Normaliser le statut
+      let normalizedStatus = 'pending';
+      if (response.data.state === 'Paid' || response.data.state === 'completed') {
+        normalizedStatus = 'completed';
+      } else if (response.data.state === 'Error' || response.data.state === 'failed') {
+        normalizedStatus = 'failed';
+      }
 
       return {
         success: true,
-        status: response.data.state, // Pending, Paid, Error, etc.
+        status: normalizedStatus,
         transactionId: response.data.order_reference,
         amount: response.data.amount,
         currency: response.data.currency,
@@ -252,8 +271,7 @@ class PaymentService {
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors de la vérification du statut SEOMA:', error.response?.data || error.message);
-
+      console.error('❌ Erreur vérification statut SEOMA:', error.response?.data || error.message);
       return {
         success: false,
         error: error.response?.data?.message || 'Erreur lors de la vérification du statut',
@@ -273,23 +291,27 @@ class PaymentService {
    */
   async processWebhook(webhookData) {
     try {
-      console.log('📨 Traitement du webhook SEOMA:', webhookData);
+      console.log('📨 Traitement du webhook:', webhookData);
 
-      // CashPay envoie les webhooks avec les données de paiement
-      // Validation de signature si nécessaire (à implémenter selon la doc CashPay)
+      // Normaliser le statut selon le fournisseur
+      let normalizedStatus = 'pending';
+      if (webhookData.state === 'Paid' || webhookData.status === 'completed' || webhookData.status === 'success') {
+        normalizedStatus = 'completed';
+      } else if (webhookData.state === 'Error' || webhookData.status === 'failed' || webhookData.status === 'cancelled') {
+        normalizedStatus = 'failed';
+      }
 
       return {
         success: true,
-        transactionId: webhookData.order_reference,
-        status: webhookData.state, // Paid, Pending, Error, etc.
+        transactionId: webhookData.order_reference || webhookData.transactionId,
+        status: normalizedStatus,
         amount: webhookData.amount,
-        reference: webhookData.merchant_reference,
+        reference: webhookData.merchant_reference || webhookData.reference,
         processedAt: new Date().toISOString()
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors du traitement du webhook SEOMA:', error.message);
-
+      console.error('❌ Erreur lors du traitement du webhook:', error.message);
       return {
         success: false,
         error: error.message

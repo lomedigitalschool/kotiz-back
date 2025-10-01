@@ -42,6 +42,12 @@ if (process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
       host: process.env.DB_HOST,     // Hôte de la base (localhost)
       port: process.env.DB_PORT,     // Port PostgreSQL (5432)
       dialect: 'postgres',           // Dialecte PostgreSQL
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      },
 
       // Logging activé uniquement en développement
       logging: process.env.NODE_ENV === 'development' ? console.log : false,

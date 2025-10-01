@@ -307,6 +307,10 @@ const PORT = process.env.PORT || 5000;
     await sequelize.authenticate();
     console.log('✅ Base de données connectée');
 
+    // Exécuter les migrations automatiquement au démarrage
+    const { runMigrations } = await import('./utils/migrator.js');
+    await runMigrations();
+
     // Ajouter la colonne anonymous manquante si elle n'existe pas
     try {
       console.log('🔧 Vérification de la colonne anonymous dans contributions...');

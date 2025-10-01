@@ -46,6 +46,10 @@ if (process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
         ssl: {
           require: true,
           rejectUnauthorized: false
+        },
+        // Forcer IPv4 pour éviter les problèmes avec IPv6 sur certains environnements
+        connect: {
+          family: 4
         }
       },
 

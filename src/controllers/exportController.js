@@ -24,8 +24,8 @@ export const exportUsersPDF = async (req, res) => {
 
     doc.pipe(res);
 
-    // Log de l'export
-    await Log.create({
+    // Log de l'export (en arrière-plan, sans bloquer la réponse)
+    Log.create({
       userId: req.user?.id || null,
       action: 'EXPORT_USERS_PDF',
       details: {
@@ -34,6 +34,8 @@ export const exportUsersPDF = async (req, res) => {
         format: 'PDF',
         timestamp: new Date()
       }
+    }).catch(error => {
+      console.error('Erreur lors du logging de l\'export PDF:', error);
     });
 
     // Logo Kotiz (si disponible)

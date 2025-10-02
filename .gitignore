@@ -57,3 +57,5 @@ CashPay_Api V2.0.postman_collection.json
 Kotiz_SEOMA_API_Tests.postman_collection.json
 SEOMA_INTEGRATION_GUIDE.md
 check-user-pulls.js
+src/scripts/fix-notifications-table.js
+src/scripts/fix-transactions-table.js

@@ -85,6 +85,9 @@ class NotificationService {
         message,
         type: notificationType,
         status: 'unread'
+      }, {
+        // Forcer l'exclusion de la colonne read
+        attributes: { exclude: ['read'] }
       });
 
       console.log(`✅ Notification créée pour user ${userId}: ${title}`);

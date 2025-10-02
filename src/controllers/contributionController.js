@@ -147,9 +147,9 @@ export const create = async (req, res) => {
     };
 
     const [transaction] = await sequelize.query(
-      `INSERT INTO transactions (contributionId, amount, currency, status, transactionReference, providerReference, providerResponse, "createdAt", "updatedAt")
+      `INSERT INTO transactions ("contributionId", amount, currency, status, "transactionReference", "providerReference", "providerResponse", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, contributionId, paymentMethodId, transactionReference, amount, currency, status, providerReference, providerResponse, metadata, "createdAt", "updatedAt"`,
+       RETURNING id, "contributionId", "paymentMethodId", "transactionReference", amount, currency, status, "providerReference", "providerResponse", metadata, "createdAt", "updatedAt"`,
       {
         bind: [
           transactionData.contributionId,
@@ -635,9 +635,9 @@ export const createAnonymous = async (req, res) => {
     };
 
     const [transaction] = await sequelize.query(
-      `INSERT INTO transactions (contributionId, amount, currency, status, transactionReference, providerReference, providerResponse, "createdAt", "updatedAt")
+      `INSERT INTO transactions ("contributionId", amount, currency, status, "transactionReference", "providerReference", "providerResponse", "createdAt", "updatedAt")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, contributionId, paymentMethodId, transactionReference, amount, currency, status, providerReference, providerResponse, metadata, "createdAt", "updatedAt"`,
+       RETURNING id, "contributionId", "paymentMethodId", "transactionReference", amount, currency, status, "providerReference", "providerResponse", metadata, "createdAt", "updatedAt"`,
       {
         bind: [
           transactionData.contributionId,

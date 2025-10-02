@@ -21,10 +21,15 @@ export default {
     `);
 
     if (providerResponseColumns.length > 0 && providerResponseColumns[0].data_type !== 'json') {
-      await queryInterface.changeColumn('transactions', 'providerResponse', {
-        type: Sequelize.JSON,
-        allowNull: true
-      });
+      // Utiliser une requête SQL directe pour caster en JSON
+      await queryInterface.sequelize.query(`
+        ALTER TABLE "transactions"
+        ALTER COLUMN "providerResponse" TYPE JSON
+        USING CASE
+          WHEN "providerResponse" IS NULL OR "providerResponse" = '' THEN NULL
+          ELSE "providerResponse"::json
+        END
+      `);
     }
 
     // Ajouter metadata si elle n'existe pas

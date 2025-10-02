@@ -1,7 +1,9 @@
 import sequelize from '../config/database.js';
 
+// Importation des fonctions d'initialisation des modèles (ES Module)
 import initUser from './User.js';
-import initPull from './pull.js';
+// NOTE: Assurez-vous d'avoir bien créé tous ces fichiers dans le répertoire src/models/
+import initPull from './Pull.js';
 import initContribution from './Contribution.js';
 import initTransaction from './Transaction.js';
 import initPaymentMethod from './PaymentMethod.js';
@@ -15,6 +17,7 @@ import initReport from './Report.js';
 const db = {};
 db.sequelize = sequelize;
 
+// Initialisation de chaque modèle
 db.User = initUser(sequelize);
 db.Pull = initPull(sequelize);
 db.Contribution = initContribution(sequelize);
@@ -28,26 +31,28 @@ db.Report = initReport(sequelize);
 
 // 2. Mise en place des associations
 Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
 });
 
 // 3. Gestion de la synchronisation (pour le développement)
-// Utilisez ce code UNIQUEMENT en environnement de développement.
-// Pour la production, préférez les migrations.
+/**
+ * Synchronise la base de données (crée/modifie les tables).
+ * A n'utiliser qu'en environnement de développement (dev).
+ */
 async function syncDatabase() {
-  try {
-    // S'assurer que les tables sont créées si elles n'existent pas
-    await sequelize.sync({ alter: true });
-    console.log("Les tables ont été synchronisées avec succès.");
-  } catch (error) {
-    console.error("Erreur lors de la synchronisation des tables :", error);
-  }
+  try {
+    // { alter: true } essaiera d'apporter les modifications minimales aux tables existantes
+    await sequelize.sync({ alter: true });
+    console.log("✅ Les tables Sequelize ont été synchronisées avec succès.");
+  } catch (error) {
+    console.error("❌ Erreur lors de la synchronisation des tables :", error);
+  }
 }
 
-// 4. Exportation
-module.exports = {
-  ...db,
-  syncDatabase // Exporter la fonction pour l'utiliser ailleurs
+// 4. Exportation des modèles et de la fonction de synchronisation
+export default {
+  ...db,
+  syncDatabase // Exporter la fonction pour l'utiliser ailleurs
 };

@@ -2,11 +2,18 @@ import { Model, DataTypes } from 'sequelize';
 
 class Pull extends Model {
   static associate(models) {
+    // Une cagnotte est créée par un utilisateur
     Pull.belongsTo(models.User, { foreignKey: 'userId', as: 'owner' });
+    // Une cagnotte a plusieurs contributions
     Pull.hasMany(models.Contribution, { foreignKey: 'pullId', as: 'contributions' });
   }
 }
 
+/**
+ * Fonction d'initialisation du modèle Pull (Cagnotte)
+ * @param {import('sequelize').Sequelize} sequelize 
+ * @returns {typeof Pull}
+ */
 function initPull(sequelize) {
   Pull.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -98,4 +105,5 @@ function initPull(sequelize) {
   return Pull;
 }
 
-module.exports = initPull;
+// Correction : Utilisation de l'exportation par défaut ES Module pour la cohérence
+export default initPull;

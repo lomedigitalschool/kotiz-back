@@ -67,6 +67,7 @@ async function runMigrations() {
       { name: '014-make-password-hash-nullable', migration: await importMigration('../migrations/014-make-password-hash-nullable.js') },
       { name: '015-add-currencies-to-pulls', migration: await importMigration('../migrations/015-add-currencies-to-pulls.js') },
       { name: '016-add-missing-fields-to-contributions', migration: await importMigration('../migrations/016-add-missing-fields-to-contributions.js') },
+      { name: '017-add-missing-fields-to-pulls', migration: await importMigration('../migrations/017-add-missing-fields-to-pulls.js') },
       { name: '20250928220632-add-anonymous-to-contributions', migration: await importMigration('../migrations/20250928220632-add-anonymous-to-contributions.js') },
       { name: '20250930210406-allow-null-contributionId-in-transactions', migration: await importMigration('../migrations/20250930210406-allow-null-contributionId-in-transactions.js') }
     ];

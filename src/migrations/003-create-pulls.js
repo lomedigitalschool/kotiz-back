@@ -21,10 +21,18 @@ export default {
           min: 1
         }
       },
+      currentAmount: {
+        type: Sequelize.DECIMAL(12, 2),
+        defaultValue: 0
+      },
       currency: {
-        type: Sequelize.ENUM('XOF', 'EUR', 'USD'),
+        type: Sequelize.ENUM('XOF', 'EUR', 'USD', 'GNF', 'NGN', 'GHS', 'KES'),
         allowNull: false,
         defaultValue: 'XOF'
+      },
+      startDate: {
+        type: Sequelize.DATE,
+        allowNull: true
       },
       deadline: {
         type: Sequelize.DATE,
@@ -57,6 +65,11 @@ export default {
       isApproved: {
         type: Sequelize.BOOLEAN,
         defaultValue: false
+      },
+      slug: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        unique: true
       },
       userId: {
         type: Sequelize.INTEGER,

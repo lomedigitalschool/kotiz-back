@@ -1,8 +1,9 @@
 // Contrôleur des contributions
 import db from '../models/index.js';
-const { Contribution, Pull, Transaction } = db;
+const { Contribution, Pull, Transaction, User } = db;
 import { Op, QueryTypes } from 'sequelize';
 import paymentService from '../services/paymentService.js';
+import notificationService from '../services/notificationService.js';
 import sequelize from '../config/database.js';
 import { emitRealtimeUpdate } from '../server.js';
 
@@ -132,16 +133,37 @@ export const create = async (req, res) => {
       status: 'pending' // En attente de confirmation de paiement
     });
 
-    // Créer l'enregistrement de transaction
-    const transaction = await Transaction.create({
+    // Créer l'enregistrement de transaction (sans utiliser le modèle pour éviter le cache)
+    const transactionData = {
       contributionId: contribution.id,
       amount: parseFloat(amount),
       currency: pull.currency || 'XOF',
       status: 'pending',
       transactionReference: transactionRef,
       providerReference: paymentResult.transactionId,
-      providerResponse: JSON.stringify(paymentResult.providerResponse)
-    });
+      providerResponse: JSON.stringify(paymentResult.providerResponse),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const [transaction] = await sequelize.query(
+      `INSERT INTO transactions (contributionId, amount, currency, status, transactionReference, providerReference, providerResponse, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, contributionId, paymentMethodId, transactionReference, amount, currency, status, providerReference, providerResponse, metadata, "createdAt", "updatedAt"`,
+      {
+        bind: [
+          transactionData.contributionId,
+          transactionData.amount,
+          transactionData.currency,
+          transactionData.status,
+          transactionData.transactionReference,
+          transactionData.providerReference,
+          transactionData.providerResponse,
+          transactionData.createdAt,
+          transactionData.updatedAt
+        ]
+      }
+    );
 
     console.log('✅ Contribution créée avec succès:', contribution.id);
 
@@ -257,6 +279,62 @@ export const handlePaymentWebhook = async (req, res) => {
         { where: { contributionId: contribution.id } }
       );
 
+      // 🔔 NOTIFICATIONS - Paiement réussi pour le contributeur
+      if (contribution.userId) { // Contribution avec compte utilisateur
+        await notificationService.sendNotification({
+          userId: contribution.userId,
+          type: 'paymentResult',
+          data: {
+            status: 'success',
+            amount: contribution.amount,
+            currency: pull.currency,
+            cagnotteTitle: pull.title,
+            receiptLink: `${process.env.FRONTEND_URL}/receipt/${contribution.id}`
+          },
+          channels: ['database', 'email']
+        });
+      }
+
+      // 🔔 NOTIFICATIONS - Nouvelle contribution pour le créateur de la cagnotte
+      if (pull.userId) {
+        await notificationService.sendNotification({
+          userId: pull.userId,
+          type: 'newContribution',
+          data: {
+            amount: contribution.amount,
+            currency: pull.currency,
+            cagnotteTitle: pull.title,
+            user: contribution.userId ? null : contribution.contributorName // Anonyme ou nom
+          },
+          channels: ['database', 'email']
+        });
+      }
+
+      // Vérifier si l'objectif est atteint
+      if (newAmount >= parseFloat(pull.goalAmount)) {
+        // Notifier tous les contributeurs de cette cagnotte
+        const allContributions = await Contribution.findAll({
+          where: { pullId: pull.id, status: 'completed' },
+          attributes: ['userId'],
+          group: ['userId']
+        });
+
+        for (const contrib of allContributions) {
+          if (contrib.userId) {
+            await notificationService.sendNotification({
+              userId: contrib.userId,
+              type: 'goalReached',
+              data: {
+                cagnotteTitle: pull.title,
+                goalAmount: pull.goalAmount,
+                currency: pull.currency
+              },
+              channels: ['database', 'email']
+            });
+          }
+        }
+      }
+
       // Émettre un événement temps réel
       emitRealtimeUpdate('contribution-completed', {
         contributionId: contribution.id,
@@ -283,6 +361,22 @@ export const handlePaymentWebhook = async (req, res) => {
         },
         { where: { contributionId: contribution.id } }
       );
+
+      // 🔔 NOTIFICATIONS - Paiement échoué pour le contributeur
+      if (contribution.userId) {
+        await notificationService.sendNotification({
+          userId: contribution.userId,
+          type: 'paymentResult',
+          data: {
+            status: 'failed',
+            amount: contribution.amount,
+            currency: contribution.Pull.currency,
+            cagnotteTitle: contribution.Pull.title,
+            retryLink: `${process.env.FRONTEND_URL}/cagnotte/${contribution.pullId}`
+          },
+          channels: ['database', 'email']
+        });
+      }
 
       console.log('❌ Contribution échouée:', contribution.id);
     } else {
@@ -527,16 +621,37 @@ export const createAnonymous = async (req, res) => {
       anonymous: true
     });
 
-    // Créer l'enregistrement de transaction
-    const transaction = await Transaction.create({
+    // Créer l'enregistrement de transaction (sans utiliser le modèle pour éviter le cache)
+    const transactionData = {
       contributionId: contribution.id,
       amount: parseFloat(amount),
       currency: pull.currency || 'XOF',
       status: 'pending',
       transactionReference: transactionRef,
       providerReference: paymentResult.transactionId,
-      providerResponse: JSON.stringify(paymentResult.providerResponse)
-    });
+      providerResponse: JSON.stringify(paymentResult.providerResponse),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const [transaction] = await sequelize.query(
+      `INSERT INTO transactions (contributionId, amount, currency, status, transactionReference, providerReference, providerResponse, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, contributionId, paymentMethodId, transactionReference, amount, currency, status, providerReference, providerResponse, metadata, "createdAt", "updatedAt"`,
+      {
+        bind: [
+          transactionData.contributionId,
+          transactionData.amount,
+          transactionData.currency,
+          transactionData.status,
+          transactionData.transactionReference,
+          transactionData.providerReference,
+          transactionData.providerResponse,
+          transactionData.createdAt,
+          transactionData.updatedAt
+        ]
+      }
+    );
 
     console.log('✅ Contribution anonyme créée avec succès:', contribution.id);
 

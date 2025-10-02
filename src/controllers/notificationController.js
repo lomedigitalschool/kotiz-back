@@ -10,7 +10,8 @@ export const markAsRead = async (req, res) => {
   const notif = await Notification.findByPk(req.params.id);
   if (!notif) return res.status(404).json({ message: "Notification introuvable" });
 
-  notif.isRead = true;
+  notif.status = 'read';
+  notif.read = true; // Pour compatibilité
   await notif.save();
   res.json({ message: "Notification lue", notif });
 };

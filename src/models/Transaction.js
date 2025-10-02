@@ -23,7 +23,11 @@ function initTransaction(sequelize) {
     sequelize,
     modelName: 'Transaction',
     tableName: 'transactions',
-    timestamps: true
+    timestamps: true,
+    // Forcer Sequelize à ne pas inclure userId dans les requêtes
+    defaultScope: {
+      attributes: { exclude: ['userId'] }
+    }
   });
 
   return Transaction;

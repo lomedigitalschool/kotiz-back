@@ -10,8 +10,11 @@ function initNotification(sequelize) {
   Notification.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     userId: { type: DataTypes.INTEGER, allowNull: false },
+    title: { type: DataTypes.STRING, allowNull: false },
     message: { type: DataTypes.TEXT, allowNull: false },
-    read: { type: DataTypes.BOOLEAN, defaultValue: false }
+    type: { type: DataTypes.ENUM('info', 'success', 'warning', 'error'), defaultValue: 'info' },
+    status: { type: DataTypes.ENUM('unread', 'read'), defaultValue: 'unread' },
+    read: { type: DataTypes.BOOLEAN, defaultValue: false } // Pour compatibilité
   }, {
     sequelize,
     modelName: 'Notification',

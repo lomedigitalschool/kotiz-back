@@ -22,12 +22,21 @@ export default {
         type: Sequelize.ENUM('pending', 'completed', 'failed'),
         defaultValue: 'pending'
       },
+      transactionReference: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true
+      },
       providerReference: {
         type: Sequelize.STRING,
         allowNull: true
       },
       providerResponse: {
-        type: Sequelize.TEXT,
+        type: Sequelize.JSON,
+        allowNull: true
+      },
+      metadata: {
+        type: Sequelize.JSON,
         allowNull: true
       },
       contributionId: {

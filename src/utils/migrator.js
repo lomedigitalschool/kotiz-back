@@ -41,11 +41,11 @@ async function runMigrations() {
           return imported;
         } else {
           // Fallback to require for CommonJS
-          return require(path.replace('../migrations/', './migrations/').replace('.js', ''));
+          return require(path.replace('.js', ''));
         }
       } catch (error) {
         // Fallback to require
-        return require(path.replace('../migrations/', './migrations/').replace('.js', ''));
+        return require(path.replace('.js', ''));
       }
     };
 
@@ -67,7 +67,8 @@ async function runMigrations() {
       { name: '014-make-password-hash-nullable', migration: await importMigration('../migrations/014-make-password-hash-nullable.js') },
       { name: '015-add-currencies-to-pulls', migration: await importMigration('../migrations/015-add-currencies-to-pulls.js') },
       { name: '016-add-missing-fields-to-contributions', migration: await importMigration('../migrations/016-add-missing-fields-to-contributions.js') },
-      { name: '20250928220632-add-anonymous-to-contributions', migration: await importMigration('../migrations/20250928220632-add-anonymous-to-contributions.js') }
+      { name: '20250928220632-add-anonymous-to-contributions', migration: await importMigration('../migrations/20250928220632-add-anonymous-to-contributions.js') },
+      { name: '20250930210406-allow-null-contributionId-in-transactions', migration: await importMigration('../migrations/20250930210406-allow-null-contributionId-in-transactions.js') }
     ];
     
     // Récupération des migrations déjà exécutées

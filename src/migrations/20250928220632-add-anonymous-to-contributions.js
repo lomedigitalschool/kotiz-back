@@ -1,7 +1,5 @@
-'use strict';
-
 /** @type {import('sequelize-cli').Migration} */
-module.exports = {
+export default {
   async up (queryInterface, Sequelize) {
     // Ajouter la colonne anonymous à la table contributions
     await queryInterface.addColumn('contributions', 'anonymous', {

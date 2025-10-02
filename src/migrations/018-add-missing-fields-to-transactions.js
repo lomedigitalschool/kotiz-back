@@ -21,15 +21,12 @@ export default {
     `);
 
     if (providerResponseColumns.length > 0 && providerResponseColumns[0].data_type !== 'json') {
-      // Utiliser une requête SQL directe pour caster en JSON
-      await queryInterface.sequelize.query(`
-        ALTER TABLE "transactions"
-        ALTER COLUMN "providerResponse" TYPE JSON
-        USING CASE
-          WHEN "providerResponse" IS NULL OR "providerResponse" = '' THEN NULL
-          ELSE "providerResponse"::json
-        END
-      `);
+      // Puisque la table est probablement vide, on peut drop et recréer la colonne
+      await queryInterface.removeColumn('transactions', 'providerResponse');
+      await queryInterface.addColumn('transactions', 'providerResponse', {
+        type: Sequelize.JSON,
+        allowNull: true
+      });
     }
 
     // Ajouter metadata si elle n'existe pas

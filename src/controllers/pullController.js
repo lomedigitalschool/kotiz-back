@@ -1,5 +1,5 @@
 import db from '../models/index.js';
-const { Pull, Contribution, User } = db;
+const { Pull, Contribution, User, Transaction } = db;
 import { Op, QueryTypes } from 'sequelize';
 import { sendEmail } from '../config/mailer.js';
 import emailContent from '../config/emailContent.js';
@@ -291,11 +291,27 @@ export const remove = async (req, res) => {
 export const contribute = async (req, res) => {
   try {
     const { pullId } = req.params;
-    const { amount, message } = req.body;
+    const {
+      amount,
+      message,
+      phoneNumber,
+      paymentMethod = 'orange_money',
+      mobileOption,
+      isAnonymous = false
+    } = req.body;
     const userId = req.user.id;
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: "Montant invalide" });
+    // Validation des données
+    if (!amount || !phoneNumber) {
+      return res.status(400).json({
+        error: "Montant et numéro de téléphone requis"
+      });
+    }
+
+    if (parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        error: "Le montant doit être supérieur à 0"
+      });
     }
 
     // Vérifier que la cagnotte existe
@@ -304,61 +320,101 @@ export const contribute = async (req, res) => {
       return res.status(404).json({ error: "Cagnotte non trouvée" });
     }
 
-    // Créer la contribution
+    // Vérifier que la cagnotte est active
+    if (pull.status !== 'active') {
+      return res.status(400).json({
+        error: "Cette cagnotte n'accepte plus de contributions"
+      });
+    }
+
+    // Générer une référence unique pour la transaction
+    const transactionRef = `KOTIZ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Déterminer la méthode de paiement finale
+    let finalPaymentMethod = paymentMethod;
+    if (paymentMethod === "mobile_money") {
+      finalPaymentMethod = mobileOption || "moov_money";
+    }
+
+    // 🔧 POINT D'INTÉGRATION API PAIEMENT
+    const paymentService = (await import('../services/paymentService.js')).default;
+    const paymentData = {
+      amount: Math.round(parseFloat(amount) * 100), // Convertir en centimes
+      currency: pull.currency || 'XOF',
+      phoneNumber: phoneNumber,
+      paymentMethod: finalPaymentMethod,
+      reference: transactionRef,
+      description: `Contribution à la cagnotte: ${pull.title}`,
+      callbackUrl: `${process.env.BASE_URL || 'http://localhost:5000'}/api/v1/webhooks/payment`,
+      returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-status/${transactionRef}`
+    };
+
+    console.log('🚀 Initiation du paiement pour la contribution:', paymentData);
+
+    // Initier le paiement via l'API externe
+    const paymentResult = await paymentService.initiatePayment(paymentData);
+
+    if (!paymentResult.success) {
+      return res.status(400).json({
+        error: 'Erreur lors de l\'initiation du paiement',
+        details: paymentResult.error,
+        code: 'PAYMENT_INITIATION_FAILED'
+      });
+    }
+
+    // Créer la contribution avec statut "pending"
     const contribution = await Contribution.create({
+      userId: userId,
+      pullId,
       amount: parseFloat(amount),
-      message: message || null,
-      status: 'completed', // Supposons que le paiement est immédiat
-      userId,
-      pullId
+      message: message || '',
+      anonymous: isAnonymous,
+      status: 'pending' // En attente de confirmation de paiement
     });
 
-    // Récupérer les informations du contributeur
-    const contributor = await User.findByPk(userId);
+    // Créer l'enregistrement de transaction
+    const Transaction = (await import('../models/Transaction.js')).default;
+    const transaction = await Transaction.create({
+      contributionId: contribution.id,
+      amount: parseFloat(amount),
+      currency: pull.currency || 'XOF',
+      status: 'pending',
+      transactionReference: transactionRef,
+      providerReference: paymentResult.transactionId,
+      providerResponse: JSON.stringify(paymentResult.providerResponse)
+    });
 
-    // Envoyer un reçu au contributeur
-    if (contributor.email) {
-      try {
-        const subject = emailContent.subjects.contributionReceipt.replace('{{pullTitle}}', pull.title);
-        const template = emailContent.templates.contributionReceipt;
-        const variables = {
-          contributorName: contributor.name,
-          amount: amount,
-          pullTitle: pull.title,
-          transactionId: contribution.id
-        };
-        await sendEmail(contributor.email, subject, template, variables);
-      } catch (emailError) {
-        console.error('Error sending receipt email:', emailError);
-      }
-    }
+    console.log('✅ Contribution créée avec succès:', contribution.id);
 
-    // Envoyer une notification au créateur de la cagnotte
-    const owner = await User.findByPk(pull.userId);
-    if (owner.email) {
-      try {
-        const subject = emailContent.subjects.contributionNotification;
-        const template = emailContent.templates.contributionNotification;
-        const variables = {
-          contributorName: contributor.name,
-          amount: amount,
-          pullTitle: pull.title
-        };
-        await sendEmail(owner.email, subject, template, variables);
-      } catch (emailError) {
-        console.error('Error sending notification email:', emailError);
-      }
-    }
-
-    res.json({
+    // Réponse avec les informations de paiement
+    res.status(201).json({
       success: true,
-      message: "Contribution effectuée avec succès",
-      contribution
+      contribution: {
+        id: contribution.id,
+        amount: contribution.amount,
+        currency: pull.currency,
+        status: contribution.status,
+        reference: transactionRef,
+        createdAt: contribution.createdAt
+      },
+      payment: {
+        transactionId: paymentResult.transactionId,
+        paymentUrl: paymentResult.paymentUrl,
+        status: paymentResult.status,
+        reference: paymentResult.reference,
+        instructions: `Un SMS de confirmation va être envoyé au ${phoneNumber}. Suivez les instructions pour finaliser le paiement.`
+      },
+      // URL de redirection après paiement
+      statusUrl: paymentResult.paymentUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-status/${transactionRef}`,
+      message: "Contribution initiée. Redirection vers le suivi du paiement..."
     });
 
   } catch (err) {
-    console.error('Erreur lors de la contribution:', err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Erreur lors de la création de contribution:', err);
+    res.status(500).json({
+      error: 'Erreur interne du serveur',
+      details: err.message
+    });
   }
 };
 
@@ -823,7 +879,7 @@ export const withdrawFunds = async (req, res) => {
    // Créer la transaction de retrait
    const withdrawalTransaction = await Transaction.create({
      contributionId: null, // Pas lié à une contribution spécifique
-     paymentMethodId: paymentMethodId || null,
+     paymentMethodId: null, // Les retraits ne sont pas liés à une méthode de paiement spécifique
      transactionReference: `WD-${Date.now()}-${id}`,
      amount: parseFloat(amount),
      currency: pull.currency,

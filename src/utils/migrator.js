@@ -11,7 +11,10 @@
  */
 
 import { Sequelize } from 'sequelize';
+import { createRequire } from 'module';
 import sequelize from '../config/database.js';
+
+const require = createRequire(import.meta.url);
 
 /**
  * Exécute toutes les migrations en attente
@@ -28,25 +31,43 @@ async function runMigrations() {
       );
     `);
     
+    // Fonction helper pour importer les migrations (gère ES modules et CommonJS)
+    const importMigration = async (path) => {
+      try {
+        const imported = await import(path);
+        if (imported.default) {
+          return imported.default;
+        } else if (Object.keys(imported).length > 0) {
+          return imported;
+        } else {
+          // Fallback to require for CommonJS
+          return require(path.replace('../migrations/', './migrations/').replace('.js', ''));
+        }
+      } catch (error) {
+        // Fallback to require
+        return require(path.replace('../migrations/', './migrations/').replace('.js', ''));
+      }
+    };
+
     // Liste ordonnée de toutes les migrations à exécuter
     const migrations = [
-      { name: '001-create-users', ...(await import('../migrations/001-create-users.js')) },
-      { name: '002-create-payment-methods', ...(await import('../migrations/002-create-payment-methods.js')) },
-      { name: '003-create-pulls', ...(await import('../migrations/003-create-pulls.js')) },
-      { name: '004-create-contributions', ...(await import('../migrations/004-create-contributions.js')) },
-      { name: '005-create-transactions', ...(await import('../migrations/005-create-transactions.js')) },
-      { name: '006-create-user-payment-methods', ...(await import('../migrations/006-create-user-payment-methods.js')) },
-      { name: '007-create-notifications', ...(await import('../migrations/007-create-notifications.js')) },
-      { name: '008-create-logs', ...(await import('../migrations/008-create-logs.js')) },
-      { name: '009-create-kyc', ...(await import('../migrations/009-create-kyc.js')) },
-      { name: '010-seed-payment-methods', ...(await import('../migrations/010-seed-payment-methods.js')) },
-      { name: '011-update-kyc-table', ...(await import('../migrations/011-update-kyc-table.js')) },
-      { name: '012-create-reports-table', ...(await import('../migrations/012-create-reports-table.js')) },
-      { name: '013-add-firebase-fields-to-users', ...(await import('../migrations/013-add-firebase-fields-to-users.js')) },
-      { name: '014-make-password-hash-nullable', ...(await import('../migrations/014-make-password-hash-nullable.js')) },
-      { name: '015-add-currencies-to-pulls', ...(await import('../migrations/015-add-currencies-to-pulls.js')) },
-      { name: '016-add-missing-fields-to-contributions', ...(await import('../migrations/016-add-missing-fields-to-contributions.js')) },
-      { name: '20250928220632-add-anonymous-to-contributions', ...(await import('../migrations/20250928220632-add-anonymous-to-contributions.js')) }
+      { name: '001-create-users', migration: await importMigration('../migrations/001-create-users.js') },
+      { name: '002-create-payment-methods', migration: await importMigration('../migrations/002-create-payment-methods.js') },
+      { name: '003-create-pulls', migration: await importMigration('../migrations/003-create-pulls.js') },
+      { name: '004-create-contributions', migration: await importMigration('../migrations/004-create-contributions.js') },
+      { name: '005-create-transactions', migration: await importMigration('../migrations/005-create-transactions.js') },
+      { name: '006-create-user-payment-methods', migration: await importMigration('../migrations/006-create-user-payment-methods.js') },
+      { name: '007-create-notifications', migration: await importMigration('../migrations/007-create-notifications.js') },
+      { name: '008-create-logs', migration: await importMigration('../migrations/008-create-logs.js') },
+      { name: '009-create-kyc', migration: await importMigration('../migrations/009-create-kyc.js') },
+      { name: '010-seed-payment-methods', migration: await importMigration('../migrations/010-seed-payment-methods.js') },
+      { name: '011-update-kyc-table', migration: await importMigration('../migrations/011-update-kyc-table.js') },
+      { name: '012-create-reports-table', migration: await importMigration('../migrations/012-create-reports-table.js') },
+      { name: '013-add-firebase-fields-to-users', migration: await importMigration('../migrations/013-add-firebase-fields-to-users.js') },
+      { name: '014-make-password-hash-nullable', migration: await importMigration('../migrations/014-make-password-hash-nullable.js') },
+      { name: '015-add-currencies-to-pulls', migration: await importMigration('../migrations/015-add-currencies-to-pulls.js') },
+      { name: '016-add-missing-fields-to-contributions', migration: await importMigration('../migrations/016-add-missing-fields-to-contributions.js') },
+      { name: '20250928220632-add-anonymous-to-contributions', migration: await importMigration('../migrations/20250928220632-add-anonymous-to-contributions.js') }
     ];
     
     // Récupération des migrations déjà exécutées
@@ -80,7 +101,7 @@ async function runMigrations() {
         }
 
         // Exécution de la migration
-        await migration.up(sequelize.getQueryInterface(), Sequelize);
+        await migration.migration.up(sequelize.getQueryInterface(), Sequelize);
 
         // Enregistrement dans la table de suivi
         await sequelize.query('INSERT INTO "SequelizeMeta" (name) VALUES (?)', { replacements: [migration.name] });

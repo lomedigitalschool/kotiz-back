@@ -259,6 +259,9 @@ app.use('/api/v1/otp', otpRoutes);
 app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/webhooks', webhookRoutes);
 
+// Routes de test supprimées pour la production
+// Les routes de test sont maintenant dans le .gitignore
+
 // 1️⃣6️⃣ Route racine
 app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));
 
@@ -303,6 +306,10 @@ const PORT = process.env.PORT || 5000;
     // 1️⃣5️⃣ ADMINJS (AVANT body parser)
     await sequelize.authenticate();
     console.log('✅ Base de données connectée');
+
+    // Exécuter les migrations automatiquement au démarrage
+    const { runMigrations } = await import('./utils/migrator.js');
+    await runMigrations();
 
     // Ajouter la colonne anonymous manquante si elle n'existe pas
     try {

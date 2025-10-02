@@ -6,14 +6,13 @@ import paymentService from '../services/payment.service.js';
 import sequelize from '../config/database.js';
 
 export const getStats = async (req, res) => {
-  try {
-
-    // Total collecté
-    const [totalResult] = await sequelize.query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\'',
-      { type: QueryTypes.SELECT }
-    );
-    const totalCollected = parseFloat(totalResult.total) || 0;
+  try {
+    // Total collecté
+    const [totalResult] = await sequelize.query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM contributions WHERE status = \'completed\'',
+      { type: QueryTypes.SELECT }
+    );
+    const totalCollected = parseFloat(totalResult.total) || 0;
 
     // Ce mois
     const currentMonth = new Date();
@@ -56,15 +55,16 @@ export const getStats = async (req, res) => {
 
 // 💳 POINT D'INTÉGRATION PRINCIPAL - CRÉER UNE CONTRIBUTION AVEC PAIEMENT
 export const create = async (req, res) => {
-  try {
-    const {
-      pullId,
-      amount,
-      message,
-      phoneNumber,
-      paymentMethod = 'orange_money',
-      isAnonymous = false
-    } = req.body;
+  try {
+    const {
+      pullId,
+      amount,
+      message,
+      phoneNumber,
+      paymentMethod = 'orange_money',
+      mobileOption,
+      isAnonymous = false
+    } = req.body;
 
     // Validation des données
     if (!pullId || !amount || !phoneNumber) {
@@ -86,21 +86,27 @@ export const create = async (req, res) => {
       });
     }
 
-    // Générer une référence unique pour la transaction
-    const transactionRef = `KOTIZ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Générer une référence unique pour la transaction
+    const transactionRef = `KOTIZ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // 🔧 POINT D'INTÉGRATION API PAIEMENT
-    // Préparer les données de paiement
-    const paymentData = {
-      amount: Math.round(parseFloat(amount) * 100), // Convertir en centimes
-      currency: pull.currency || 'XOF',
-      phoneNumber: phoneNumber,
-      paymentMethod: paymentMethod,
-      reference: transactionRef,
-      description: `Contribution à la cagnotte: ${pull.title}`,
-      callbackUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/api/v1/webhooks/payment`,
-      returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/cagnotte/${pullId}`
-    };
+    // Déterminer la méthode de paiement finale
+    let finalPaymentMethod = paymentMethod;
+    if (paymentMethod === "mobile_money") {
+      finalPaymentMethod = mobileOption || "moov_money";
+    }
+
+    // 🔧 POINT D'INTÉGRATION API PAIEMENT
+    // Préparer les données de paiement
+    const paymentData = {
+      amount: Math.round(parseFloat(amount) * 100), // Convertir en centimes
+      currency: pull.currency || 'XOF',
+      phoneNumber: phoneNumber,
+      paymentMethod: finalPaymentMethod,
+      reference: transactionRef,
+      description: `Contribution à la cagnotte: ${pull.title}`,
+      callbackUrl: `${process.env.BASE_URL || 'http://localhost:5000'}/api/v1/webhooks/payment`,
+      returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-status/${transactionRef}`
+    };
 
     console.log('🚀 Initiation du paiement pour la contribution:', paymentData);
 
@@ -115,55 +121,51 @@ export const create = async (req, res) => {
       });
     }
 
-    // Créer la contribution avec statut "pending"
-    const contribution = await Contribution.create({
-      userId: req.user.id,
-      pullId,
-      amount: parseFloat(amount),
-      message: message || '',
-      isAnonymous: isAnonymous,
-      status: 'pending', // En attente de confirmation de paiement
-      paymentReference: transactionRef,
-      phoneNumber: phoneNumber,
-      paymentMethod: paymentMethod
-    });
+    // Créer la contribution avec statut "pending"
+    const contribution = await Contribution.create({
+      userId: req.user.id,
+      pullId,
+      amount: parseFloat(amount),
+      message: message || '',
+      anonymous: isAnonymous,
+      status: 'pending' // En attente de confirmation de paiement
+    });
 
-    // Créer l'enregistrement de transaction
-    const transaction = await Transaction.create({
-      contributionId: contribution.id,
-      userId: req.user.id,
-      amount: parseFloat(amount),
-      currency: pull.currency || 'XOF',
-      status: 'pending',
-      paymentMethod: paymentMethod,
-      phoneNumber: phoneNumber,
-      reference: transactionRef,
-      providerTransactionId: paymentResult.transactionId,
-      providerResponse: JSON.stringify(paymentResult.providerResponse)
-    });
+    // Créer l'enregistrement de transaction
+    const transaction = await Transaction.create({
+      contributionId: contribution.id,
+      amount: parseFloat(amount),
+      currency: pull.currency || 'XOF',
+      status: 'pending',
+      transactionReference: transactionRef,
+      providerReference: paymentResult.transactionId,
+      providerResponse: JSON.stringify(paymentResult.providerResponse)
+    });
 
     console.log('✅ Contribution créée avec succès:', contribution.id);
 
-    // Réponse avec les informations de paiement
-    res.status(201).json({
-      success: true,
-      contribution: {
-        id: contribution.id,
-        amount: contribution.amount,
-        currency: pull.currency,
-        status: contribution.status,
-        reference: transactionRef,
-        createdAt: contribution.createdAt
-      },
-      payment: {
-        transactionId: paymentResult.transactionId,
-        paymentUrl: paymentResult.paymentUrl,
-        status: paymentResult.status,
-        reference: paymentResult.reference,
-        instructions: `Un SMS de confirmation va être envoyé au ${phoneNumber}. Suivez les instructions pour finaliser le paiement.`
-      },
-      message: "Contribution initiée. Veuillez finaliser le paiement via votre téléphone."
-    });
+    // Réponse avec les informations de paiement
+    res.status(201).json({
+      success: true,
+      contribution: {
+        id: contribution.id,
+        amount: contribution.amount,
+        currency: pull.currency,
+        status: contribution.status,
+        reference: transactionRef,
+        createdAt: contribution.createdAt
+      },
+      payment: {
+        transactionId: paymentResult.transactionId,
+        paymentUrl: paymentResult.paymentUrl,
+        status: paymentResult.status,
+        reference: paymentResult.reference,
+        instructions: `Un SMS de confirmation va être envoyé au ${phoneNumber}. Suivez les instructions pour finaliser le paiement.`
+      },
+      // URL de redirection après paiement
+      statusUrl: paymentResult.paymentUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-status/${transactionRef}`,
+      message: "Contribution initiée. Redirection vers le suivi du paiement..."
+    });
 
   } catch (err) {
     console.error('❌ Erreur lors de la création de contribution:', err);
@@ -176,122 +178,210 @@ export const create = async (req, res) => {
 
 // 🔄 WEBHOOK POUR TRAITER LES NOTIFICATIONS DE PAIEMENT
 export const handlePaymentWebhook = async (req, res) => {
-  try {
-    console.log('📨 Webhook de paiement reçu:', req.body);
-    const signature = req.headers['x-semoa-signature'];
-    const webhookResult = await paymentService.processWebhook(req.body, signature);
+  try {
+    console.log('📨 Webhook SEOMA reçu:', {
+      headers: req.headers,
+      body: req.body,
+      timestamp: new Date().toISOString()
+    });
 
-    if (!webhookResult.success) {
-      return res.status(400).json({ error: 'Webhook invalide' });
-    }
+    // Valider la signature du webhook (si configurée)
+    const signature = req.headers['x-seoma-signature'] || req.headers['signature'];
+    if (signature && !paymentService.validateWebhookSignature(req.body, signature)) {
+      console.error('❌ Signature webhook invalide');
+      return res.status(401).json({ error: 'Signature invalide' });
+    }
 
-    // Trouver la contribution correspondante
-    const contribution = await Contribution.findOne({
-      where: { paymentReference: webhookResult.reference },
-      include: [{ model: Pull, as: 'Pull' }]
-    });
+    // Traiter le webhook via le service de paiement
+    const webhookResult = await paymentService.processWebhook(req.body);
 
-    if (!contribution) {
-      console.error('❌ Contribution non trouvée pour la référence:', webhookResult.reference);
-      return res.status(404).json({ error: 'Contribution non trouvée' });
-    }
+    if (!webhookResult.success) {
+      console.error('❌ Webhook invalide:', webhookResult.error);
+      return res.status(400).json({ error: 'Webhook invalide' });
+    }
 
-    // Mettre à jour le statut selon le résultat du paiement
-    if (webhookResult.status === 'completed' || webhookResult.status === 'success') {
-      // Paiement réussi
-      contribution.status = 'completed';
-      await contribution.save();
+    console.log('🔍 Recherche de la transaction:', webhookResult.reference);
 
-      // Mettre à jour le montant de la cagnotte
-      const pull = contribution.Pull;
-      pull.currentAmount = parseFloat(pull.currentAmount) + parseFloat(contribution.amount);
-      await pull.save();
+    // Trouver la contribution correspondante via la transaction
+    const transaction = await Transaction.findOne({
+      where: { 
+        [Op.or]: [
+          { transactionReference: webhookResult.reference },
+          { providerReference: webhookResult.transactionId }
+        ]
+      },
+      include: [{ 
+        model: Contribution, 
+        as: 'contribution',
+        include: [{ model: Pull, as: 'Pull' }]
+      }]
+    });
+    
+    const contribution = transaction?.contribution;
 
-      // Mettre à jour la transaction
-      await Transaction.update(
-        {
-          status: 'completed',
-          completedAt: new Date(),
-          providerResponse: JSON.stringify(req.body)
-        },
-        { where: { contributionId: contribution.id } }
-      );
+    if (!contribution) {
+      console.error('❌ Contribution non trouvée pour:', {
+        reference: webhookResult.reference,
+        transactionId: webhookResult.transactionId
+      });
+      return res.status(404).json({ error: 'Contribution non trouvée' });
+    }
 
-      console.log('✅ Contribution confirmée:', contribution.id);
+    console.log('✅ Contribution trouvée:', contribution.id, 'Statut actuel:', contribution.status);
 
-    } else if (webhookResult.status === 'failed' || webhookResult.status === 'cancelled') {
-      // Paiement échoué
-      contribution.status = 'failed';
-      await contribution.save();
+    // Éviter le double traitement
+    if (contribution.status === 'completed') {
+      console.log('⚠️ Contribution déjà traitée, ignoré');
+      return res.status(200).json({ success: true, message: 'Déjà traité' });
+    }
 
-      // Mettre à jour la transaction
-      await Transaction.update(
-        {
-          status: 'failed',
-          failedAt: new Date(),
-          providerResponse: JSON.stringify(req.body)
-        },
-        { where: { contributionId: contribution.id } }
-      );
+    // Mettre à jour le statut selon le résultat du paiement
+    if (webhookResult.status === 'completed') {
+      // Paiement réussi
+      contribution.status = 'completed';
+      await contribution.save();
 
-      console.log('❌ Contribution échouée:', contribution.id);
-    }
+      // Mettre à jour le montant de la cagnotte
+      const pull = contribution.Pull;
+      const newAmount = parseFloat(pull.currentAmount) + parseFloat(contribution.amount);
+      pull.currentAmount = newAmount;
+      await pull.save();
 
-    res.status(200).json({ success: true, processed: true });
+      // Mettre à jour la transaction
+      await Transaction.update(
+        {
+          status: 'completed',
+          providerResponse: JSON.stringify(req.body)
+        },
+        { where: { contributionId: contribution.id } }
+      );
 
-  } catch (error) {
-    console.error('❌ Erreur lors du traitement du webhook:', error);
-    res.status(500).json({ error: 'Erreur lors du traitement du webhook' });
-  }
+      // Émettre un événement temps réel
+      emitRealtimeUpdate('contribution-completed', {
+        contributionId: contribution.id,
+        pullId: pull.id,
+        amount: contribution.amount,
+        contributorName: contribution.contributorName || (contribution.anonymous ? 'Anonyme' : 'Contributeur'),
+        pullTitle: pull.title,
+        newTotal: newAmount,
+        timestamp: new Date()
+      });
+
+      console.log('✅ Contribution confirmée:', contribution.id, 'Nouveau total cagnotte:', newAmount);
+
+    } else if (webhookResult.status === 'failed') {
+      // Paiement échoué
+      contribution.status = 'failed';
+      await contribution.save();
+
+      // Mettre à jour la transaction
+      await Transaction.update(
+        {
+          status: 'failed',
+          providerResponse: JSON.stringify(req.body)
+        },
+        { where: { contributionId: contribution.id } }
+      );
+
+      console.log('❌ Contribution échouée:', contribution.id);
+    } else {
+      console.log('⏳ Statut intermédiaire:', webhookResult.status, '- Aucune action');
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      processed: true,
+      contributionId: contribution.id,
+      status: contribution.status
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur webhook:', error);
+    res.status(500).json({ error: 'Erreur lors du traitement du webhook' });
+  }
 };
 
 // 🔍 VÉRIFIER LE STATUT D'UNE CONTRIBUTION
 export const checkContributionStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
+  try {
+    const { id } = req.params;
+    
+    // Trouver la contribution
+    const contribution = await Contribution.findOne({
+      where: { id },
+      include: [
+        { model: Pull, as: 'Pull' },
+        { model: Transaction, as: 'transaction' }
+      ]
+    });
 
-    const contribution = await Contribution.findOne({
-      where: { id, userId: req.user.id },
-      include: [
-        { model: Pull, as: 'Pull' },
-        { model: Transaction, as: 'Transaction' }
-      ]
-    });
+    if (!contribution) {
+      return res.status(404).json({ error: 'Contribution non trouvée' });
+    }
 
-    if (!contribution) {
-      return res.status(404).json({ error: 'Contribution non trouvée' });
-    }
+    // Si la contribution est déjà complétée, retourner le statut
+    if (contribution.status === 'completed') {
+      return res.json({
+        success: true,
+        status: 'completed',
+        contribution: {
+          id: contribution.id,
+          amount: contribution.amount,
+          status: contribution.status,
+          createdAt: contribution.createdAt
+        }
+      });
+    }
 
-    // Si la contribution est en attente, vérifier le statut auprès du fournisseur
-    if (contribution.status === 'pending' && contribution.Transaction) {
-      const statusResult = await paymentService.checkPaymentStatus(
-        contribution.Transaction.providerTransactionId
-      );
+    // Si la contribution est en attente, vérifier le statut auprès du fournisseur
+    if (contribution.status === 'pending' && contribution.transaction) {
+      const paymentStatus = await paymentService.checkPaymentStatus(
+        contribution.transaction.providerReference
+      );
 
-      if (statusResult.success && statusResult.status !== contribution.status) {
-        // Mettre à jour le statut si nécessaire
-        // (La logique complète serait dans le webhook, ceci est juste pour info)
-        console.log('ℹ️ Statut mis à jour depuis le fournisseur:', statusResult.status);
-      }
-    }
+      if (paymentStatus.success) {
+        // Mettre à jour le statut si nécessaire
+        if (paymentStatus.status === 'Paid' || paymentStatus.status === 'completed') {
+          contribution.status = 'completed';
+          await contribution.save();
 
-    res.json({
-      contribution: {
-        id: contribution.id,
-        amount: contribution.amount,
-        status: contribution.status,
-        reference: contribution.paymentReference,
-        createdAt: contribution.createdAt
-      },
-      cagnotte: {
-        id: contribution.Pull.id,
-        title: contribution.Pull.title
-      },
-      transaction: contribution.Transaction ? {
-        status: contribution.Transaction.status,
-        paymentMethod: contribution.Transaction.paymentMethod
-      } : null
-    });
+          // Mettre à jour le montant de la cagnotte
+          const pull = contribution.Pull;
+          pull.currentAmount = parseFloat(pull.currentAmount) + parseFloat(contribution.amount);
+          await pull.save();
+
+          // Mettre à jour la transaction
+          await Transaction.update(
+            { status: 'completed' },
+            { where: { contributionId: contribution.id } }
+          );
+
+          // Émettre un événement temps réel
+          emitRealtimeUpdate('contribution-completed', {
+            contributionId: contribution.id,
+            pullId: pull.id,
+            amount: contribution.amount,
+            timestamp: new Date()
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      status: contribution.status,
+      contribution: {
+        id: contribution.id,
+        amount: contribution.amount,
+        status: contribution.status,
+        createdAt: contribution.createdAt
+      },
+      transaction: contribution.transaction ? {
+        id: contribution.transaction.id,
+        status: contribution.transaction.status,
+        providerReference: contribution.transaction.providerReference
+      } : null
+    });
 
   } catch (error) {
     console.error('❌ Erreur lors de la vérification du statut:', error);
@@ -299,46 +389,71 @@ export const checkContributionStatus = async (req, res) => {
   }
 };
 
+// 📋 OBTENIR MES CONTRIBUTIONS
 export const getMyContributions = async (req, res) => {
-  try {
-    const contributions = await Contribution.findAll({
-      where: { userId: req.user.id },
-      include: [{ model: Pull, as: 'Pull' }] // Pour renvoyer aussi le pull lié
-    });
-    res.json(contributions);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const contributions = await Contribution.findAndCountAll({
+      where: { userId: req.user.id },
+      include: [
+        { 
+          model: Pull, 
+          as: 'Pull',
+          attributes: ['id', 'title', 'currency', 'imageUrl']
+        },
+        {
+          model: Transaction,
+          as: 'transaction',
+          attributes: ['id', 'status', 'paymentMethodId']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      contributions: contributions.rows,
+      pagination: {
+        total: contributions.count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(contributions.count / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des contributions:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des contributions' });
+  }
 };
 
-// ====================
 // 🎭 CRÉER UNE CONTRIBUTION ANONYME (SANS COMPTE)
-// ====================
 export const createAnonymous = async (req, res) => {
-  try {
-    const { pullId } = req.params; // Récupérer pullId depuis l'URL
-    const {
-      amount,
-      contributorName,
-      contributorEmail,
-      message,
-      phoneNumber,
-      paymentMethod = 'orange_money'
-    } = req.body;
+  try {
+    const { pullId } = req.params;
+    const {
+      amount,
+      contributorName,
+      contributorEmail,
+      message,
+      phoneNumber,
+      paymentMethod = 'orange_money',
+      mobileOption
+    } = req.body;
 
-    console.log('🎭 DEBUG - req.params:', req.params);
-    console.log('🎭 DEBUG - req.body:', req.body);
-    console.log('🎭 Contribution anonyme initiée:', { pullId, amount, contributorName, phoneNumber });
+    console.log('🎭 Contribution anonyme initiée:', { pullId, amount, contributorName, phoneNumber });
 
-    // Validation des données
-    if (!pullId || !amount || !phoneNumber) {
-      console.log('❌ Validation échouée:', { pullId, amount, phoneNumber });
-      return res.status(400).json({
-        success: false,
-        error: "ID de cagnotte, montant et numéro de téléphone requis",
-        debug: { pullId, amount, phoneNumber }
-      });
-    }
+    // Validation des données
+    if (!pullId || !amount || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: "ID de cagnotte, montant et numéro de téléphone requis"
+      });
+    }
 
     if (parseFloat(amount) <= 0) {
       return res.status(400).json({
@@ -363,21 +478,26 @@ export const createAnonymous = async (req, res) => {
       });
     }
 
-    // Générer une référence unique pour la transaction
-    const transactionRef = `KOTIZ-ANON-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Générer une référence unique pour la transaction
+    const transactionRef = `KOTIZ-ANON-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // 🔧 POINT D'INTÉGRATION API PAIEMENT
-    // Préparer les données de paiement
-    const paymentData = {
-      amount: Math.round(parseFloat(amount) * 100), // Convertir en centimes
-      currency: pull.currency || 'XOF',
-      phoneNumber: phoneNumber,
-      paymentMethod: paymentMethod,
-      reference: transactionRef,
-      description: `Contribution anonyme à: ${pull.title}`,
-      callbackUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/api/v1/webhooks/payment`,
-      returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/cagnotte/${pullId}?contribution=success`
-    };
+    // Déterminer la méthode de paiement finale
+    let finalPaymentMethod = paymentMethod;
+    if (paymentMethod === "mobile_money") {
+      finalPaymentMethod = mobileOption || "moov_money";
+    }
+
+    // 🔧 POINT D'INTÉGRATION API PAIEMENT
+    const paymentData = {
+      amount: Math.round(parseFloat(amount) * 100),
+      currency: pull.currency || 'XOF',
+      phoneNumber: phoneNumber,
+      paymentMethod: finalPaymentMethod,
+      reference: transactionRef,
+      description: `Contribution anonyme à: ${pull.title}`,
+      callbackUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/api/v1/webhooks/payment`,
+      returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/cagnotte/${pullId}?contribution=success`
+    };
 
     console.log('🚀 Initiation du paiement anonyme:', paymentData);
 
@@ -393,34 +513,29 @@ export const createAnonymous = async (req, res) => {
       });
     }
 
-    // Créer la contribution anonyme avec statut "pending"
-    const contribution = await Contribution.create({
-      userId: null, // Contribution anonyme
-      pullId,
-      amount: parseFloat(amount),
-      currency: pull.currency || 'XOF',
-      status: 'pending', // En attente de confirmation de paiement
-      paymentReference: transactionRef,
-      contributorName: contributorName || 'Anonyme',
-      contributorEmail: contributorEmail || null,
-      message: message || null,
-      phoneNumber: phoneNumber,
-      paymentMethod: paymentMethod
-    });
+    // Créer la contribution anonyme avec statut "pending"
+    const contribution = await Contribution.create({
+      userId: null, // Contribution anonyme
+      pullId,
+      amount: parseFloat(amount),
+      currency: pull.currency || 'XOF',
+      status: 'pending',
+      contributorName: contributorName || 'Anonyme',
+      contributorEmail: contributorEmail || null,
+      message: message || null,
+      anonymous: true
+    });
 
-    // Créer l'enregistrement de transaction (sans userId pour les anonymes)
-    const transaction = await Transaction.create({
-      contributionId: contribution.id,
-      userId: null, // Transaction anonyme
-      amount: parseFloat(amount),
-      currency: pull.currency || 'XOF',
-      status: 'pending',
-      paymentMethod: paymentMethod,
-      phoneNumber: phoneNumber,
-      reference: transactionRef,
-      providerTransactionId: paymentResult.transactionId,
-      providerResponse: JSON.stringify(paymentResult.providerResponse)
-    });
+    // Créer l'enregistrement de transaction
+    const transaction = await Transaction.create({
+      contributionId: contribution.id,
+      amount: parseFloat(amount),
+      currency: pull.currency || 'XOF',
+      status: 'pending',
+      transactionReference: transactionRef,
+      providerReference: paymentResult.transactionId,
+      providerResponse: JSON.stringify(paymentResult.providerResponse)
+    });
 
     console.log('✅ Contribution anonyme créée avec succès:', contribution.id);
 

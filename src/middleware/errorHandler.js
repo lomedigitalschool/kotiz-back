@@ -39,4 +39,4 @@ function errorHandler(err, req, res, next) {
   res.status(statusCode).json(errorResponse);
 }
 
-export default errorHandler;
+module.exports = errorHandler;

@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.bulkInsert('payment_methods', [
       {
@@ -58,3 +58,4 @@ module.exports = {
     await queryInterface.bulkDelete('payment_methods', null, {});
   }
 };
+

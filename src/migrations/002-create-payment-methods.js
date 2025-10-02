@@ -41,3 +41,4 @@ const migration = {
 };
 
 export default migration;
+

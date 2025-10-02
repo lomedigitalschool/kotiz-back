@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('user_payment_methods', {
       id: {
@@ -53,3 +53,4 @@ module.exports = {
     await queryInterface.dropTable('user_payment_methods');
   }
 };
+

@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   up: async (queryInterface, Sequelize) => {
     // Ajouter le champ typeSubmission
     await queryInterface.addColumn('kyc', 'typeSubmission', {
@@ -49,3 +49,4 @@ module.exports = {
     await queryInterface.removeColumn('kyc', 'typeSubmission');
   }
 };
+

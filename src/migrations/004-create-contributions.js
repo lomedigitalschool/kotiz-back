@@ -59,3 +59,4 @@ export default {
     await queryInterface.dropTable('contributions');
   }
 };
+

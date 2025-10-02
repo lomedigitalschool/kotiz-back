@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   up: async (queryInterface, Sequelize) => {
     // Ajouter la colonne currency
     await queryInterface.addColumn('contributions', 'currency', {
@@ -43,3 +43,4 @@ module.exports = {
     await queryInterface.removeColumn('contributions', 'currency');
   }
 };
+

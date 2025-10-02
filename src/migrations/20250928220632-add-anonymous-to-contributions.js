@@ -14,3 +14,4 @@ export default {
     await queryInterface.removeColumn('contributions', 'anonymous');
   }
 };
+

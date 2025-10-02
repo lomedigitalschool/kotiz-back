@@ -82,3 +82,4 @@ export default {
     await queryInterface.dropTable('pulls');
   }
 };
+

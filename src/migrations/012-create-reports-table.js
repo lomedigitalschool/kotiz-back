@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('reports', {
       id: {
@@ -100,3 +100,4 @@ module.exports = {
     await queryInterface.removeColumn('users', 'resetTokenExpiry');
   }
 };
+

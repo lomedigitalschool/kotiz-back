@@ -1,112 +1,86 @@
-import { DataTypes } from 'sequelize';
+import { Model } from 'sequelize';
 
-/**
- * Définit le modèle Contribution.
- * @param {import('sequelize').Sequelize} sequelize L'instance Sequelize.
- * @returns {import('sequelize').Model} Le modèle Contribution.
- */
-export default (sequelize) => {
-    const Contribution = sequelize.define('Contribution', {
-        id: {
-            type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
-            allowNull: false,
-        },
-        amount: {
-            type: DataTypes.DECIMAL(10, 2),
-            allowNull: false,
-            comment: 'Montant de la contribution en EUR',
-        },
-        status: {
-            type: DataTypes.ENUM('pending', 'succeeded', 'failed', 'refunded', 'completed'),
-            defaultValue: 'pending',
-            allowNull: false,
-            comment: 'Statut du paiement',
-        },
-        paymentReference: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            unique: true,
-            comment: 'Référence de la transaction (souvent liée au prestataire de paiement)',
-        },
-        // Nouvelle colonne pour les contributions anonymes
-        contributorName: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            comment: 'Nom du contributeur si anonyme',
-        },
-        contributorEmail: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            comment: 'Email du contributeur si anonyme',
-        },
-        phoneNumber: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            comment: 'Numéro de téléphone utilisé pour le paiement',
-        },
-        paymentMethod: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            comment: 'Méthode de paiement (ex: orange_money)',
-        },
-        message: {
-            type: DataTypes.TEXT,
-            allowNull: true,
-            comment: 'Message laissé par le contributeur',
-        },
-        // Clé étrangère pour l'utilisateur qui fait la contribution (le donneur)
-        // Peut être NULL si la contribution est anonyme
-        contributorId: {
-            type: DataTypes.UUID,
-            allowNull: true, // IMPORTANT: Doit être allowNull: true pour les contributions anonymes
-            references: {
-                model: 'Users', // Référence au nom de la table Users
-                key: 'id',
-            },
-        },
-        // Clé étrangère pour la cagnotte ciblée
-        pullId: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            references: {
-                model: 'Pulls', // Référence au nom de la table Pulls
-                key: 'id',
-            },
-        },
-    }, {
-        tableName: 'Contributions',
-        timestamps: true,
-        underscored: false, 
-    });
+// We define the model as a function that accepts sequelize and DataTypes.
+// This prevents it from trying to access the global 'db' object immediately.
+export default (sequelize, DataTypes) => {
+  class Contribution extends Model {
+    /**
+     * The associate method is called by your main index file *after* all models
+     * have been loaded, resolving the circular dependency issue.
+     * 'models' here is the complete set of initialized models (the 'db' object).
+     */
+    static associate(models) {
+      // Establish relationships here, using 'models' instead of 'db'
+      Contribution.belongsTo(models.User, {
+        foreignKey: 'contributorId',
+        as: 'Contributor'
+      });
+      
+      Contribution.belongsTo(models.Pull, {
+        foreignKey: 'pullId',
+        as: 'pull' // Using 'pull' as alias to match your controller usage
+      });
+      
+      // Contribution has a one-to-one relationship with Transaction
+      Contribution.hasMany(models.Transaction, {
+        foreignKey: 'contributionId',
+        as: 'transactions' // Using 'transactions' as alias to match your controller usage
+      });
+    }
+  }
 
-    /**
-     * Définit les associations pour le modèle Contribution.
-     * @param {object} db L'objet contenant tous les modèles (User, Pull, etc.).
-     */
-    Contribution.associate = (db) => {
-        // CORRECTION: La déstructuration des modèles se fait DANS la fonction associate
-        const { User, Pull, Transaction } = db;
+  Contribution.init({
+    // ✅ CORRECTION: Définir explicitement l'ID comme UUID pour éviter le conflit de type avec contributorId (UUID)
+    id: { 
+        type: DataTypes.UUID, 
+        primaryKey: true, 
+        defaultValue: DataTypes.UUIDV4 
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0.00
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'completed', 'failed'),
+      defaultValue: 'pending',
+      allowNull: false
+    },
+    isAnonymous: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    contributorName: {
+        type: DataTypes.STRING,
+        allowNull: true, // Used for anonymous contributions
+    },
+    contributorEmail: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    message: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
+    paymentReference: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true
+    },
+    phoneNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    paymentMethod: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    }
+  }, {
+    sequelize,
+    modelName: 'Contribution',
+    tableName: 'Contributions', // Ensure this matches your query if you use raw SQL
+    timestamps: true,
+  });
 
-        // Une Contribution appartient à un Utilisateur (contributeur)
-        Contribution.belongsTo(User, {
-            as: 'contributor', // Alias pour la relation
-            foreignKey: 'contributorId',
-        });
-
-        // Une Contribution appartient à une Cagnotte (Pull)
-        Contribution.belongsTo(Pull, {
-            as: 'pull', // Alias pour la relation
-            foreignKey: 'pullId',
-        });
-
-        // Une Contribution a plusieurs Transactions (suivi du paiement)
-        Contribution.hasMany(Transaction, {
-            as: 'transactions',
-            foreignKey: 'contributionId',
-        });
-    };
-
-    return Contribution;
+  return Contribution;
 };

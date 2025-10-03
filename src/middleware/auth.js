@@ -5,6 +5,11 @@ const { User } = db;
 
 // Vérifie que l’utilisateur est connecté
 export const authenticate = async (req, res, next) => {
+  // Passer les requêtes OPTIONS (CORS preflight) sans authentification
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const authHeader = req.headers['authorization'];
 
   // 🔹 1. Vérifier token Firebase (pour les utilisateurs normaux)

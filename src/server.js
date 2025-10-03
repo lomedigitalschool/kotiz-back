@@ -88,9 +88,10 @@ try {
 app.use(cors({
   origin: [
     'http://localhost:5000', // AdminJS
-    'http://localhost:3000',
+    'http://localhost:3000', // Frontend Vite (port actuel)
     'http://localhost:3001',
-    'http://localhost:5173',
+    'http://localhost:5173', // Frontend Vite (port alternatif)
+    'http://localhost:54112', 
     'http://localhost:8080',
     'https://kotiz-web.onrender.com',
     'https://kotiz-web.netlify.app',

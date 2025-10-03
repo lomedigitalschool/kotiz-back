@@ -37,6 +37,15 @@ class NotificationService {
       case "cagnotteExpiring":
         return `⏰ Attention ! La cagnotte "${data.cagnotteTitle}" expire dans ${data.daysLeft} jours.`;
 
+      case "kycSubmitted":
+        return `✅ Votre demande de vérification d'identité a été soumise avec succès. Elle sera examinée sous 24-48h.`;
+
+      case "kycApproved":
+        return `🎉 Félicitations ! Votre vérification d'identité a été approuvée. Vous pouvez maintenant utiliser toutes les fonctionnalités.`;
+
+      case "kycRejected":
+        return `❌ Votre vérification d'identité a été rejetée.${data.commentaireAdmin ? ` Raison : ${data.commentaireAdmin}` : ''} Vous pouvez soumettre une nouvelle demande avec des documents corrects.`;
+
       default:
         return `🔔 Notification [${type}] pour l'utilisateur`;
     }
@@ -52,6 +61,9 @@ class NotificationService {
       case "paymentResult": return "Résultat du paiement";
       case "goalReached": return "Objectif atteint !";
       case "cagnotteExpiring": return "Cagnotte expirant bientôt";
+      case "kycSubmitted": return "Soumission KYC";
+      case "kycApproved": return "KYC approuvé";
+      case "kycRejected": return "KYC rejeté";
       default: return "Notification";
     }
   }
@@ -66,6 +78,9 @@ class NotificationService {
       case "paymentResult": return "info";
       case "goalReached": return "success";
       case "cagnotteExpiring": return "warning";
+      case "kycSubmitted": return "success";
+      case "kycApproved": return "success";
+      case "kycRejected": return "error";
       default: return "info";
     }
   }

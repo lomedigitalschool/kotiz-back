@@ -173,6 +173,11 @@ async function checkAndMergeUser(uid) {
  */
 export default async function firebaseAuth(req, res, next) {
   try {
+    // Passer les requêtes OPTIONS (CORS preflight) sans authentification
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+
     // Vérifier si Firebase est configuré
     if (!admin) {
       return res.status(503).json({

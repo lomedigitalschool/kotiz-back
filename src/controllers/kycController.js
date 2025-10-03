@@ -1,6 +1,7 @@
 import db from '../models/index.js';
 import path from 'path';
 import fs from 'fs';
+import notificationService from '../services/notificationService.js';
 const { Kyc, User } = db;
 
 /**
@@ -57,6 +58,14 @@ class KycController {
         statutVerification: 'EN_ATTENTE',
         submissionDate: new Date(),
         isActive: true
+      });
+
+      // Créer une notification pour l'utilisateur
+      await notificationService.sendNotification({
+        userId,
+        type: 'kycSubmitted',
+        data: {},
+        channels: ['database']
       });
 
       res.status(201).json({
@@ -203,6 +212,24 @@ class KycController {
         statutVerification,
         commentaireAdmin: commentaireAdmin || null
       });
+
+      // Créer une notification pour l'utilisateur selon le nouveau statut
+      let notificationType = '';
+
+      if (statutVerification === 'APPROUVE') {
+        notificationType = 'kycApproved';
+      } else if (statutVerification === 'REFUSE') {
+        notificationType = 'kycRejected';
+      }
+
+      if (notificationType) {
+        await notificationService.sendNotification({
+          userId: kycSubmission.userId,
+          type: notificationType,
+          data: { commentaireAdmin },
+          channels: ['database']
+        });
+      }
 
       res.json({
         message: 'Statut KYC mis à jour avec succès',

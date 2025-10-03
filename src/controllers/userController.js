@@ -3,6 +3,7 @@ import { Op, QueryTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 import jwt from 'jsonwebtoken';
 import { emitRealtimeUpdate } from '../server.js';
+import admin from '../config/firebase.js';
 
 const { User, Pull, Contribution, Transaction } = db;
 
@@ -413,4 +414,233 @@ const adminLogin = async (req, res) => {
   }
 };
 
-export default { getAll, getStats, getOne, update, remove, uploadAvatar, getMe, getDashboard, getChartData, getAdminStats, getAdminChartData, adminLogin };
+/**
+ * Fusionner manuellement deux comptes Firebase (email et téléphone)
+ * Endpoint sécurisé côté serveur utilisant Firebase Admin SDK
+ */
+const mergeAccounts = async (req, res) => {
+  try {
+    const currentUser = req.user; // Utilisateur connecté (authentifié via middleware)
+    const { email, phone } = req.body;
+
+    console.log(`🔗 Tentative de fusion manuelle pour user ${currentUser.id} (${currentUser.firebaseUid})`);
+
+    // Validation des paramètres
+    if (!email && !phone) {
+      return res.status(400).json({
+        error: 'Paramètres manquants',
+        message: 'Vous devez fournir soit un email soit un numéro de téléphone à fusionner'
+      });
+    }
+
+    // Vérifier que Firebase est configuré
+    if (!admin) {
+      return res.status(503).json({
+        error: 'Service Firebase non disponible',
+        message: 'Le service Firebase n\'est pas configuré'
+      });
+    }
+
+    const currentFirebaseUid = currentUser.firebaseUid;
+    if (!currentFirebaseUid) {
+      return res.status(400).json({
+        error: 'Utilisateur non lié à Firebase',
+        message: 'Votre compte n\'est pas lié à Firebase'
+      });
+    }
+
+    // Récupérer l'utilisateur Firebase actuel
+    let currentFirebaseUser;
+    try {
+      currentFirebaseUser = await admin.auth().getUser(currentFirebaseUid);
+    } catch (error) {
+      console.error('❌ Erreur récupération utilisateur Firebase actuel:', error);
+      return res.status(404).json({
+        error: 'Utilisateur Firebase introuvable',
+        message: 'Votre compte Firebase n\'existe pas'
+      });
+    }
+
+    // Chercher le compte à fusionner
+    let targetFirebaseUser = null;
+    let targetUid = null;
+    let searchCriteria = [];
+
+    if (email) {
+      searchCriteria.push({ type: 'email', value: email });
+    }
+    if (phone) {
+      // Normaliser le numéro de téléphone
+      const normalizedPhone = phone.startsWith('+') ? phone : `+${phone}`;
+      searchCriteria.push({ type: 'phoneNumber', value: normalizedPhone });
+    }
+
+    // Chercher les utilisateurs Firebase correspondants
+    for (const criteria of searchCriteria) {
+      try {
+        console.log(`🔍 Recherche par ${criteria.type}: ${criteria.value}`);
+
+        // Construire l'identifiant selon le type
+        let identifier;
+        if (criteria.type === 'email') {
+          identifier = { email: criteria.value };
+        } else if (criteria.type === 'phoneNumber') {
+          identifier = { phoneNumber: criteria.value };
+        } else {
+          console.warn(`⚠️ Type de critère non supporté: ${criteria.type}`);
+          continue;
+        }
+
+        const usersResult = await admin.auth().getUsers([identifier]);
+
+        for (const user of usersResult.users) {
+          if (user.uid !== currentFirebaseUid) {
+            targetFirebaseUser = user;
+            targetUid = user.uid;
+            console.log(`✅ Compte trouvé: ${targetUid} (${criteria.type}: ${criteria.value})`);
+            break;
+          }
+        }
+
+        if (targetFirebaseUser) break;
+      } catch (error) {
+        console.warn(`⚠️ Erreur recherche par ${criteria.type}:`, error.message);
+      }
+    }
+
+    if (!targetFirebaseUser) {
+      return res.status(404).json({
+        error: 'Aucun compte trouvé',
+        message: `Aucun compte Firebase trouvé avec ${email || phone}`
+      });
+    }
+
+    // Vérifier que les comptes ne sont pas déjà liés
+    const currentProviders = currentFirebaseUser.providerData || [];
+    const targetProviders = targetFirebaseUser.providerData || [];
+
+    console.log(`🔍 Vérification liens existants:`);
+    console.log(`   Current providers: ${currentProviders.map(p => p.providerId).join(', ') || 'aucun'}`);
+    console.log(`   Target providers: ${targetProviders.map(p => p.providerId).join(', ') || 'aucun'}`);
+
+    // Vérifier si l'un des comptes a déjà les deux providers (vraiment fusionné)
+    const currentHasBoth = currentProviders.some(p => p.providerId === 'password') &&
+                          currentProviders.some(p => p.providerId === 'phone');
+    const targetHasBoth = targetProviders.some(p => p.providerId === 'password') &&
+                         targetProviders.some(p => p.providerId === 'phone');
+
+    console.log(`   Current has both providers: ${currentHasBoth}`);
+    console.log(`   Target has both providers: ${targetHasBoth}`);
+
+    if (currentHasBoth || targetHasBoth) {
+      console.log(`🚫 Au moins un compte a déjà les deux providers - blocage de la fusion`);
+      return res.status(400).json({
+        error: 'Comptes déjà fusionnés',
+        message: 'Au moins un de ces comptes a déjà les deux providers (email + téléphone)'
+      });
+    }
+
+    console.log(`✅ Comptes pas encore fusionnés - poursuite du processus`);
+
+    console.log(`🔄 Fusion des comptes: ${currentFirebaseUid} <- ${targetUid}`);
+    console.log(`📊 Current providers: ${currentProviders.map(p => p.providerId).join(', ')}`);
+    console.log(`📊 Target providers: ${targetProviders.map(p => p.providerId).join(', ')}`);
+
+    // Déterminer quel compte garder (celui avec le plus de providers ou le plus récent)
+    const currentProviderCount = currentProviders.length;
+    const targetProviderCount = targetProviders.length;
+    const currentCreatedAt = new Date(currentFirebaseUser.metadata.creationTime);
+    const targetCreatedAt = new Date(targetFirebaseUser.metadata.creationTime);
+
+    let keepCurrent = true;
+
+    if (targetProviderCount > currentProviderCount) {
+      keepCurrent = false;
+    } else if (targetProviderCount === currentProviderCount) {
+      keepCurrent = currentCreatedAt >= targetCreatedAt;
+    }
+
+    const primaryUid = keepCurrent ? currentFirebaseUid : targetUid;
+    const secondaryUid = keepCurrent ? targetUid : currentFirebaseUid;
+    const primaryFirebaseUser = keepCurrent ? currentFirebaseUser : targetFirebaseUser;
+
+    console.log(`🎯 Compte principal gardé: ${primaryUid}, secondaire supprimé: ${secondaryUid}`);
+    console.log(`📊 Providers - Principal: ${primaryFirebaseUser.providerData?.length || 0}, Secondaire: ${currentProviders.length + targetProviders.length - (primaryFirebaseUser.providerData?.length || 0)}`);
+
+    console.log(`🔄 Démarrage de la fusion avec transaction...`);
+
+    // Utiliser une transaction pour la cohérence
+    const transaction = await sequelize.transaction();
+
+    try {
+      console.log(`🔄 Étape 1: Recherche d'utilisateurs DB secondaires...`);
+
+      // 1. Mettre à jour la DB si elle pointe vers le compte secondaire
+      const dbUserToUpdate = await User.findOne({
+        where: { firebaseUid: secondaryUid },
+        transaction
+      });
+
+      if (dbUserToUpdate) {
+        console.log(`📝 Mise à jour DB: user ${dbUserToUpdate.id} firebaseUid ${secondaryUid} -> ${primaryUid}`);
+        await dbUserToUpdate.update({
+          firebaseUid: primaryUid
+        }, { transaction });
+        console.log(`✅ DB mise à jour réussie`);
+      } else {
+        console.log(`ℹ️ Aucun utilisateur DB trouvé avec firebaseUid ${secondaryUid}`);
+      }
+
+      console.log(`🔄 Étape 2: Suppression du compte Firebase secondaire...`);
+
+      // 2. Supprimer le compte Firebase secondaire
+      try {
+        await admin.auth().deleteUser(secondaryUid);
+        console.log(`🗑️ Compte Firebase supprimé: ${secondaryUid}`);
+      } catch (deleteError) {
+        console.error(`❌ Erreur suppression Firebase ${secondaryUid}:`, deleteError.message);
+        // Ne pas échouer pour autant, continuer
+      }
+
+      console.log(`🔄 Étape 3: Commit de la transaction...`);
+
+      // 3. Commit de la transaction
+      await transaction.commit();
+      console.log(`✅ Transaction committée avec succès`);
+
+      // 4. Rafraîchir le token de l'utilisateur actuel si nécessaire
+      if (!keepCurrent) {
+        console.log(`🔄 Étape 4: Mise à jour utilisateur actuel...`);
+        await currentUser.update({ firebaseUid: primaryUid });
+        console.log(`📝 Utilisateur actuel mis à jour: firebaseUid ${currentFirebaseUid} -> ${primaryUid}`);
+      }
+
+      console.log(`🎉 Fusion terminée avec succès!`);
+
+      res.json({
+        success: true,
+        message: 'Comptes fusionnés avec succès',
+        data: {
+          primaryUid,
+          deletedUid: secondaryUid,
+          providers: primaryFirebaseUser.providerData?.map(p => p.providerId) || []
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la fusion:', error);
+      await transaction.rollback();
+      console.log(`🔄 Transaction rollback effectuée`);
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur fusion comptes:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la fusion',
+      message: error.message
+    });
+  }
+};
+
+export default { getAll, getStats, getOne, update, remove, uploadAvatar, getMe, getDashboard, getChartData, getAdminStats, getAdminChartData, adminLogin, mergeAccounts };

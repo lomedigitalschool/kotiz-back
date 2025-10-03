@@ -1,4 +1,6 @@
 import db from '../models/index.js';
+import admin from '../config/firebase.js';
+import jwt from 'jsonwebtoken';
 
 const { User } = db;
 
@@ -256,5 +258,191 @@ const updatePhone = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-export default { firebaseSync, logout, me, updateProfile, checkAdminAccess, forgotPassword, sendPasswordChangedEmail, updatePhone };
+
+// ====================
+// 🎯 Inscription unifiée (Email + Téléphone automatiquement liés)
+// ====================
+const registerUnified = async (req, res) => {
+  try {
+    const { email, password, displayName, phoneNumber } = req.body;
+
+    console.log('🎯 Tentative d\'inscription unifiée:', { email, displayName, phoneNumber: phoneNumber ? 'présent' : 'absent' });
+
+    // Validation des données
+    if (!email || !password || !displayName || !phoneNumber) {
+      return res.status(400).json({
+        error: 'Données manquantes',
+        message: 'Email, mot de passe, nom d\'affichage et numéro de téléphone sont requis'
+      });
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: 'Email invalide',
+        message: 'Format d\'email incorrect'
+      });
+    }
+
+    // Validation du mot de passe
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: 'Mot de passe trop court',
+        message: 'Le mot de passe doit contenir au moins 6 caractères'
+      });
+    }
+
+    // Validation du numéro de téléphone
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    const normalizedPhone = phoneNumber.replace(/\s+/g, '');
+    if (!phoneRegex.test(normalizedPhone)) {
+      return res.status(400).json({
+        error: 'Numéro de téléphone invalide',
+        message: 'Le numéro doit être au format international (ex: +22501020304)'
+      });
+    }
+
+    // Vérifier que Firebase est configuré
+    if (!admin) {
+      return res.status(503).json({
+        error: 'Service Firebase non disponible',
+        message: 'Le service Firebase n\'est pas configuré'
+      });
+    }
+
+    console.log('🔄 Création de l\'utilisateur Firebase avec email/password...');
+
+    // 1. Créer l'utilisateur Firebase avec email/password
+    let firebaseUser;
+    try {
+      firebaseUser = await admin.auth().createUser({
+        email: email.toLowerCase(),
+        password: password,
+        displayName: displayName,
+        emailVerified: false
+      });
+      console.log('✅ Utilisateur Firebase créé:', firebaseUser.uid);
+    } catch (firebaseError) {
+      console.error('❌ Erreur création Firebase:', firebaseError);
+
+      if (firebaseError.code === 'auth/email-already-exists') {
+        return res.status(409).json({
+          error: 'Email déjà utilisé',
+          message: 'Cet email est déjà associé à un compte existant'
+        });
+      }
+
+      return res.status(500).json({
+        error: 'Erreur création compte',
+        message: firebaseError.message
+      });
+    }
+
+    console.log('🔗 Liaison automatique du numéro de téléphone...');
+
+    // 2. Lier automatiquement le numéro de téléphone
+    try {
+      await admin.auth().updateUser(firebaseUser.uid, {
+        phoneNumber: normalizedPhone
+      });
+      console.log('✅ Numéro de téléphone lié automatiquement');
+    } catch (phoneError) {
+      console.error('❌ Erreur liaison téléphone:', phoneError);
+
+      // Si la liaison téléphone échoue, supprimer l'utilisateur créé et retourner une erreur
+      try {
+        await admin.auth().deleteUser(firebaseUser.uid);
+        console.log('🗑️ Utilisateur Firebase supprimé suite à erreur téléphone');
+      } catch (deleteError) {
+        console.error('❌ Erreur suppression utilisateur après échec téléphone:', deleteError);
+      }
+
+      return res.status(500).json({
+        error: 'Erreur liaison téléphone',
+        message: 'Impossible de lier le numéro de téléphone au compte'
+      });
+    }
+
+    console.log('💾 Sauvegarde en base de données...');
+
+    // 3. Sauvegarder en base de données
+    let dbUser;
+    try {
+      dbUser = await User.create({
+        firebaseUid: firebaseUser.uid,
+        name: displayName,
+        email: email.toLowerCase(),
+        phone: normalizedPhone,
+        role: 'user',
+        isVerified: false,
+        isPhoneVerified: false, // Le téléphone n'est pas encore vérifié
+        phoneVerifiedAt: null
+      });
+      console.log('✅ Utilisateur DB créé:', dbUser.id);
+    } catch (dbError) {
+      console.error('❌ Erreur DB:', dbError);
+
+      // Nettoyer l'utilisateur Firebase en cas d'erreur DB
+      try {
+        await admin.auth().deleteUser(firebaseUser.uid);
+        console.log('🗑️ Utilisateur Firebase supprimé suite à erreur DB');
+      } catch (deleteError) {
+        console.error('❌ Erreur suppression Firebase après erreur DB:', deleteError);
+      }
+
+      if (dbError.name === 'SequelizeUniqueConstraintError') {
+        return res.status(409).json({
+          error: 'Données déjà utilisées',
+          message: 'L\'email ou le numéro de téléphone est déjà utilisé'
+        });
+      }
+
+      return res.status(500).json({
+        error: 'Erreur sauvegarde',
+        message: 'Impossible de sauvegarder les informations utilisateur'
+      });
+    }
+
+    console.log('🎫 Génération du token JWT...');
+
+    // 4. Générer le token JWT
+    const token = jwt.sign(
+      {
+        id: dbUser.id,
+        email: dbUser.email,
+        role: dbUser.role,
+        firebaseUid: firebaseUser.uid
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log('🎉 Inscription unifiée terminée avec succès!');
+
+    res.json({
+      success: true,
+      message: 'Inscription réussie ! Vous pouvez maintenant vous connecter avec votre email ou téléphone.',
+      token: token,
+      user: {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        phone: dbUser.phone,
+        role: dbUser.role,
+        firebaseUid: firebaseUser.uid,
+        providers: ['password', 'phone'] // Les deux providers sont liés
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur inscription unifiée:', error);
+    res.status(500).json({
+      error: 'Erreur inscription',
+      message: error.message || 'Une erreur inattendue s\'est produite'
+    });
+  }
+};
+
+export default { firebaseSync, logout, me, updateProfile, checkAdminAccess, forgotPassword, sendPasswordChangedEmail, updatePhone, registerUnified };
 

@@ -24,4 +24,7 @@ router.delete('/:id', authenticate, isAdmin, UserController.remove);
 // Upload d'avatar
 router.post('/avatar', authenticate, uploadAvatar, UserController.uploadAvatar);
 
+// Fusion manuelle de comptes Firebase (utilise firebaseAuth du montage parent)
+router.post('/merge-accounts', UserController.mergeAccounts);
+
 export default router;

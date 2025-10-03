@@ -63,4 +63,7 @@ router.post('/logout', firebaseAuth, authController.logout);
 // Mise à jour du numéro de téléphone après inscription
 router.post('/update-phone', firebaseAuth, authController.updatePhone);
 
+// Inscription unifiée (email + téléphone automatiquement liés)
+router.post('/register-unified', authController.registerUnified);
+
 export default router;

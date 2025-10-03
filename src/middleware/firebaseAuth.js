@@ -3,6 +3,60 @@ import db from '../models/index.js';
 const { User } = db;
 
 /**
+ * Fonction utilitaire pour vérifier les conflits potentiels avant création de compte
+ * - Vérifie si un compte existe déjà avec le même email/téléphone
+ * - Retourne des informations sur les conflits détectés
+ */
+async function checkForAccountConflicts(email, phone) {
+  try {
+    const conflicts = {
+      email: null,
+      phone: null,
+      shouldPreventCreation: false
+    };
+
+    // Vérifier les conflits d'email
+    if (email) {
+      try {
+        const emailUsers = await admin.auth().getUsers([{ email }]);
+        if (emailUsers.users.length > 0) {
+          conflicts.email = {
+            existingUids: emailUsers.users.map(u => u.uid),
+            count: emailUsers.users.length
+          };
+          conflicts.shouldPreventCreation = true;
+          console.log(`⚠️ Conflit détecté: ${emailUsers.users.length} compte(s) avec email ${email}`);
+        }
+      } catch (error) {
+        console.warn(`Erreur vérification email ${email}:`, error.message);
+      }
+    }
+
+    // Vérifier les conflits de téléphone
+    if (phone) {
+      try {
+        const phoneUsers = await admin.auth().getUsers([{ phoneNumber: phone }]);
+        if (phoneUsers.users.length > 0) {
+          conflicts.phone = {
+            existingUids: phoneUsers.users.map(u => u.uid),
+            count: phoneUsers.users.length
+          };
+          conflicts.shouldPreventCreation = true;
+          console.log(`⚠️ Conflit détecté: ${phoneUsers.users.length} compte(s) avec téléphone ${phone}`);
+        }
+      } catch (error) {
+        console.warn(`Erreur vérification téléphone ${phone}:`, error.message);
+      }
+    }
+
+    return conflicts;
+  } catch (error) {
+    console.error('Erreur vérification conflits:', error);
+    return { email: null, phone: null, shouldPreventCreation: false };
+  }
+}
+
+/**
  * Fonction utilitaire pour vérifier et fusionner les comptes Firebase doublons
  * - Récupère les providers de l'utilisateur
  * - Détecte les comptes doublons avec même email/téléphone mais UID différent
@@ -200,49 +254,81 @@ export default async function firebaseAuth(req, res, next) {
 
     // 4. Si aucun utilisateur trouvé, créer un nouvel utilisateur
     if (!user) {
-      console.log('🆕 Aucun utilisateur trouvé, création d\'un nouveau compte');
+      console.log('🆕 Aucun utilisateur trouvé, vérification des conflits avant création');
 
-      try {
-        user = await User.create({
-          firebaseUid,
-          email,
-          name,
-          phone,
-          role: 'user',
-          isVerified: !!decoded.email_verified,
-          isPhoneVerified: !!phone,
-          phoneVerifiedAt: phone ? new Date() : null,
-        });
+      // Vérifier les conflits potentiels avec Firebase
+      const conflicts = await checkForAccountConflicts(email, phone);
 
-        console.log(`✅ Nouveau utilisateur créé: ID ${user.id}, ${email || phone}`);
-      } catch (createError) {
-        console.error('❌ Erreur lors de la création utilisateur:', createError.message);
+      if (conflicts.shouldPreventCreation) {
+        console.log('🚫 Conflits détectés, tentative de fusion automatique');
 
-        // En cas de contrainte unique, essayer de trouver et lier l'utilisateur existant
-        if (createError.name === 'SequelizeUniqueConstraintError') {
-          console.log('🔄 Contrainte unique détectée, tentative de liaison...');
+        // Essayer de fusionner automatiquement avec le compte existant
+        try {
+          // Prendre le premier UID en conflit (le plus ancien généralement)
+          const existingUid = conflicts.email?.existingUids[0] || conflicts.phone?.existingUids[0];
 
-          // Essayer de trouver par email ou téléphone
-          user = email ? await User.findOne({ where: { email } }) : null;
-          if (!user && phone) {
-            user = await User.findOne({ where: { phone } });
+          if (existingUid) {
+            console.log(`🔄 Fusion automatique: ${firebaseUid} -> ${existingUid}`);
+
+            // Utiliser la logique de fusion existante
+            await checkAndMergeUser(firebaseUid);
+
+            // Après fusion, rechercher à nouveau l'utilisateur en DB
+            user = await User.findOne({ where: { firebaseUid: existingUid } });
+            if (user) {
+              console.log(`✅ Utilisateur trouvé après fusion automatique: ID ${user.id}`);
+            }
           }
+        } catch (mergeError) {
+          console.error('❌ Erreur fusion automatique:', mergeError.message);
+          // Continuer avec la création normale si la fusion échoue
+        }
+      }
 
-          if (user) {
-            // Lier au firebaseUid
-            await user.update({
-              firebaseUid,
-              name: name || user.name,
-              isVerified: !!decoded.email_verified,
-              isPhoneVerified: !!phone,
-              phoneVerifiedAt: phone ? new Date() : user.phoneVerifiedAt,
-            });
-            console.log(`✅ Utilisateur lié après erreur de contrainte: ID ${user.id}`);
+      // Si toujours pas d'utilisateur après fusion automatique, créer un nouveau compte
+      if (!user) {
+        try {
+          user = await User.create({
+            firebaseUid,
+            email,
+            name,
+            phone,
+            role: 'user',
+            isVerified: !!decoded.email_verified,
+            isPhoneVerified: !!phone,
+            phoneVerifiedAt: phone ? new Date() : null,
+          });
+
+          console.log(`✅ Nouveau utilisateur créé: ID ${user.id}, ${email || phone}`);
+        } catch (createError) {
+          console.error('❌ Erreur lors de la création utilisateur:', createError.message);
+
+          // En cas de contrainte unique, essayer de trouver et lier l'utilisateur existant
+          if (createError.name === 'SequelizeUniqueConstraintError') {
+            console.log('🔄 Contrainte unique détectée, tentative de liaison...');
+
+            // Essayer de trouver par email ou téléphone
+            user = email ? await User.findOne({ where: { email } }) : null;
+            if (!user && phone) {
+              user = await User.findOne({ where: { phone } });
+            }
+
+            if (user) {
+              // Lier au firebaseUid
+              await user.update({
+                firebaseUid,
+                name: name || user.name,
+                isVerified: !!decoded.email_verified,
+                isPhoneVerified: !!phone,
+                phoneVerifiedAt: phone ? new Date() : user.phoneVerifiedAt,
+              });
+              console.log(`✅ Utilisateur lié après erreur de contrainte: ID ${user.id}`);
+            } else {
+              throw createError;
+            }
           } else {
             throw createError;
           }
-        } else {
-          throw createError;
         }
       }
     }

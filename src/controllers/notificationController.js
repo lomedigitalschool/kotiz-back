@@ -1,7 +1,13 @@
 import express from 'express';
 import { Op } from 'sequelize';
-import { Notification } from '../../models'; 
-import NotificationService from '../../services/notification.service'; 
+// 🚫 ANCIEN : import { Notification } from '../models/index.js'; 
+// 🔄 CORRECTION CRUCIALE : Importation de l'objet complet 'models' (export par défaut)
+import models from '../models/index.js';
+// ➡️ Déstructuration du modèle Notification
+const { Notification } = models;
+
+// 🔄 CORRECTION : Ajout de l'extension .js pour l'import ES Module du service
+import notificationService from '../services/notification.service.js';
 
 const router = express.Router();
 
@@ -12,7 +18,10 @@ const router = express.Router();
 
 // 1. Récupérer toutes les notifications de l'utilisateur (avec pagination/limite)
 router.get('/', async (req, res) => {
-    // Supposons que l'ID utilisateur est disponible via req.user.id après l'authentification
+    // ⚠️ Assurez-vous que le middleware d'authentification a bien défini req.user.id
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'Authentification requise.' });
+    }
     const userId = req.user.id; 
     const limit = parseInt(req.query.limit, 10) || 20;
     const offset = parseInt(req.query.offset, 10) || 0;
@@ -45,6 +54,9 @@ router.get('/', async (req, res) => {
 
 // 2. Obtenir le décompte des notifications non lues
 router.get('/unread-count', async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'Authentification requise.' });
+    }
     const userId = req.user.id; 
 
     try {
@@ -65,6 +77,9 @@ router.get('/unread-count', async (req, res) => {
 
 // 3. Marquer une seule notification comme lue
 router.put('/:id/read', async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'Authentification requise.' });
+    }
     const userId = req.user.id;
     const notificationId = req.params.id;
 
@@ -93,6 +108,9 @@ router.put('/:id/read', async (req, res) => {
 
 // 4. Marquer toutes les notifications non lues comme lues
 router.put('/read-all', async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'Authentification requise.' });
+    }
     const userId = req.user.id;
 
     try {

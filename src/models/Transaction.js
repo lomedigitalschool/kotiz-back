@@ -2,44 +2,51 @@ import { Model, DataTypes } from 'sequelize';
 
 class Transaction extends Model {
   static associate(models) {
-    // Une transaction est liée à une contribution (qui peut être nulle si la transaction est un retrait/remboursement ou n'est pas encore complétée)
+    // Une transaction est liée à une contribution (qui peut être nulle)
     Transaction.belongsTo(models.Contribution, { foreignKey: 'contributionId', as: 'contribution' });
     
-    // Une transaction utilise une méthode de paiement (ex: Orange Money, Visa)
+    // Une transaction utilise une méthode de paiement
     Transaction.belongsTo(models.PaymentMethod, { foreignKey: 'paymentMethodId', as: 'paymentMethod' });
     
-    // Optionnel: Lier l'utilisateur qui a initié la transaction si elle n'est pas liée à une contribution existante
-    // Transaction.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+    // Une transaction est liée à un utilisateur (qui peut être nul pour les transactions anonymes/retraits)
+    // Cette association est maintenant active
+    Transaction.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
   }
 }
 
 /**
- * Fonction d'initialisation du modèle Transaction (pour les paiements, retraits, etc.)
- * @param {import('sequelize').Sequelize} sequelize 
- * @returns {typeof Transaction}
- */
+ * Fonction d'initialisation du modèle Transaction (pour les paiements, retraits, etc.)
+ * @param {import('sequelize').Sequelize} sequelize 
+ * @returns {typeof Transaction}
+ */
 function initTransaction(sequelize) {
   Transaction.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    
+    // FIX: Utiliser DataTypes.UUID pour référencer la table Contributions
     contributionId: { 
-      type: DataTypes.INTEGER, 
+      type: DataTypes.UUID, 
       allowNull: true,
       comment: 'ID de la contribution associée (peut être null pour les transactions de retrait)'
     },
-    userId: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        comment: 'ID de l\'utilisateur associé (utile pour les transactions anonymes ou les retraits)'
-    },
+    
+    // FIX: Utiliser DataTypes.UUID pour référencer la table Users
+    userId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        comment: 'ID de l\'utilisateur associé (utile pour les transactions anonymes ou les retraits)'
+    },
+    
     paymentMethodId: { 
-      type: DataTypes.INTEGER, 
+      type: DataTypes.INTEGER, // Ceci reste INTEGER si payment_methods.id est INTEGER
       allowNull: true,
       comment: 'ID de la méthode de paiement utilisée'
     },
+    
     transactionReference: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      // NOTE: 'unique: true' a été déplacé dans les indexes ci-dessous pour contourner le bogue PostgreSQL
       comment: 'Référence interne unique de la transaction (ex: KOTIZ-XXX)',
       validate: {
         notEmpty: {
@@ -63,13 +70,15 @@ function initTransaction(sequelize) {
     currency: { 
       type: DataTypes.ENUM('XOF','EUR','USD'), 
       defaultValue: 'XOF',
-      comment: 'Devise de la transaction'
+      // FIX: Suppression du commentaire sur le type ENUM pour éviter le bogue de syntaxe USING/COMMENT ON COLUMN
+      // comment: 'Devise de la transaction'
     },
     status: {
-      type: DataTypes.ENUM('pending','completed','failed', 'cancelled'), // Ajout de 'cancelled'
+      type: DataTypes.ENUM('pending','completed','failed', 'cancelled'),
       defaultValue: 'pending',
       allowNull: false,
-      comment: 'Statut du traitement de la transaction',
+      // FIX: Suppression du commentaire sur le type ENUM pour éviter le bogue de syntaxe USING/COMMENT ON COLUMN
+      // comment: 'Statut du traitement de la transaction',
       validate: {
         isIn: [['pending', 'completed', 'failed', 'cancelled']]
       }
@@ -93,11 +102,17 @@ function initTransaction(sequelize) {
     sequelize,
     modelName: 'Transaction',
     tableName: 'transactions',
-    timestamps: true
+    timestamps: true,
+    // Index pour transactionReference (précédent FIX pour le problème UNIQUE)
+    indexes: [{
+      unique: true,
+      fields: ['transactionReference'],
+      name: 'transactions_transaction_reference_unique_idx'
+    }]
   });
 
   return Transaction;
 }
 
-// Correction : Utilisation de l'exportation par défaut ES Module
+
 export default initTransaction;

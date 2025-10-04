@@ -3,7 +3,12 @@ import { Model, DataTypes } from 'sequelize';
 class Notification extends Model {
   static associate(models) {
     // Une notification appartient à un utilisateur destinataire
-    Notification.belongsTo(models.User, { foreignKey: 'userId', as: 'recipient' });
+    Notification.belongsTo(models.User, { 
+        foreignKey: 'userId', 
+        as: 'recipient' 
+        // L'association n'a pas besoin de la référence 'targetKey', 'model', 'name' ici, 
+        // car le foreignKey est défini dans la colonne ci-dessous.
+    });
   }
 }
 
@@ -15,16 +20,16 @@ class Notification extends Model {
 function initNotification(sequelize) {
   Notification.init({
     id: { 
-      type: DataTypes.UUID, // Changé de INTEGER à UUID
+      type: DataTypes.UUID, 
       primaryKey: true, 
       defaultValue: DataTypes.UUIDV4 
     },
     userId: {
-      type: DataTypes.UUID, // Changé de INTEGER à UUID
+      type: DataTypes.UUID, 
       allowNull: false,
-      // Clé étrangère vers la table User
+      // C'est ICI que nous forçons la référence à la table réelle de la BDD ('users')
       references: {
-        model: 'User', 
+        model: 'users', // DOIT ÊTRE EN MINUSCULES et au pluriel
         key: 'id',
       },
       validate: {
@@ -35,8 +40,8 @@ function initNotification(sequelize) {
     },
     type: {
       type: DataTypes.STRING,
-      allowNull: false, // Je recommande de rendre le type obligatoire
-      defaultValue: 'general', // ex: 'contribution', 'pull_update', 'system'
+      allowNull: false, 
+      defaultValue: 'general', 
       comment: 'Type de l\'événement pour le rendu (ex: contribution, message)'
     },
     message: {
@@ -52,14 +57,14 @@ function initNotification(sequelize) {
         }
       }
     },
-    isRead: { // Renommé de 'read' à 'isRead'
+    isRead: { 
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
-      field: 'is_read', // Ajout d'un champ snake_case pour la DB
+      field: 'is_read', 
     },
     referenceId: {
-      type: DataTypes.UUID, // Changé de INTEGER à UUID
+      type: DataTypes.UUID, 
       allowNull: true,
       comment: 'ID de l\'entité liée (Pull, Transaction, etc.)'
     },
@@ -73,7 +78,6 @@ function initNotification(sequelize) {
     modelName: 'Notification',
     tableName: 'notifications',
     timestamps: true,
-    // Ajouter un index sur userId et isRead pour des requêtes rapides
     indexes: [
       { fields: ['userId'] },
       { fields: ['userId', 'is_read'] }
@@ -83,5 +87,4 @@ function initNotification(sequelize) {
   return Notification;
 }
 
-// Utilisation de l'exportation par défaut ES Module pour la cohérence du projet
 export default initNotification;

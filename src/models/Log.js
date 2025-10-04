@@ -2,19 +2,40 @@ import { Model, DataTypes } from 'sequelize';
 
 class Log extends Model {
   static associate(models) {
-    Log.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+    // Un log appartient à un utilisateur (peut être nul si l'action est déconnectée)
+    Log.belongsTo(models.User, { 
+      foreignKey: 'userId', 
+      as: 'user' 
+    });
   }
 }
 
+/**
+ * Fonction d'initialisation du modèle Log
+ * @param {import('sequelize').Sequelize} sequelize 
+ * @returns {typeof Log}
+ */
 function initLog(sequelize) {
   Log.init({
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    id: { 
+      type: DataTypes.INTEGER, 
+      primaryKey: true, 
+      autoIncrement: true, 
+    },
     userId: {
-      type: DataTypes.INTEGER,
-      allowNull: true
+      // CORRECTION : Utilisation de DataTypes.UUID pour correspondre à users.id
+      type: DataTypes.UUID, 
+      allowNull: true, // Peut être nul
+      // Nous laissons Sequelize gérer la contrainte de référence
+      references: {
+        model: 'users', // La table réelle dans la base de données
+        key: 'id',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL' 
     },
     action: {
-      type: DataTypes.STRING, // Ou DataTypes.ENUM(['login', 'logout', 'create_pull', ...])
+      type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: {
@@ -28,17 +49,20 @@ function initLog(sequelize) {
     },
     details: {
       type: DataTypes.JSON,
-      allowNull: true
+      allowNull: true,
+      comment: 'Informations supplémentaires sur l\'action'
     }
   }, {
     sequelize,
     modelName: 'Log',
     tableName: 'logs',
-    timestamps: true
+    timestamps: true,
+    indexes: [
+      { fields: ['userId'] }
+    ]
   });
 
   return Log;
 }
 
-// Utilisation de l'exportation par défaut ES Module
 export default initLog;

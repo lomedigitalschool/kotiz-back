@@ -1,12 +1,12 @@
 import express from 'express';
-import { Op } from 'sequelize';
-// 🚫 ANCIEN : import { Notification } from '../models/index.js'; 
-// 🔄 CORRECTION CRUCIALE : Importation de l'objet complet 'models' (export par défaut)
+import { Op } from 'sequelize'; 
+
+// 1. Importation des modèles (corrigé)
 import models from '../models/index.js';
-// ➡️ Déstructuration du modèle Notification
 const { Notification } = models;
 
-// 🔄 CORRECTION : Ajout de l'extension .js pour l'import ES Module du service
+// 2. Importation du service (correction potentielle de chemin/export)
+// Assurez-vous que ce chemin est correct et que le service exporte quelque chose par défaut.
 import notificationService from '../services/notification.service.js';
 
 const router = express.Router();

@@ -1,28 +1,74 @@
 'use strict';
 
-const migration = {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('payment_methods', {
+    await queryInterface.createTable('pulls', {
       id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID, // 🎯 CORRECTION : Changé de INTEGER à UUID
         primaryKey: true,
-        autoIncrement: true
+        allowNull: false,
+        defaultValue: Sequelize.UUIDV4 // Ajouté pour générer automatiquement l'UUID
       },
-      name: {
+      title: {
         type: Sequelize.STRING,
         allowNull: false
       },
-      type: {
-        type: Sequelize.ENUM('mobile_money', 'card', 'bank'),
-        allowNull: false
+      description: {
+        type: Sequelize.TEXT,
+        allowNull: true
       },
-      provider: {
+      goalAmount: {
+        type: Sequelize.DECIMAL(12, 2),
+        allowNull: false,
+        validate: {
+          min: 1
+        }
+      },
+      currency: {
+        type: Sequelize.ENUM('XOF', 'EUR', 'USD'),
+        allowNull: false,
+        defaultValue: 'XOF'
+      },
+      deadline: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+      type: {
+        type: Sequelize.ENUM('public', 'private'),
+        defaultValue: 'public'
+      },
+      imageUrl: {
         type: Sequelize.STRING,
         allowNull: true
       },
-      isActive: {
+      participantLimit: {
+        type: Sequelize.INTEGER,
+        allowNull: true
+      },
+      status: {
+        type: Sequelize.ENUM('pending', 'active', 'closed'),
+        defaultValue: 'pending'
+      },
+      shareLink: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+      qrCodeUrl: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+      isApproved: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: false
+      },
+      userId: {
+        type: Sequelize.UUID, // 🎯 CORRECTION : Changé de INTEGER à UUID (référence users.id)
+        references: {
+          model: 'users',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -36,8 +82,6 @@ const migration = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('payment_methods');
+    await queryInterface.dropTable('pulls');
   }
 };
-
-export default migration;

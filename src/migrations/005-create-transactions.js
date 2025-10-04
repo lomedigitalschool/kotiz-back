@@ -6,43 +6,38 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
+        allowNull: false
       },
-      amount: {
-        type: Sequelize.DECIMAL(12, 2),
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
-      currency: {
-        type: Sequelize.ENUM('XOF', 'EUR', 'USD'),
-        allowNull: false,
-        defaultValue: 'XOF'
-      },
-      status: {
-        type: Sequelize.ENUM('pending', 'completed', 'failed'),
-        defaultValue: 'pending'
-      },
-      providerReference: {
-        type: Sequelize.STRING,
-        allowNull: true
-      },
-      providerResponse: {
-        type: Sequelize.TEXT,
-        allowNull: true
-      },
+      
+      // FIX: Cette colonne DOIT être UUID pour référencer 'contributions.id'
       contributionId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID, 
+        allowNull: true,
         references: {
-          model: 'contributions',
+          model: 'contributions', // Assurez-vous que le nom de la table est 'contributions' ou 'Contributions'
           key: 'id'
         },
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL'
       },
+
+      // FIX: Cette colonne DOIT être UUID pour référencer 'users.id'
+      userId: {
+        type: Sequelize.UUID,
+        allowNull: true, // Rendre nullable si les transactions anonymes sont possibles
+        references: {
+          model: 'users', // Assurez-vous que le nom de la table est 'users'
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
+
+      // Ceci reste INTEGER car 'payment_methods.id' est un INTEGER
       paymentMethodId: {
         type: Sequelize.INTEGER,
+        allowNull: true,
         references: {
           model: 'payment_methods',
           key: 'id'
@@ -50,6 +45,45 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL'
       },
+
+      transactionReference: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true
+      },
+      
+      amount: {
+        type: Sequelize.DECIMAL(12, 2),
+        allowNull: false,
+      },
+      
+      currency: {
+        type: Sequelize.ENUM('XOF', 'EUR', 'USD'),
+        defaultValue: 'XOF',
+        allowNull: false
+      },
+      
+      status: {
+        type: Sequelize.ENUM('pending', 'completed', 'failed'),
+        defaultValue: 'pending',
+        allowNull: false
+      },
+      
+      providerReference: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+      
+      providerResponse: {
+        type: Sequelize.JSON, // JSON est généralement préféré pour les réponses d'API structurées
+        allowNull: true
+      },
+      
+      metadata: {
+        type: Sequelize.JSON,
+        allowNull: true
+      },
+
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false

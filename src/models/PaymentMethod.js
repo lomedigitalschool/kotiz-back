@@ -10,17 +10,17 @@ class PaymentMethod extends Model {
 }
 
 /**
- * Fonction d'initialisation du modèle PaymentMethod
- * @param {import('sequelize').Sequelize} sequelize 
- * @returns {typeof PaymentMethod}
- */
+ * Fonction d'initialisation du modèle PaymentMethod
+ * @param {import('sequelize').Sequelize} sequelize 
+ * @returns {typeof PaymentMethod}
+ */
 function initPaymentMethod(sequelize) {
   PaymentMethod.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true, // Le nom d'une méthode de paiement doit être unique
+      unique: true, // Ceci est correct (ne fait que créer l'index au début ou le vérifie)
       validate: {
         notEmpty: {
           msg: 'Le nom du moyen de paiement est requis.'
@@ -41,7 +41,8 @@ function initPaymentMethod(sequelize) {
     code: {
       type: DataTypes.STRING,
       allowNull: true,
-      unique: true,
+      // ❌ Correction 1 : Retire 'unique: true' de la colonne
+      // unique: true, 
       comment: 'Code technique utilisé pour les APIs (ex: ORANGE_MONEY, MTN_MM)'
     },
     isActive: {
@@ -55,14 +56,18 @@ function initPaymentMethod(sequelize) {
     modelName: 'PaymentMethod',
     tableName: 'payment_methods',
     timestamps: true,
-    // Ajout d'un index sur le provider pour des recherches rapides
     indexes: [
       { fields: ['provider'] },
+      // ✅ Correction 2 : Ajout de l'unicité sur 'code' via les indexes
+      { 
+          unique: true, 
+          fields: ['code'],
+          name: 'unique_code_payment_methods' // Nommez l'index pour éviter les conflits
+      }
     ]
   });
 
   return PaymentMethod;
 }
 
-// Correction : Utilisation de l'exportation par défaut ES Module pour la cohérence
 export default initPaymentMethod;

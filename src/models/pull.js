@@ -10,14 +10,19 @@ class Pull extends Model {
 }
 
 /**
- * Fonction d'initialisation du modèle Pull (Cagnotte)
- * @param {import('sequelize').Sequelize} sequelize 
- * @returns {typeof Pull}
- */
-function initPull(sequelize) {
+ * Fonction d'initialisation du modèle Pull (Cagnotte)
+ * @param {import('sequelize').Sequelize} sequelize 
+ * @param {import('sequelize').DataTypes} DataTypes 
+ * @returns {typeof Pull}
+ */
+function initPull(sequelize, DataTypes) {
   Pull.init({
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: false },
+    // ✅ CORRIGÉ : userId doit être UUID pour référencer User.id
+    userId: { 
+        type: DataTypes.UUID, 
+        allowNull: false 
+    }, 
     title: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -87,14 +92,12 @@ function initPull(sequelize) {
     tableName: 'pulls',
     timestamps: true,
     validate: {
-      // Validation au niveau de l'instance pour les règles croisées
       dateLogic() {
         if (this.startDate && this.deadline && this.startDate > this.deadline) {
           throw new Error('La date de début ne peut pas être postérieure à la date limite.');
         }
       },
       amountsLogic() {
-        // S'assurer que le montant courant ne dépasse jamais le montant cible lors de la création
         if (this.currentAmount > this.goalAmount) {
           throw new Error('Le montant actuel ne peut pas être supérieur au montant cible.');
         }
@@ -105,5 +108,4 @@ function initPull(sequelize) {
   return Pull;
 }
 
-// Correction : Utilisation de l'exportation par défaut ES Module pour la cohérence
 export default initPull;

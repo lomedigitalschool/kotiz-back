@@ -11,7 +11,8 @@ import session from 'express-session';
 import PgSession from 'connect-pg-simple';
 
 // Import de l'objet complet des modèles (db)
-import db from './models/index.js'; 
+// ✅ CORRECTION MAJEURE: Importation nommée des fonctions utilitaires
+import db, { syncDatabase, createAdmin } from './models/index.js'; 
 import { admin, adminRouter } from './config/admin.js';
 
 // Middlewares maison
@@ -46,27 +47,27 @@ const server = http.createServer(app);
 
 // 4️⃣ Initialisation de Socket.IO
 const io = new Server(server, {
-    cors: {
-        origin: [
-            'http://localhost:3000',
-            'http://localhost:5173',
-            'https://kotiz-web.onrender.com',
-            process.env.FRONTEND_URL
-        ].filter(Boolean),
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
+    cors: {
+        origin: [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'https://kotiz-web.onrender.com',
+            process.env.FRONTEND_URL
+        ].filter(Boolean),
+        methods: ['GET', 'POST'],
+        credentials: true
+    }
 });
 
 // 5️⃣ Fonction d'exportation pour les mises à jour en temps réel
 /**
- * Envoie un événement de mise à jour en temps réel à tous les clients Socket.IO connectés.
- * @param {string} eventName Le nom de l'événement (ex: 'user_updated').
- * @param {object} data Les données à transmettre.
- */
+ * Envoie un événement de mise à jour en temps réel à tous les clients Socket.IO connectés.
+ * @param {string} eventName Le nom de l'événement (ex: 'user_updated').
+ * @param {object} data Les données à transmettre.
+ */
 export const emitRealtimeUpdate = (eventName, data) => {
-    console.log(`📡 Emitting realtime event: ${eventName}`, data);
-    io.emit(eventName, data);
+    console.log(`📡 Emitting realtime event: ${eventName}`, data);
+    io.emit(eventName, data);
 };
 // 💡 FIN de l'ajout pour Socket.IO et l'export
 
@@ -76,58 +77,58 @@ app.set('trust proxy', 1);
 // Configuration des sessions (production-ready avec PostgreSQL)
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
-    store: isProduction ? new PgSessionStore({
-        conString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
-        createTableIfMissing: true,
-        tableName: 'user_sessions'
-    }) : undefined,
-    secret: process.env.SESSION_SECRET || 'kotiz-session-secret-key-2024',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: isProduction,
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: 'lax'
-    }
+    store: isProduction ? new PgSessionStore({
+        conString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+        createTableIfMissing: true,
+        tableName: 'user_sessions'
+    }) : undefined,
+    secret: process.env.SESSION_SECRET || 'kotiz-session-secret-key-2024',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: isProduction,
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: 'lax'
+    }
 }));
 
 app.use(express.json());
 
 // Middleware de débogage pour les requêtes JSON (seulement en développement)
 if (process.env.NODE_ENV !== 'production') {
-    app.use((req, res, next) => {
-        if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
-            console.log('🔍 Requête JSON reçue:');
-            console.log('  Method:', req.method);
-            console.log('  URL:', req.url);
-            console.log('  Content-Type:', req.headers['content-type']);
-            console.log('  Body parsé:', JSON.stringify(req.body, null, 2));
-        }
-        next();
-    });
+    app.use((req, res, next) => {
+        if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+            console.log('🔍 Requête JSON reçue:');
+            console.log('  Method:', req.method);
+            console.log('  URL:', req.url);
+            console.log('  Content-Type:', req.headers['content-type']);
+            console.log('  Body parsé:', JSON.stringify(req.body, null, 2));
+        }
+        next();
+    });
 }
 
 // 8️⃣ CORS
 // Note : Le CORS est configuré deux fois (ici pour Express/HTTP, ci-dessus pour Socket.IO)
 const corsOptions = {
-    origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'http://localhost:5173',
-            'https://kotiz-web.onrender.com',
-            process.env.FRONTEND_URL
-        ].filter(Boolean);
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'https://kotiz-web.onrender.com',
+            process.env.FRONTEND_URL
+        ].filter(Boolean);
 
-        if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-            return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+        if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 app.use(cors(corsOptions));
@@ -137,36 +138,36 @@ app.use('/uploads', express.static('uploads'));
 
 // Helmet (avec configuration CSP pour AdminJS)
 app.use(
-    helmet({
-        contentSecurityPolicy: {
-            useDefaults: true,
-            directives: {
-                "script-src": ["'self'", "'unsafe-inline'", "https:"],
-                "style-src": ["'self'", "'unsafe-inline'", "https:"],
-                "img-src": ["'self'", "data:", "https:"],
-            },
-        },
-    })
+    helmet({
+        contentSecurityPolicy: {
+            useDefaults: true,
+            directives: {
+                "script-src": ["'self'", "'unsafe-inline'", "https:"],
+                "style-src": ["'self'", "'unsafe-inline'", "https:"],
+                "img-src": ["'self'", "data:", "https:"],
+            },
+        },
+    })
 );
 
 // Limitation des requêtes (rate limiter)
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    keyGenerator: ipKeyGenerator,
-    standardHeaders: true,
-    legacyHeaders: false,
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    keyGenerator: ipKeyGenerator,
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 app.use(limiter);
 
 // 6️⃣ Endpoint de test /health (utilise sequelize désormais accessible)
 app.get('/health', async (req, res) => {
-    try {
-        await sequelize.authenticate();
-        res.json({ status: 'ok', database: 'connected', timestamp: new Date() });
-    } catch (error) {
-        res.status(500).json({ status: 'error', database: 'disconnected', message: error.message });
-    }
+    try {
+        await sequelize.authenticate();
+        res.json({ status: 'ok', database: 'connected', timestamp: new Date() });
+    } catch (error) {
+        res.status(500).json({ status: 'error', database: 'disconnected', message: error.message });
+    }
 });
 
 // 1️⃣3️⃣ ROUTES ADMINJS PROTÉGÉES (Contrôleurs locaux)
@@ -176,15 +177,15 @@ import * as PullController from './controllers/pullController.js';
 
 // Middleware spécial pour AdminJS
 const adminJSAuth = (req, res, next) => {
-    if (req.session && req.session.adminUser) {
-        req.user = {
-            ...req.session.adminUser,
-            role: 'admin'
-        };
-        console.log('🔐 AdminJS Auth - Utilisateur admin connecté via session:', req.user.email);
-        return next();
-    }
-    return firebaseAuth(req, res, next);
+    if (req.session && req.session.adminUser) {
+        req.user = {
+            ...req.session.adminUser,
+            role: 'admin'
+        };
+        console.log('🔐 AdminJS Auth - Utilisateur admin connecté via session:', req.user.email);
+        return next();
+    }
+    return firebaseAuth(req, res, next);
 };
 
 // ✅ ROUTES POUR LE DASHBOARD ADMINJS
@@ -198,7 +199,7 @@ app.get('/api/v1/users/stats', adminJSAuth, isAdmin, UserController.getAdminStat
 app.get('/api/v1/contributions/stats', adminJSAuth, isAdmin, ContributionController.getStats);
 app.get('/api/v1/pulls/stats', adminJSAuth, isAdmin, PullController.getStats);
 app.get('/api/v1/admin/export/users', adminJSAuth, isAdmin, (req, res) => {
-    res.json({ message: 'Export non implémenté', users: [] });
+    res.json({ message: 'Export non implémenté', users: [] });
 });
 
 // 1️⃣5️⃣ ROUTES API
@@ -219,7 +220,7 @@ app.use(admin.options.rootPath, adminRouter);
 
 // 9️⃣ Route racine
 app.get('/', (req, res) =>
-    res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin')
+    res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin')
 );
 
 // ----------------------------------------------------------------------
@@ -229,38 +230,38 @@ app.get('/', (req, res) =>
 // 9️⃣1️⃣ Middleware pour les routes non trouvées (404)
 // Doit être placé après toutes les routes, mais avant le gestionnaire d'erreurs.
 app.use((req, res, next) => {
-    // Crée une erreur standard pour le 404
-    const error = new Error('Route non trouvée');
-    error.status = 404;
-    next(error); 
+    // Crée une erreur standard pour le 404
+    const error = new Error('Route non trouvée');
+    error.status = 404;
+    next(error); 
 });
 
 // 9️⃣2️⃣ Gestionnaire d'erreurs global (Doit être le dernier app.use)
 app.use((err, req, res, next) => {
-    if (process.env.NODE_ENV !== 'production') {
-        console.error('=== ERREUR GLOBALE EXPRESS / DEBUG INFO ===');
-        console.error('Message:', err.message);
-        console.error('Stack:', err.stack);
-        console.error('Type:', err.constructor.name);
-        console.error('URL:', req.url);
-        console.error('Method:', req.method);
-        // Note: Le body peut être volumineux, on le log que s'il est petit ou vide
-        if (req.body && Object.keys(req.body).length > 0) {
-            console.error('Body:', JSON.stringify(req.body, null, 2));
-        }
-        console.error('==========================================');
-    }
+    if (process.env.NODE_ENV !== 'production') {
+        console.error('=== ERREUR GLOBALE EXPRESS / DEBUG INFO ===');
+        console.error('Message:', err.message);
+        console.error('Stack:', err.stack);
+        console.error('Type:', err.constructor.name);
+        console.error('URL:', req.url);
+        console.error('Method:', req.method);
+        // Note: Le body peut être volumineux, on le log que s'il est petit ou vide
+        if (req.body && Object.keys(req.body).length > 0) {
+            console.error('Body:', JSON.stringify(req.body, null, 2));
+        }
+        console.error('==========================================');
+    }
 
-    // Gestion des erreurs spécifiques avant l'appel à errorHandler (ex: Multer, Validation simple)
-    if (err.name === 'MulterError' && err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({
-            error: 'Fichier trop volumineux',
-            message: 'La taille maximale autorisée est de 10MB pour les images de cagnottes'
-        });
-    }
+    // Gestion des erreurs spécifiques avant l'appel à errorHandler (ex: Multer, Validation simple)
+    if (err.name === 'MulterError' && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+            error: 'Fichier trop volumineux',
+            message: 'La taille maximale autorisée est de 10MB pour les images de cagnottes'
+        });
+    }
 
-    // Transmet l'erreur restante au middleware errorHandler maison
-    errorHandler(err, req, res, next);
+    // Transmet l'erreur restante au middleware errorHandler maison
+    errorHandler(err, req, res, next);
 });
 
 // Note: Le middleware 'errorHandler' n'est plus appelé directement via app.use(errorHandler)
@@ -271,51 +272,50 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 (async () => {
-    try {
-        console.log('⏳ Tentative de connexion à la BDD...');
-        await sequelize.authenticate();
-        console.log('✅ Connexion PostgreSQL réussie !');
+    try {
+        console.log('⏳ Tentative de connexion à la BDD...');
+        await sequelize.authenticate();
+        console.log('✅ Connexion PostgreSQL réussie !');
 
-        // Note : Votre code d'initialisation utilise 'db' qui contient la fonction syncDatabase
-        if (process.env.NODE_ENV === 'production') {
-            console.log('🏭 Mode production - synchronisation manuelle/migrations requise');
-        } else {
-            const { syncDatabase } = db;
-            await syncDatabase(); 
-            console.log('✅ Tables synchronisées (force: true) - données précédentes effacées.');
-        }
+        // ✅ CORRECTION: syncDatabase est maintenant directement disponible grâce à l'import nommé
+        if (process.env.NODE_ENV === 'production') {
+            console.log('🏭 Mode production - synchronisation manuelle/migrations requise');
+        } else {
+            // Utilisation directe de la fonction syncDatabase importée nommément
+            await syncDatabase(); 
+            console.log('✅ Tables synchronisées (alter: true) - les données sont conservées (si possible).');
+        }
 
-        // Création de l'administrateur par défaut
-        const { createAdmin } = await import('./scripts/create-admin.js');
-        await createAdmin();
+        // ✅ CORRECTION: Utilisation directe de la fonction createAdmin importée nommément
+        await createAdmin();
 
-        // Démarrage du serveur HTTP (pas de l'app Express seule)
-        server.listen(PORT, () => {
-            io.on('connection', (socket) => {
-                console.log('A user connected via Socket.IO');
-                socket.on('disconnect', () => {
-                    console.log('User disconnected from Socket.IO');
-                });
-            });
-            
-            const baseUrl = isProduction ? `https://kotiz-back.onrender.com` : `http://localhost:${PORT}`;
+        // Démarrage du serveur HTTP (pas de l'app Express seule)
+        server.listen(PORT, () => {
+            io.on('connection', (socket) => {
+                console.log('A user connected via Socket.IO');
+                socket.on('disconnect', () => {
+                    console.log('User disconnected from Socket.IO');
+                });
+            });
+            
+            const baseUrl = isProduction ? `https://kotiz-back.onrender.com` : `http://localhost:${PORT}`;
 
-            console.log(`🚀 Serveur démarré sur ${baseUrl}`);
-            console.log(`🔑 AdminJS disponible sur ${baseUrl}/admin`);
-            console.log(`📊 Health check: ${baseUrl}/health`);
-            console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`🔌 Port: ${PORT}`);
-            console.log(`💾 Sessions: ${isProduction ? 'PostgreSQL' : 'MemoryStore (dev)'}`);
-            console.log(`📡 Realtime: Socket.IO initialized`);
+            console.log(`🚀 Serveur démarré sur ${baseUrl}`);
+            console.log(`🔑 AdminJS disponible sur ${baseUrl}/admin`);
+            console.log(`📊 Health check: ${baseUrl}/health`);
+            console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`🔌 Port: ${PORT}`);
+            console.log(`💾 Sessions: ${isProduction ? 'PostgreSQL' : 'MemoryStore (dev)'}`);
+            console.log(`📡 Realtime: Socket.IO initialized`);
 
-            if (isProduction) {
-                console.log(`✅ Configuration production activée`);
-            } else {
-                console.log(`🧪 Mode développement`);
-            }
-        });
-    } catch (error) {
-        console.error('❌ Erreur connexion/synchro BDD :', error);
-        process.exit(1); // Arrêter l'application si la DB n'est pas accessible
-    }
+            if (isProduction) {
+                console.log(`✅ Configuration production activée`);
+            } else {
+                console.log(`🧪 Mode développement`);
+            }
+        });
+    } catch (error) {
+        console.error('❌ Erreur connexion/synchro BDD :', error);
+        process.exit(1); // Arrêter l'application si la DB n'est pas accessible
+    }
 })();

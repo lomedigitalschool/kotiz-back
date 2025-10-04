@@ -126,14 +126,14 @@ function initUser(sequelize, DataTypes) { // DataTypes est maintenant passé par
         }
       }
     },
-    // Ajout d'un index unique explicite pour 'firebaseUid' conditionnel
+    
     indexes: [
         {
             unique: true,
             fields: ['firebaseUid'],
-            where: { // Ne crée la contrainte que si la valeur n'est pas NULL (pour PostgreSQL)
+            where: { 
                 firebaseUid: {
-                    [Op.ne]: null // Utilisation de Op.ne
+                    [Op.ne]: null
                 }
             }
         }
@@ -143,5 +143,5 @@ function initUser(sequelize, DataTypes) { // DataTypes est maintenant passé par
   return User;
 }
 
-// Correction : Utilisation de l'exportation par défaut ES Module
+
 export default initUser;

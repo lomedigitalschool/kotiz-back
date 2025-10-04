@@ -4,9 +4,10 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('pulls', {
       id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID, // 🎯 CORRECTION : Changé de INTEGER à UUID
         primaryKey: true,
-        autoIncrement: true
+        allowNull: false,
+        defaultValue: Sequelize.UUIDV4 // Ajouté pour générer automatiquement l'UUID
       },
       title: {
         type: Sequelize.STRING,
@@ -61,7 +62,7 @@ module.exports = {
         defaultValue: false
       },
       userId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID, // 🎯 CORRECTION : Changé de INTEGER à UUID (référence users.id)
         references: {
           model: 'users',
           key: 'id'

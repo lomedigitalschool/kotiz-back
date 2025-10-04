@@ -4,9 +4,11 @@ const migration = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('users', {
       id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID, // Changé de INTEGER à UUID
         primaryKey: true,
-        autoIncrement: true
+        allowNull: false,
+        // Utilisez UUIDV4 pour générer un UUID automatiquement lors de l'insertion
+        defaultValue: Sequelize.UUIDV4 
       },
       name: {
         type: Sequelize.STRING,

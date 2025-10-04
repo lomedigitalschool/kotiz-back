@@ -11,7 +11,9 @@ function initLog(sequelize) {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     userId: { type: DataTypes.INTEGER, allowNull: true },
     action: { type: DataTypes.STRING, allowNull: false },
-    details: { type: DataTypes.JSON, allowNull: true }
+    details: { type: DataTypes.JSON, allowNull: true },
+    entityType: { type: DataTypes.STRING, allowNull: false },
+    ipAddress: { type: DataTypes.STRING, allowNull: true }
   }, {
     sequelize,
     modelName: 'Log',

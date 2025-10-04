@@ -5,6 +5,7 @@ import firebaseAuth, { requireEmailVerification } from '../middleware/firebaseAu
 import optionalFirebaseAuth from '../middleware/optionalAuth.js';
 import { uploadCagnotteImage } from '../middleware/multerConfig.js';
 import { authenticate, isAdmin } from '../middleware/auth.js';
+import { logPullCreation, logContribution } from '../middleware/activityLogger.js';
 
 // Stats pour admin
 router.get('/stats', authenticate, isAdmin, pullController.getStats);
@@ -12,8 +13,8 @@ router.get('/stats', authenticate, isAdmin, pullController.getStats);
 // Stats pour AdminJS (sans authentification JWT)
 router.get('/admin-stats', pullController.getStats);
 
-router.post('/', firebaseAuth, requireEmailVerification, uploadCagnotteImage, pullController.create);
-router.post('/:pullId/contribute', firebaseAuth, requireEmailVerification, pullController.contribute);
+router.post('/', firebaseAuth, requireEmailVerification, uploadCagnotteImage, logPullCreation, pullController.create);
+router.post('/:pullId/contribute', firebaseAuth, requireEmailVerification, logContribution, pullController.contribute);
 
 // ====================
 // 📋 ROUTES PUBLIQUES (SANS AUTHENTIFICATION)

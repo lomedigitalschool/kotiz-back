@@ -3,6 +3,7 @@ const router = express.Router();
 import KycController from '../controllers/kycController.js';
 import { authenticate, isAdmin } from '../middleware/auth.js';
 import { uploadKycDocuments, handleMulterError } from '../middleware/multerConfig.js';
+import { logKycSubmission } from '../middleware/activityLogger.js';
 
 /**
  * Routes pour la gestion des vérifications KYC
@@ -12,10 +13,11 @@ import { uploadKycDocuments, handleMulterError } from '../middleware/multerConfi
  */
 
 // Routes utilisateur
-router.post('/submit', 
-  authenticate, 
-  uploadKycDocuments, 
-  handleMulterError, 
+router.post('/submit',
+  authenticate,
+  uploadKycDocuments,
+  handleMulterError,
+  logKycSubmission,
   KycController.submitKyc
 );
 

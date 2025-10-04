@@ -1,5 +1,5 @@
 /** @type {import('sequelize-cli').Migration} */
-export default {
+module.exports = {
   async up (queryInterface, Sequelize) {
     // Vérifier si la colonne anonymous existe déjà
     const [columns] = await queryInterface.sequelize.query(`

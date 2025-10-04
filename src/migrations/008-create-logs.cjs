@@ -1,38 +1,29 @@
 'use strict';
 
-export default {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('user_payment_methods', {
+    await queryInterface.createTable('logs', {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
         autoIncrement: true
       },
-      accountNumber: {
+      action: {
         type: Sequelize.STRING,
         allowNull: false
       },
-      isDefault: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
+      entityType: {
+        type: Sequelize.STRING,
+        allowNull: false
       },
-      status: {
-        type: Sequelize.ENUM('active', 'inactive'),
-        defaultValue: 'active'
+      ipAddress: {
+        type: Sequelize.STRING,
+        allowNull: true
       },
       userId: {
         type: Sequelize.INTEGER,
         references: {
           model: 'users',
-          key: 'id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
-      },
-      paymentMethodId: {
-        type: Sequelize.INTEGER,
-        references: {
-          model: 'payment_methods',
           key: 'id'
         },
         onUpdate: 'CASCADE',
@@ -50,7 +41,7 @@ export default {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('user_payment_methods');
+    await queryInterface.dropTable('logs');
   }
 };
 

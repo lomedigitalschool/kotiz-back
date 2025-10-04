@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
     // Ajouter transactionReference si elle n'existe pas
     const [transactionRefColumns] = await queryInterface.sequelize.query(`

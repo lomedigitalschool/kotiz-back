@@ -5,6 +5,7 @@ import express from 'express';
 const router = express.Router();
 import * as pullController from '../controllers/pullController.js';
 import contributionController from '../controllers/contributionController.js';
+import { logContribution } from '../middleware/activityLogger.js';
 
 /**
  * Routes publiques pour les visiteurs
@@ -43,6 +44,6 @@ router.get('/pulls/:id', pullController.getPublicCagnotteById);
  * POST /api/v1/public/contributions/anonymous/:pullId
  * Créer une contribution anonyme à une cagnotte publique
  */
-router.post('/contributions/anonymous/:pullId', contributionController.createAnonymous);
+router.post('/contributions/anonymous/:pullId', logContribution, contributionController.createAnonymous);
 
 export default router;

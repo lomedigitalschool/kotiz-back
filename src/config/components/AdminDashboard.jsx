@@ -114,7 +114,6 @@ const AdminDashboard = () => {
     return (
       <Box p="xl" display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <Box textAlign="center">
-          <Text fontSize="h1" color="primary">⏳</Text>
           <Text mt="md">Chargement du dashboard...</Text>
         </Box>
       </Box>
@@ -126,22 +125,22 @@ const AdminDashboard = () => {
       {/* Header avec statut */}
       <Box display="flex" justifyContent="between" alignItems="center" mb="xl">
         <Box>
-          <H1 color="primary">🏠 Dashboard Administrateur</H1>
+          <H1 color="primary">Dashboard Administrateur</H1>
           <Text color="grey60">
             Dernière mise à jour: {lastUpdate.toLocaleTimeString('fr-FR')}
           </Text>
         </Box>
         <Box display="flex" alignItems="center" gap="sm">
           <Badge variant={metrics.systemHealth === 'good' ? 'success' : 'danger'}>
-            {metrics.systemHealth === 'good' ? '✅ Système OK' : '⚠️ Problème détecté'}
+            {metrics.systemHealth === 'good' ? 'Système OK' : 'Problème détecté'}
           </Badge>
           {dataChanged && (
             <Badge variant="info" size="sm">
-              🔄 Mis à jour
+              Mis à jour
             </Badge>
           )}
           <Button size="sm" variant="outlined" onClick={() => fetchDashboardData(false)}>
-            🔄 Actualiser
+            Actualiser
           </Button>
         </Box>
       </Box>
@@ -150,8 +149,7 @@ const AdminDashboard = () => {
       <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(280px, 1fr))" gap="lg" mb="xl">
         <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
           <Box display="flex" justifyContent="between" alignItems="center" mb="sm">
-            <H3 color="primary">👥 Utilisateurs</H3>
-            <Text fontSize="h2" color="primary">👥</Text>
+            <H3 color="primary">Utilisateurs</H3>
           </Box>
           <Text fontSize="h1" fontWeight="bold" color="success" mb="xs">
             {metrics.totalUsers.toLocaleString('fr-FR')}
@@ -161,8 +159,7 @@ const AdminDashboard = () => {
 
         <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
           <Box display="flex" justifyContent="between" alignItems="center" mb="sm">
-            <H3 color="primary">💰 Total collecté</H3>
-            <Text fontSize="h2" color="info">💰</Text>
+            <H3 color="primary">Total collecté</H3>
           </Box>
           <Text fontSize="h1" fontWeight="bold" color="info" mb="xs">
             {formatCurrency(metrics.totalCollected)}
@@ -172,8 +169,7 @@ const AdminDashboard = () => {
 
         <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
           <Box display="flex" justifyContent="between" alignItems="center" mb="sm">
-            <H3 color="primary">🎯 Cagnottes actives</H3>
-            <Text fontSize="h2" color="warning">🎯</Text>
+            <H3 color="primary">Cagnottes actives</H3>
           </Box>
           <Text fontSize="h1" fontWeight="bold" color="warning" mb="xs">
             {metrics.activeCagnottes}
@@ -183,8 +179,7 @@ const AdminDashboard = () => {
 
         <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
           <Box display="flex" justifyContent="between" alignItems="center" mb="sm">
-            <H3 color="primary">📈 Ce mois</H3>
-            <Text fontSize="h2" color="success">📈</Text>
+            <H3 color="primary">Ce mois</H3>
           </Box>
           <Text fontSize="h1" fontWeight="bold" color="success" mb="xs">
             {formatCurrency(metrics.monthlyContributions)}
@@ -200,7 +195,6 @@ const AdminDashboard = () => {
         {/* Top cagnottes */}
         <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
           <H2 mb="lg" display="flex" alignItems="center">
-            <Text fontSize="h2" color="warning" mr="sm">🏆</Text>
             Top 5 Cagnottes
           </H2>
           {metrics.topCagnottes.length > 0 ? (
@@ -238,7 +232,6 @@ const AdminDashboard = () => {
         {/* Activité récente */}
         <Box bg="white" p="lg" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
           <H2 mb="lg" display="flex" alignItems="center">
-            <Text fontSize="h2" color="info" mr="sm">📊</Text>
             Activité récente
           </H2>
           <Box maxHeight="400px" overflowY="auto">
@@ -271,22 +264,22 @@ const AdminDashboard = () => {
 
       {/* Actions rapides */}
       <Box mt="xl" p="lg" bg="grey0" borderRadius="lg" border="1px solid" borderColor="grey20">
-        <H3 mb="md">🚀 Actions rapides</H3>
+        <H3 mb="md">Actions rapides</H3>
         <Box display="flex" gap="md" flexWrap="wrap">
           <Button variant="primary" as="a" href="/admin/resources/User">
-            👥 Gérer les utilisateurs
+            Gérer les utilisateurs
           </Button>
           <Button variant="secondary" as="a" href="/admin/resources/Pulls">
-            🎯 Gérer les cagnottes
+            Gérer les cagnottes
           </Button>
           <Button variant="success" as="a" href="/admin/resources/Report">
-            ⚠️ Voir les signalements
+            Voir les signalements
           </Button>
           <Button variant="warning" as="a" href="/admin/pages/Exports">
-            📥 Exporter les données
+            Exporter les données
           </Button>
           <Button variant="info" as="a" href="/admin/pages/Statistiques%20D%C3%A9taill%C3%A9es">
-            📊 Statistiques détaillées
+            Statistiques détaillées
           </Button>
         </Box>
       </Box>

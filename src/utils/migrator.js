@@ -51,26 +51,27 @@ async function runMigrations() {
 
     // Liste ordonnée de toutes les migrations à exécuter
     const migrations = [
-      { name: '001-create-users', migration: await importMigration('../migrations/001-create-users.js') },
-      { name: '002-create-payment-methods', migration: await importMigration('../migrations/002-create-payment-methods.js') },
-      { name: '003-create-pulls', migration: await importMigration('../migrations/003-create-pulls.js') },
-      { name: '004-create-contributions', migration: await importMigration('../migrations/004-create-contributions.js') },
-      { name: '005-create-transactions', migration: await importMigration('../migrations/005-create-transactions.js') },
-      { name: '006-create-user-payment-methods', migration: await importMigration('../migrations/006-create-user-payment-methods.js') },
-      { name: '007-create-notifications', migration: await importMigration('../migrations/007-create-notifications.js') },
-      { name: '008-create-logs', migration: await importMigration('../migrations/008-create-logs.js') },
-      { name: '009-create-kyc', migration: await importMigration('../migrations/009-create-kyc.js') },
-      { name: '010-seed-payment-methods', migration: await importMigration('../migrations/010-seed-payment-methods.js') },
-      { name: '011-update-kyc-table', migration: await importMigration('../migrations/011-update-kyc-table.js') },
-      { name: '012-create-reports-table', migration: await importMigration('../migrations/012-create-reports-table.js') },
-      { name: '013-add-firebase-fields-to-users', migration: await importMigration('../migrations/013-add-firebase-fields-to-users.js') },
-      { name: '014-make-password-hash-nullable', migration: await importMigration('../migrations/014-make-password-hash-nullable.js') },
-      { name: '015-add-currencies-to-pulls', migration: await importMigration('../migrations/015-add-currencies-to-pulls.js') },
-      { name: '016-add-missing-fields-to-contributions', migration: await importMigration('../migrations/016-add-missing-fields-to-contributions.js') },
-      { name: '017-add-missing-fields-to-pulls', migration: await importMigration('../migrations/017-add-missing-fields-to-pulls.js') },
-      { name: '018-add-missing-fields-to-transactions', migration: await importMigration('../migrations/018-add-missing-fields-to-transactions.js') },
-      { name: '20250928220632-add-anonymous-to-contributions', migration: await importMigration('../migrations/20250928220632-add-anonymous-to-contributions.js') },
-      { name: '20250930210406-allow-null-contributionId-in-transactions', migration: await importMigration('../migrations/20250930210406-allow-null-contributionId-in-transactions.js') }
+      { name: '001-create-users', migration: await importMigration('../migrations/001-create-users.cjs') },
+      { name: '002-create-payment-methods', migration: await importMigration('../migrations/002-create-payment-methods.cjs') },
+      { name: '003-create-pulls', migration: await importMigration('../migrations/003-create-pulls.cjs') },
+      { name: '004-create-contributions', migration: await importMigration('../migrations/004-create-contributions.cjs') },
+      { name: '005-create-transactions', migration: await importMigration('../migrations/005-create-transactions.cjs') },
+      { name: '006-create-user-payment-methods', migration: await importMigration('../migrations/006-create-user-payment-methods.cjs') },
+      { name: '007-create-notifications', migration: await importMigration('../migrations/007-create-notifications.cjs') },
+      { name: '008-create-logs', migration: await importMigration('../migrations/008-create-logs.cjs') },
+      { name: '009-create-kyc', migration: await importMigration('../migrations/009-create-kyc.cjs') },
+      { name: '010-seed-payment-methods', migration: await importMigration('../migrations/010-seed-payment-methods.cjs') },
+      { name: '011-update-kyc-table', migration: await importMigration('../migrations/011-update-kyc-table.cjs') },
+      { name: '012-create-reports-table', migration: await importMigration('../migrations/012-create-reports-table.cjs') },
+      { name: '013-add-firebase-fields-to-users', migration: await importMigration('../migrations/013-add-firebase-fields-to-users.cjs') },
+      { name: '014-make-password-hash-nullable', migration: await importMigration('../migrations/014-make-password-hash-nullable.cjs') },
+      { name: '015-add-currencies-to-pulls', migration: await importMigration('../migrations/015-add-currencies-to-pulls.cjs') },
+      { name: '016-add-missing-fields-to-contributions', migration: await importMigration('../migrations/016-add-missing-fields-to-contributions.cjs') },
+      { name: '017-add-missing-fields-to-pulls', migration: await importMigration('../migrations/017-add-missing-fields-to-pulls.cjs') },
+      { name: '018-add-missing-fields-to-transactions', migration: await importMigration('../migrations/018-add-missing-fields-to-transactions.cjs') },
+      { name: '20250928220632-add-anonymous-to-contributions', migration: await importMigration('../migrations/20250928220632-add-anonymous-to-contributions.cjs') },
+      { name: '20250930210406-allow-null-contributionId-in-transactions', migration: await importMigration('../migrations/20250930210406-allow-null-contributionId-in-transactions.cjs') },
+      { name: '20251002185100-add-details-to-logs', migration: await importMigration('../migrations/20251002185100-add-details-to-logs.cjs') }
     ];
     
     // Récupération des migrations déjà exécutées

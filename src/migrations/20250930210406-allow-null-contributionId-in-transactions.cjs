@@ -1,5 +1,5 @@
 /** @type {import('sequelize-cli').Migration} */
-export default {
+module.exports = {
   async up (queryInterface, Sequelize) {
     // Permettre les valeurs NULL dans contributionId pour les transactions de retrait
     await queryInterface.changeColumn('transactions', 'contributionId', {

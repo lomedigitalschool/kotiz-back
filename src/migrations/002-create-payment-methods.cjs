@@ -40,5 +40,5 @@ const migration = {
   }
 };
 
-export default migration;
+module.exports = migration;
 

@@ -61,3 +61,6 @@ src/scripts/fix-notifications-table.js
 src/scripts/fix-transactions-table.js
 ANALYSIS_MOBILE_WEB_FEATURES.md
 test-kyc-performance.js
+test-activity-logs.js
+test-adminjs-kyc.js
+test-complete-functionality.js

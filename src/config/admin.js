@@ -279,10 +279,13 @@ const adminOptions = {
       options: {
         properties: {
           id: { isId: true, type: 'number' },
-          action: { type: 'string' },
-          details: { type: 'textarea' },
+          action: { type: 'string', isTitle: true },
+          details: { type: 'textarea', isVisible: { list: false, show: true } },
+          entityType: { type: 'string' },
+          ipAddress: { type: 'string' },
           userId: { type: 'number' },
-          createdAt: { type: 'datetime' }
+          createdAt: { type: 'datetime', isVisible: { list: false, show: true } },
+          updatedAt: { type: 'datetime', isVisible: { list: false, show: true } }
         },
         navigation: { name: "Logs" }
       },
@@ -308,6 +311,150 @@ const adminOptions = {
     {
       resource: Kyc,
       options: {
+        properties: {
+          id: { isId: true, type: 'number' },
+          userId: { type: 'number', isVisible: { list: false, show: true } },
+          typeSubmission: {
+            type: 'string',
+            availableValues: [
+              { value: 'PREMIERE_SOUMISSION', label: 'Première soumission' },
+              { value: 'NOUVELLE_TENTATIVE', label: 'Nouvelle tentative' },
+              { value: 'RENOUVELLEMENT', label: 'Renouvellement' },
+              { value: 'CORRECTION', label: 'Correction' }
+            ]
+          },
+          typePiece: {
+            type: 'string',
+            availableValues: [
+              { value: 'CNI', label: 'Carte Nationale d\'Identité' },
+              { value: 'PASSPORT', label: 'Passeport' },
+              { value: 'PERMIS_CONDUIRE', label: 'Permis de conduire' }
+            ]
+          },
+          numeroPiece: { type: 'string', isTitle: true },
+          dateExpiration: { type: 'datetime' },
+          photoRecto: { type: 'string', isVisible: { list: false, show: true } },
+          photoVerso: { type: 'string', isVisible: { list: false, show: true } },
+          statutVerification: {
+            type: 'string',
+            availableValues: [
+              { value: 'EN_ATTENTE', label: 'En attente' },
+              { value: 'APPROUVE', label: 'Approuvé' },
+              { value: 'REFUSE', label: 'Refusé' }
+            ],
+            components: {
+              filter: componentLoader.add('SelectField', join(projectRoot, 'src/admin/components/SelectField.jsx'))
+            }
+          },
+          commentaireAdmin: { type: 'textarea', isVisible: { list: false, show: true } },
+          submissionDate: { type: 'datetime' },
+          isActive: { type: 'boolean' },
+          createdAt: { type: 'datetime', isVisible: { list: false, show: true } },
+          updatedAt: { type: 'datetime', isVisible: { list: false, show: true } }
+        },
+        actions: {
+          new: { isAccessible: () => false },
+          edit: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
+          delete: { isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.role === 'admin' },
+          validateKYC: {
+            name: 'validateKYC',
+            actionType: 'record',
+            icon: 'Check',
+            isVisible: ({ record }) => record.params.statutVerification === 'EN_ATTENTE',
+            component: false,
+            handler: async (request, response, context) => {
+              console.log('🔍 Action validateKYC appelée pour record:', context.record.id);
+              const { record, currentAdmin } = context;
+
+              if (!currentAdmin || currentAdmin.role !== 'admin') {
+                console.log('❌ Accès non autorisé pour validateKYC');
+                return {
+                  record: record.toJSON(),
+                  msg: 'Accès non autorisé'
+                };
+              }
+
+              try {
+                console.log('📝 Validation KYC pour ID:', record.id);
+                // Mettre à jour le statut KYC
+                const [updateCount] = await Kyc.update(
+                  { statutVerification: 'APPROUVE' },
+                  { where: { id: record.id } }
+                );
+
+                console.log('✅ KYC mis à jour, count:', updateCount);
+
+                // Recharger l'enregistrement
+                const updatedRecord = await Kyc.findByPk(record.id);
+                console.log('📋 Nouveau statut:', updatedRecord.statutVerification);
+
+                return {
+                  record: updatedRecord.toJSON(),
+                  msg: 'KYC validé avec succès',
+                  notice: {
+                    message: 'Le KYC a été approuvé',
+                    type: 'success'
+                  }
+                };
+              } catch (error) {
+                console.error('❌ Erreur lors de la validation KYC:', error);
+                return {
+                  record: record.toJSON(),
+                  msg: 'Erreur lors de la validation du KYC'
+                };
+              }
+            }
+          },
+          rejectKYC: {
+            name: 'rejectKYC',
+            actionType: 'record',
+            icon: 'X',
+            isVisible: ({ record }) => record.params.statutVerification === 'EN_ATTENTE',
+            component: false,
+            handler: async (request, response, context) => {
+              console.log('🔍 Action rejectKYC appelée pour record:', context.record.id);
+              const { record, currentAdmin } = context;
+
+              if (!currentAdmin || currentAdmin.role !== 'admin') {
+                console.log('❌ Accès non autorisé pour rejectKYC');
+                return {
+                  record: record.toJSON(),
+                  msg: 'Accès non autorisé'
+                };
+              }
+
+              try {
+                console.log('📝 Rejet KYC pour ID:', record.id);
+                // Mettre à jour le statut KYC
+                const [updateCount] = await Kyc.update(
+                  { statutVerification: 'REFUSE' },
+                  { where: { id: record.id } }
+                );
+
+                console.log('✅ KYC mis à jour, count:', updateCount);
+
+                // Recharger l'enregistrement
+                const updatedRecord = await Kyc.findByPk(record.id);
+                console.log('📋 Nouveau statut:', updatedRecord.statutVerification);
+
+                return {
+                  record: updatedRecord.toJSON(),
+                  msg: 'KYC rejeté',
+                  notice: {
+                    message: 'Le KYC a été rejeté',
+                    type: 'success'
+                  }
+                };
+              } catch (error) {
+                console.error('❌ Erreur lors du rejet KYC:', error);
+                return {
+                  record: record.toJSON(),
+                  msg: 'Erreur lors du rejet du KYC'
+                };
+              }
+            }
+          }
+        },
         navigation: { name: "KYC" }
       }
     },
@@ -451,11 +598,11 @@ const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
   admin,
   {
     authenticate: async (email, password) => {
-      console.log('🚨 AUTH DIRECTE - Email:', email, 'Password:', password);
+      console.log('🔐 AdminJS Auth - Email:', email);
 
       // Validation simple et directe
       if (email === 'admin@kotiz.com' && password === 'Admin123!@#') {
-        console.log('✅ AUTH RÉUSSIE');
+        console.log('✅ AdminJS Auth réussie');
         return {
           id: 1,
           email: 'admin@kotiz.com',
@@ -464,20 +611,21 @@ const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
         };
       }
 
-      console.log('❌ AUTH ÉCHOUÉE');
+      console.log('❌ AdminJS Auth échouée');
       return null;
     },
-    cookieName: 'adminjs',
-    cookiePassword: 'simple-secret-key-12345'
+    cookieName: 'kotiz-admin',
+    cookiePassword: process.env.SESSION_SECRET || 'kotiz-admin-session-secret-2024'
   },
   null,
   {
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
-      secure: false,
-      httpOnly: false, // ← ESSAYEZ false POUR DÉBOGUER
-      maxAge: 24 * 60 * 60 * 1000
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax'
     }
   }
 );

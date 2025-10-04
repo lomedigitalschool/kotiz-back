@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
     // Ajouter currentAmount si elle n'existe pas
     const [currentAmountColumns] = await queryInterface.sequelize.query(`

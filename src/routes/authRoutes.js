@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import { ipKeyGenerator } from 'express-rate-limit';
 import authController from '../controllers/authController.js';
 import firebaseAuth from '../middleware/firebaseAuth.js';
+import { logAuthActivity } from '../middleware/activityLogger.js';
 
 // Rate limiter spécifique pour forgot-password (plus restrictif)
 const forgotPasswordLimiter = rateLimit({
@@ -36,7 +37,7 @@ const forgotPasswordLimiter = rateLimit({
 });
 
 //  Synchronisation Firebase → PostgreSQL
-router.post('/firebase-sync', firebaseAuth, authController.firebaseSync);
+router.post('/firebase-sync', firebaseAuth, logAuthActivity, authController.firebaseSync);
 
 // Profil utilisateur
 router.get('/me', firebaseAuth, authController.me);

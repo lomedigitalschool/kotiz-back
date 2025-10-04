@@ -62,13 +62,18 @@ app.use(session({
 }));
 
 // 7️⃣ ADMINJS IMMÉDIATEMENT APRÈS LES SESSIONS
+console.log('🔧 Initialisation AdminJS...');
 try {
   // Initialiser l'admin par défaut avant AdminJS
   const { ensureDefaultAdmin } = await import('./middleware/adminAuth.js');
   await ensureDefaultAdmin();
+  console.log('✅ Admin par défaut vérifié');
 
   const { default: initAdmin } = await import('./config/admin.js');
+  console.log('📦 Module AdminJS chargé');
+
   const { admin, adminRouter } = await initAdmin();
+  console.log('🚀 AdminJS initialisé avec succès');
 
   // Middleware pour logger les requêtes POST /admin/login
   app.use('/admin/login', (req, res, next) => {
@@ -79,9 +84,13 @@ try {
   });
 
   app.use(admin.options.rootPath, adminRouter);
-  console.log('✅ AdminJS monté immédiatement après sessions sur:', admin.options.rootPath);
+  console.log('✅ AdminJS monté sur:', admin.options.rootPath);
+  console.log('🔑 AdminJS prêt pour connexion');
 } catch (error) {
   console.error('❌ Erreur lors du chargement d\'AdminJS:', error);
+  console.error('📋 Détails de l\'erreur:', error.stack);
+  // Ne pas arrêter le serveur pour AdminJS, mais logger clairement
+  console.log('⚠️ Le serveur continue sans AdminJS');
 }
 
 // 8️⃣ CORS (APRÈS AdminJS)
@@ -298,7 +307,7 @@ export const emitRealtimeUpdate = (event, data) => {
 };
 
 // 2️⃣0️⃣ Démarrage du serveur
-const PORT = process.env.PORT || 5000;
+const PORT = 5000; // Force port 5000 pour développement local
 
 (async () => {
   try {

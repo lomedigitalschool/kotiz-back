@@ -1,4 +1,6 @@
 AdminJS.UserComponents = {}
+import SelectField from '../src/admin/components/SelectField'
+AdminJS.UserComponents.SelectField = SelectField
 import AdminDashboard from '../src/config/components/AdminDashboard'
 AdminJS.UserComponents.AdminDashboard = AdminDashboard
 import Contributions from '../src/config/components/Contributions'

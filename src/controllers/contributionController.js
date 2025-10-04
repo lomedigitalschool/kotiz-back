@@ -167,6 +167,34 @@ export const create = async (req, res) => {
 
     console.log('✅ Contribution créée avec succès:', contribution.id);
 
+    // 🔔 NOTIFICATION - Nouvelle contribution initiée pour le créateur
+    if (pull.userId) {
+      await notificationService.sendNotification({
+        userId: pull.userId,
+        type: 'newContribution',
+        data: {
+          amount: contribution.amount,
+          currency: pull.currency,
+          cagnotteTitle: pull.title,
+          user: req.user.name || 'Utilisateur',
+          status: 'initiated' // Indicateur que c'est une initiation
+        },
+        channels: ['database', 'email']
+      });
+    }
+
+    // 🔔 NOTIFICATION - Contribution initiée pour le contributeur
+    await notificationService.sendNotification({
+      userId: req.user.id,
+      type: 'contributionInitiated',
+      data: {
+        amount: contribution.amount,
+        currency: pull.currency,
+        cagnotteTitle: pull.title
+      },
+      channels: ['database', 'email']
+    });
+
     // Réponse avec les informations de paiement
     res.status(201).json({
       success: true,

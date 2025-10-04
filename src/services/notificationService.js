@@ -17,7 +17,8 @@ class NotificationService {
   generateMessage(type, data) {
     switch (type) {
       case "newContribution":
-        return `Nouvelle contribution de ${data.amount} ${data.currency} sur "${data.cagnotteTitle}" par ${data.user || "Anonyme"} !`;
+        const statusText = data.status === 'initiated' ? 'initiée' : 'reçue';
+        return `Nouvelle contribution ${statusText} de ${data.amount} ${data.currency} sur "${data.cagnotteTitle}" par ${data.user || "Anonyme"} !`;
 
       case "cagnotteClosed":
         return `La cagnotte "${data.cagnotteTitle}" a été clôturée !`;
@@ -46,6 +47,9 @@ class NotificationService {
       case "kycRejected":
         return `❌ Votre vérification d'identité a été rejetée.${data.commentaireAdmin ? ` Raison : ${data.commentaireAdmin}` : ''} Vous pouvez soumettre une nouvelle demande avec des documents corrects.`;
 
+      case "contributionInitiated":
+        return `🚀 Votre contribution de ${data.amount} ${data.currency} pour "${data.cagnotteTitle}" a été initiée. Vous recevrez une confirmation une fois le paiement traité.`;
+
       default:
         return `🔔 Notification [${type}] pour l'utilisateur`;
     }
@@ -64,6 +68,7 @@ class NotificationService {
       case "kycSubmitted": return "Soumission KYC";
       case "kycApproved": return "KYC approuvé";
       case "kycRejected": return "KYC rejeté";
+      case "contributionInitiated": return "Contribution initiée";
       default: return "Notification";
     }
   }
@@ -81,6 +86,7 @@ class NotificationService {
       case "kycSubmitted": return "success";
       case "kycApproved": return "success";
       case "kycRejected": return "error";
+      case "contributionInitiated": return "info";
       default: return "info";
     }
   }

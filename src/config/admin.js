@@ -360,7 +360,7 @@ const adminOptions = {
             name: 'validateKYC',
             actionType: 'record',
             icon: 'Check',
-            isVisible: ({ record }) => record.params.statutVerification === 'EN_ATTENTE',
+            isVisible: ({ record }) => record.paramValues?.statutVerification === 'EN_ATTENTE',
             component: false,
             handler: async (request, response, context) => {
               console.log('🔍 Action validateKYC appelée pour record:', context.record.id);
@@ -409,7 +409,7 @@ const adminOptions = {
             name: 'rejectKYC',
             actionType: 'record',
             icon: 'X',
-            isVisible: ({ record }) => record.params.statutVerification === 'EN_ATTENTE',
+            isVisible: ({ record }) => record.paramValues?.statutVerification === 'EN_ATTENTE',
             component: false,
             handler: async (request, response, context) => {
               console.log('🔍 Action rejectKYC appelée pour record:', context.record.id);

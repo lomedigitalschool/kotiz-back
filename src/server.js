@@ -307,7 +307,7 @@ export const emitRealtimeUpdate = (event, data) => {
 };
 
 // 2️⃣0️⃣ Démarrage du serveur
-const PORT = 5000; // Force port 5000 pour développement local
+const PORT = process.env.PORT || 5000; // Utilise PORT de l'environnement ou 5000 par défaut
 
 (async () => {
   try {

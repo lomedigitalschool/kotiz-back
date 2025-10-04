@@ -2,7 +2,7 @@ import models from '../models/index.js';
 
 // 🚨 IMPORTANT : Vérifiez le chemin d'accès à votre fichier principal (index.js)
 // où est exporté 'emitRealtimeUpdate'. J'assume un chemin relatif commun.
-import { emitRealtimeUpdate } from '../index.js';
+import { emitRealtimeUpdate } from '../server.js';
 
 // Extraction du modèle Notification à partir de l'objet d'agrégation des modèles
 const { Notification } = models;

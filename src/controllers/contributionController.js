@@ -5,7 +5,9 @@ import { Op, QueryTypes } from 'sequelize';
 import paymentService from '../services/payment.service.js';
 import notificationService from '../services/notification.service.js'; 
 import sequelize from '../config/database.js';
-import { emitRealtimeUpdate } from '../index.js'; 
+import { emitRealtimeUpdate } from '../server.js';
+
+// 📊 STATISTIQUES GLOBALES DES CONTRIBUTIONS
 
 export const getStats = async (req, res) => {
   try {

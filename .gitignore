@@ -65,8 +65,6 @@ test-activity-logs.js
 test-adminjs-kyc.js
 test-complete-functionality.js
 src/scripts/fix-current-amounts.js
-src/services/socketService.js
-src/services/statsService.js
 src/tests/
 test-admin-auth.js
 test-admin-login.js

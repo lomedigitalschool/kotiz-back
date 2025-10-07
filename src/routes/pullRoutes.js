@@ -42,5 +42,6 @@ router.delete('/:id', firebaseAuth, requireEmailVerification, pullController.rem
 // ====================
 router.post('/:id/withdraw', firebaseAuth, requireEmailVerification, pullController.withdrawFunds);
 router.get('/:id/withdrawals', firebaseAuth, requireEmailVerification, pullController.getWithdrawalsByPullId);
+router.post('/:id/close', firebaseAuth, requireEmailVerification, pullController.closePull);
 
 export default router;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Box, H1, H2, Text, Button, Input, Select, Card, Table, TableHead, TableBody, TableRow, TableCell } from '@adminjs/design-system';
+import { Box, H1, H2, Text, Button, Input, Select, Table, TableHead, TableBody, TableRow, TableCell } from '@adminjs/design-system';
 
-const Export = () => {
+const Export = (props) => {
   const [exportConfig, setExportConfig] = useState({
     dataType: 'contributions',
     format: 'csv',

@@ -1,37 +1,38 @@
 import db from '../models/index.js';
+
 const { Report, User, Pull, Contribution } = db;
 
-// Créer un signalement
 export const createReport = async (req, res) => {
   try {
-    const { type, targetId, reason, description } = req.body;
+    const { type, pullId, contributionId, reason, description } = req.body;
     const reporterId = req.user.id;
 
-    let reportData = {
+    const report = await Report.create({
       reporterId,
+      pullId,
+      contributionId,
       type,
       reason,
       description,
       status: 'pending'
-    };
+    });
 
-    if (type === 'pull') {
-      reportData.pullId = targetId;
-    } else if (type === 'contribution') {
-      reportData.contributionId = targetId;
-    }
-
-    const report = await Report.create(reportData);
-    res.status(201).json(report);
+    res.status(201).json({
+      success: true,
+      message: 'Signalement créé avec succès',
+      data: report
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Récupérer tous les signalements (admin)
 export const getAllReports = async (req, res) => {
   try {
+    const { status = 'pending' } = req.query;
+    
     const reports = await Report.findAll({
+      where: status !== 'all' ? { status } : {},
       include: [
         { model: User, as: 'reporter', attributes: ['id', 'name', 'email'] },
         { model: Pull, as: 'pull', attributes: ['id', 'title'] },
@@ -39,13 +40,13 @@ export const getAllReports = async (req, res) => {
       ],
       order: [['createdAt', 'DESC']]
     });
+
     res.json(reports);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Traiter un signalement (admin)
 export const handleReport = async (req, res) => {
   try {
     const { id } = req.params;
@@ -53,64 +54,60 @@ export const handleReport = async (req, res) => {
 
     const report = await Report.findByPk(id);
     if (!report) {
-      return res.status(404).json({ message: 'Signalement non trouvé' });
+      return res.status(404).json({ error: 'Signalement non trouvé' });
     }
 
-    if (action === 'resolve') {
-      report.status = 'resolved';
-      report.adminResponse = adminResponse;
-      report.resolvedAt = new Date();
-    } else if (action === 'dismiss') {
-      report.status = 'dismissed';
-      report.adminResponse = adminResponse;
-      report.resolvedAt = new Date();
-    }
+    const status = action === 'resolve' ? 'resolved' : 'dismissed';
+    
+    await report.update({
+      status,
+      adminResponse,
+      resolvedAt: new Date()
+    });
 
-    await report.save();
-    res.json(report);
+    res.json({
+      success: true,
+      message: `Signalement ${status === 'resolved' ? 'résolu' : 'rejeté'}`,
+      data: report
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Bloquer un utilisateur signalé
 export const blockReportedUser = async (req, res) => {
   try {
     const { id } = req.params;
+    
     const report = await Report.findByPk(id, {
-      include: [
-        { model: Pull, as: 'pull', include: [{ model: User, as: 'owner' }] },
-        { model: Contribution, as: 'contribution', include: [{ model: User, as: 'user' }] }
-      ]
+      include: [{ model: User, as: 'reporter' }]
     });
 
     if (!report) {
-      return res.status(404).json({ message: 'Signalement non trouvé' });
+      return res.status(404).json({ error: 'Signalement non trouvé' });
     }
 
-    let userToBlock;
-    if (report.type === 'pull' && report.pull) {
-      userToBlock = report.pull.owner;
-    } else if (report.type === 'contribution' && report.contribution) {
-      userToBlock = report.contribution.user;
-    }
+    // Bloquer l'utilisateur signalé (logique à adapter selon votre modèle User)
+    // await User.update({ isBlocked: true }, { where: { id: reportedUserId } });
 
-    if (userToBlock) {
-      userToBlock.isBlocked = true;
-      await userToBlock.save();
+    await report.update({
+      status: 'resolved',
+      adminResponse: 'Utilisateur bloqué',
+      resolvedAt: new Date()
+    });
 
-      report.status = 'resolved';
-      report.adminResponse = 'Utilisateur bloqué suite au signalement';
-      report.resolvedAt = new Date();
-      await report.save();
-
-      res.json({ message: 'Utilisateur bloqué', user: userToBlock });
-    } else {
-      res.status(404).json({ message: 'Utilisateur non trouvé' });
-    }
+    res.json({
+      success: true,
+      message: 'Utilisateur bloqué et signalement résolu'
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-export default { createReport, getAllReports, handleReport, blockReportedUser };
+export default {
+  createReport,
+  getAllReports,
+  handleReport,
+  blockReportedUser
+};

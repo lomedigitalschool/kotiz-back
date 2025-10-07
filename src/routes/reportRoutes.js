@@ -1,14 +1,15 @@
-const express = require('express');
+import express from 'express';
+import reportController from '../controllers/reportController.js';
+import { authenticateToken } from '../middleware/auth.js';
+
 const router = express.Router();
-const reportController = require('../controllers/reportController');
-const auth = require('../middleware/auth');
 
 // Créer un signalement (utilisateur authentifié)
-router.post('/', auth, reportController.createReport);
+router.post('/', authenticateToken, reportController.createReport);
 
 // Routes admin uniquement
-router.get('/', auth, reportController.getAllReports);
-router.put('/:id/handle', auth, reportController.handleReport);
-router.put('/:id/block', auth, reportController.blockReportedUser);
+router.get('/', authenticateToken, reportController.getAllReports);
+router.put('/:id/handle', authenticateToken, reportController.handleReport);
+router.put('/:id/block', authenticateToken, reportController.blockReportedUser);
 
-module.exports = router;
+export default router;

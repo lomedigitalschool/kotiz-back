@@ -105,6 +105,25 @@ function initContribution(sequelize) {
     anonymous: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
+    },
+    paymentMethod: {
+      type: DataTypes.ENUM('orange_money', 'mtn_money', 'moov_money', 'wave', 'flooz', 't_money', 'card', 'bank_transfer'),
+      allowNull: true,
+      defaultValue: 'card',
+      validate: {
+        isIn: {
+          args: [['orange_money', 'mtn_money', 'moov_money', 'wave', 'flooz', 't_money', 'card', 'bank_transfer']],
+          msg: 'Méthode de paiement non supportée.'
+        }
+      },
+      set(value) {
+        // Normaliser les valeurs pour accepter différents formats
+        if (value === 'tmoney') {
+          this.setDataValue('paymentMethod', 't_money');
+        } else {
+          this.setDataValue('paymentMethod', value);
+        }
+      }
     }
   }, {
     sequelize,
@@ -114,8 +133,8 @@ function initContribution(sequelize) {
     validate: {
       // Validateur personnalisé pour les contributions anonymes
       anonymousValidation() {
-        if (this.anonymous) {
-          // Pour les contributions anonymes, vérifier qu'on a au moins un nom ou email
+        if (this.anonymous && !this.userId) {
+          // Pour les contributions vraiment anonymes (sans userId), vérifier qu'on a au moins un nom ou email
           if (!this.contributorName && !this.contributorEmail) {
             throw new Error('Une contribution anonyme doit avoir au moins un nom ou un email.');
           }

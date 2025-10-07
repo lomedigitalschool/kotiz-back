@@ -2,10 +2,21 @@ import db from '../models/index.js';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 import jwt from 'jsonwebtoken';
-import { emitRealtimeUpdate } from '../server.js';
 import admin from '../config/firebase.js';
 
 const { User, Pull, Contribution, Transaction } = db;
+
+// Helper pour récupérer emitRealtimeUpdate de façon dynamique (évite circular imports)
+const getEmitRealtimeUpdate = async () => {
+  try {
+    if (typeof global !== 'undefined' && global.__EMIT_MOCK__) return global.__EMIT_MOCK__;
+    const mod = await import('../server.js');
+    return mod.emitRealtimeUpdate;
+  } catch (err) {
+    // Pas fatal en tests sans socket
+    return () => {};
+  }
+};
 
 const getAll = async (req, res) => {
   const users = await User.findAll();
@@ -277,12 +288,34 @@ const getAdminStats = async (req, res) => {
       }
     });
 
-    // Retourner des valeurs sûres (pas de NaN)
+    // Récupérer les top contributeurs
+    const topContributors = await Contribution.findAll({
+      attributes: [
+        'userId',
+        [sequelize.fn('COUNT', '*'), 'contributionCount'],
+        [sequelize.fn('SUM', sequelize.col('amount')), 'totalAmount']
+      ],
+      where: { status: 'completed' },
+      include: [{ 
+        model: User, 
+        as: 'contributor',
+        attributes: ['name', 'email'] 
+      }],
+      group: ['userId', 'contributor.id', 'contributor.name', 'contributor.email'],
+      order: [[sequelize.fn('SUM', sequelize.col('amount')), 'DESC']],
+      limit: 5
+    });
+
     res.json({
       total: total || 0,
       active: active || 0,
       verified: verified || 0,
-      newThisMonth: newThisMonth || 0
+      newThisMonth: newThisMonth || 0,
+      topContributors: topContributors.map(c => ({
+        name: c.User?.name || 'Anonyme',
+        count: parseInt(c.getDataValue('contributionCount')),
+        amount: parseFloat(c.getDataValue('totalAmount'))
+      })) || []
     });
   } catch (error) {
     console.error('Erreur admin stats utilisateurs:', error);

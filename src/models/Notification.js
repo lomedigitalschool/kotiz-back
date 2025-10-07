@@ -13,15 +13,16 @@ function initNotification(sequelize) {
     title: { type: DataTypes.STRING, allowNull: false },
     message: { type: DataTypes.TEXT, allowNull: false },
     type: { type: DataTypes.ENUM('info', 'success', 'warning', 'error'), defaultValue: 'info' },
-    status: { type: DataTypes.ENUM('unread', 'read'), defaultValue: 'unread' }
+    read: { type: DataTypes.BOOLEAN, defaultValue: false }
   }, {
     sequelize,
     modelName: 'Notification',
     tableName: 'notifications',
     timestamps: true,
-    // Exclure les colonnes qui n'existent pas en base
-    defaultScope: {
-      attributes: { exclude: ['read'] }
+    getterMethods: {
+      isRead() {
+        return this.read;
+      }
     }
   });
 

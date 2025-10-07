@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, H1, H2, H3, Text, Table, TableHead, TableBody, TableRow, TableCell, Button, Input, Select, Card } from '@adminjs/design-system';
+import { Box, H1, H2, H3, Text, Table, TableHead, TableBody, TableRow, TableCell, Button, Input, Select } from '@adminjs/design-system';
 
 const AdvancedStats = () => {
   const [stats, setStats] = useState({

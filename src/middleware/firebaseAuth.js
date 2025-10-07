@@ -94,7 +94,12 @@ async function checkAndMergeUser(uid) {
 
     for (const identifier of identifiers) {
       try {
-        const usersResult = await admin.auth().getUsers([identifier]);
+        // Construire le bon format pour Firebase getUsers
+        const firebaseIdentifier = identifier.type === 'email'
+          ? { email: identifier.value }
+          : { phoneNumber: identifier.value };
+
+        const usersResult = await admin.auth().getUsers([firebaseIdentifier]);
         usersResult.users.forEach(user => {
           if (user.uid !== uid) {
             duplicateUids.add(user.uid);

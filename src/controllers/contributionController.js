@@ -5,7 +5,17 @@ import { Op, QueryTypes } from 'sequelize';
 import paymentService from '../services/paymentService.js';
 import notificationService from '../services/notificationService.js';
 import sequelize from '../config/database.js';
-import { emitRealtimeUpdate } from '../server.js';
+
+// avoid circular import with server.js by importing emitRealtimeUpdate dynamically
+const getEmitRealtimeUpdate = async () => {
+  try {
+    if (typeof global !== 'undefined' && global.__EMIT_MOCK__) return global.__EMIT_MOCK__;
+    const mod = await import('../server.js');
+    return mod.emitRealtimeUpdate;
+  } catch (err) {
+    return () => {};
+  }
+};
 
 export const getStats = async (req, res) => {
   try {
@@ -65,8 +75,13 @@ export const create = async (req, res) => {
       phoneNumber,
       paymentMethod = 'orange_money',
       mobileOption,
-      isAnonymous = false
+      isAnonymous = false,
+      contributorName,
+      contributorEmail
     } = req.body;
+
+    // Normaliser le montant (remplacer virgule par point pour le format français)
+    const normalizedAmount = amount.toString().replace(',', '.');
 
     // Validation des données
     if (!pullId || !amount || !phoneNumber) {
@@ -100,7 +115,7 @@ export const create = async (req, res) => {
     // 🔧 POINT D'INTÉGRATION API PAIEMENT
     // Préparer les données de paiement
     const paymentData = {
-      amount: Math.round(parseFloat(amount) * 100), // Convertir en centimes
+      amount: Math.round(parseFloat(normalizedAmount) * 100), // Convertir en centimes
       currency: pull.currency || 'XOF',
       phoneNumber: phoneNumber,
       paymentMethod: finalPaymentMethod,
@@ -125,18 +140,21 @@ export const create = async (req, res) => {
 
     // Créer la contribution avec statut "pending"
     const contribution = await Contribution.create({
-      userId: req.user.id,
+      userId: isAnonymous ? null : req.user.id,
       pullId,
-      amount: parseFloat(amount),
+      amount: parseFloat(normalizedAmount),
       message: message || '',
       anonymous: isAnonymous,
+      contributorName: contributorName || null,
+      contributorEmail: contributorEmail || null,
+      paymentMethod: finalPaymentMethod, // Ajouter la méthode de paiement
       status: 'pending' // En attente de confirmation de paiement
     });
 
     // Créer l'enregistrement de transaction (sans utiliser le modèle pour éviter le cache)
     const transactionData = {
       contributionId: contribution.id,
-      amount: parseFloat(amount),
+      amount: parseFloat(normalizedAmount),
       currency: pull.currency || 'XOF',
       status: 'pending',
       transactionReference: transactionRef,
@@ -176,24 +194,26 @@ export const create = async (req, res) => {
           amount: contribution.amount,
           currency: pull.currency,
           cagnotteTitle: pull.title,
-          user: req.user.name || 'Utilisateur',
+          user: isAnonymous ? (contributorName || 'Anonyme') : (req.user.name || 'Utilisateur'),
           status: 'initiated' // Indicateur que c'est une initiation
         },
         channels: ['database', 'email']
       });
     }
 
-    // 🔔 NOTIFICATION - Contribution initiée pour le contributeur
-    await notificationService.sendNotification({
-      userId: req.user.id,
-      type: 'contributionInitiated',
-      data: {
-        amount: contribution.amount,
-        currency: pull.currency,
-        cagnotteTitle: pull.title
-      },
-      channels: ['database', 'email']
-    });
+    // 🔔 NOTIFICATION - Contribution initiée pour le contributeur (seulement si connecté)
+    if (!isAnonymous && req.user.id) {
+      await notificationService.sendNotification({
+        userId: req.user.id,
+        type: 'contributionInitiated',
+        data: {
+          amount: contribution.amount,
+          currency: pull.currency,
+          cagnotteTitle: pull.title
+        },
+        channels: ['database', 'email']
+      });
+    }
 
     // Réponse avec les informations de paiement
     res.status(201).json({
@@ -292,11 +312,8 @@ export const handlePaymentWebhook = async (req, res) => {
       contribution.status = 'completed';
       await contribution.save();
 
-      // Mettre à jour le montant de la cagnotte
+      // Le trigger de base de données mettra automatiquement à jour currentAmount
       const pull = contribution.Pull;
-      const newAmount = parseFloat(pull.currentAmount) + parseFloat(contribution.amount);
-      pull.currentAmount = newAmount;
-      await pull.save();
 
       // Mettre à jour la transaction
       await Transaction.update(
@@ -364,7 +381,7 @@ export const handlePaymentWebhook = async (req, res) => {
       }
 
       // Émettre un événement temps réel
-      emitRealtimeUpdate('contribution-completed', {
+      (await getEmitRealtimeUpdate())('contribution-completed', {
         contributionId: contribution.id,
         pullId: pull.id,
         amount: contribution.amount,
@@ -468,10 +485,8 @@ export const checkContributionStatus = async (req, res) => {
           contribution.status = 'completed';
           await contribution.save();
 
-          // Mettre à jour le montant de la cagnotte
+          // Le trigger de base de données mettra automatiquement à jour currentAmount
           const pull = contribution.Pull;
-          pull.currentAmount = parseFloat(pull.currentAmount) + parseFloat(contribution.amount);
-          await pull.save();
 
           // Mettre à jour la transaction
           await Transaction.update(
@@ -480,7 +495,7 @@ export const checkContributionStatus = async (req, res) => {
           );
 
           // Émettre un événement temps réel
-          emitRealtimeUpdate('contribution-completed', {
+          (await getEmitRealtimeUpdate())('contribution-completed', {
             contributionId: contribution.id,
             pullId: pull.id,
             amount: contribution.amount,
@@ -646,6 +661,7 @@ export const createAnonymous = async (req, res) => {
       contributorName: contributorName || 'Anonyme',
       contributorEmail: contributorEmail || null,
       message: message || null,
+      paymentMethod: finalPaymentMethod, // Ajouter la méthode de paiement
       anonymous: true
     });
 
@@ -716,4 +732,35 @@ export const createAnonymous = async (req, res) => {
   }
 };
 
-export default { getStats, create, handlePaymentWebhook, checkContributionStatus, getMyContributions, createAnonymous };
+// 📊 CALCULER LA MOYENNE DES DONS PAR UTILISATEUR
+export const getAverageDonation = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Calculer la moyenne des contributions complétées pour cet utilisateur
+    const [result] = await sequelize.query(
+      'SELECT COALESCE(AVG(amount), 0) as average FROM contributions WHERE "userId" = $1 AND status = \'completed\'',
+      {
+        bind: [userId],
+        type: QueryTypes.SELECT
+      }
+    );
+
+    const averageDonation = parseFloat(result.average) || 0;
+
+    res.json({
+      success: true,
+      averageDonation: averageDonation
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors du calcul de la moyenne des dons:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du calcul de la moyenne des dons',
+      details: error.message
+    });
+  }
+};
+
+export default { getStats, create, handlePaymentWebhook, checkContributionStatus, getMyContributions, createAnonymous, getAverageDonation };

@@ -1,6 +1,7 @@
 /**
  * 📝 Système de logging pour les actions administrateur
  */
+import { Op } from 'sequelize';
 import db from '../models/index.js';
 
 const { Log } = db;
@@ -24,8 +25,17 @@ export const ADMIN_ACTIONS = {
   
   // Modération
   REPORT_HANDLED: 'REPORT_HANDLED',
+  REPORT_RESOLVED: 'REPORT_RESOLVED',
+  REPORT_REJECTED: 'REPORT_REJECTED',
   CONTENT_MODERATED: 'CONTENT_MODERATED',
-  
+
+  // KYC
+  KYC_VALIDATED: 'KYC_VALIDATED',
+  KYC_REJECTED: 'KYC_REJECTED',
+
+  // Notifications
+  NOTIFICATION_READ: 'NOTIFICATION_READ',
+
   // Exports
   DATA_EXPORTED: 'DATA_EXPORTED',
 
@@ -51,19 +61,30 @@ export const logAdminAction = async (action, adminUser, details = {}, ipAddress 
     const logEntry = {
       userId: adminUser?.id || null,
       action,
-      details: {
+      entityType: details?.entityType || 'admin_action',
+      details: JSON.stringify({
         ...details,
         adminEmail: adminUser?.email,
         adminName: adminUser?.name,
         timestamp: new Date().toISOString(),
         ipAddress,
         userAgent
-      }
+      }),
+      ipAddress: ipAddress || null,
+      createdAt: new Date()
     };
 
-    await Log.create(logEntry);
+    const log = await Log.create(logEntry);
     
     console.log(`📝 Admin action logged: ${action} by ${adminUser?.email || 'unknown'}`);
+
+    // Notifier les clients WebSocket si le service est disponible
+    try {
+      const { sendStats } = await import('../services/socketService.js');
+      await sendStats();
+    } catch (e) {
+      console.warn('WebSocket notification skipped:', e.message);
+    }
   } catch (error) {
     console.error('❌ Erreur lors du logging admin:', error);
   }
@@ -87,6 +108,30 @@ export const getAdminLogs = async (filters = {}) => {
     } = filters;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Construire les conditions de filtre
+    const where = {};
+    
+    if (action) {
+      where.action = action;
+    }
+    
+    if (adminId) {
+      where.userId = adminId;
+    }
+    
+    if (startDate && endDate) {
+      where.createdAt = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+    }
+    
+    if (search) {
+      where[Op.or] = [
+        { action: { [Op.iLike]: `%${search}%` } },
+        { details: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
     const whereConditions = {};
 
     // Filtres
@@ -95,15 +140,15 @@ export const getAdminLogs = async (filters = {}) => {
     
     if (startDate || endDate) {
       whereConditions.createdAt = {};
-      if (startDate) whereConditions.createdAt[db.Sequelize.Op.gte] = new Date(startDate);
-      if (endDate) whereConditions.createdAt[db.Sequelize.Op.lte] = new Date(endDate);
+      if (startDate) whereConditions.createdAt[Op.gte] = new Date(startDate);
+      if (endDate) whereConditions.createdAt[Op.lte] = new Date(endDate);
     }
 
     // Recherche textuelle dans les détails
     if (search) {
-      whereConditions[db.Sequelize.Op.or] = [
-        { action: { [db.Sequelize.Op.iLike]: `%${search}%` } },
-        { 'details.adminEmail': { [db.Sequelize.Op.iLike]: `%${search}%` } }
+      whereConditions[Op.or] = [
+        { action: { [Op.iLike]: `%${search}%` } },
+        { 'details.adminEmail': { [Op.iLike]: `%${search}%` } }
       ];
     }
 
@@ -155,8 +200,8 @@ export const getAdminActivityStats = async (days = 30) => {
         [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']
       ],
       where: {
-        createdAt: { [db.Sequelize.Op.gte]: startDate },
-        action: { [db.Sequelize.Op.in]: Object.values(ADMIN_ACTIONS) }
+        createdAt: { [Op.gte]: startDate },
+        action: { [Op.in]: Object.values(ADMIN_ACTIONS) }
       },
       group: ['action'],
       order: [[db.sequelize.fn('COUNT', db.sequelize.col('id')), 'DESC']]
@@ -177,8 +222,8 @@ export const getAdminActivityStats = async (days = 30) => {
         }
       ],
       where: {
-        createdAt: { [db.Sequelize.Op.gte]: startDate },
-        userId: { [db.Sequelize.Op.not]: null }
+        createdAt: { [Op.gte]: startDate },
+        userId: { [Op.not]: null }
       },
       group: ['userId', 'user.id', 'user.name', 'user.email'],
       order: [[db.sequelize.fn('COUNT', db.sequelize.col('Log.id')), 'DESC']]
@@ -191,8 +236,8 @@ export const getAdminActivityStats = async (days = 30) => {
         [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']
       ],
       where: {
-        createdAt: { [db.Sequelize.Op.gte]: startDate },
-        action: { [db.Sequelize.Op.in]: Object.values(ADMIN_ACTIONS) }
+        createdAt: { [Op.gte]: startDate },
+        action: { [Op.in]: Object.values(ADMIN_ACTIONS) }
       },
       group: [db.sequelize.fn('DATE', db.sequelize.col('createdAt'))],
       order: [[db.sequelize.fn('DATE', db.sequelize.col('createdAt')), 'ASC']]

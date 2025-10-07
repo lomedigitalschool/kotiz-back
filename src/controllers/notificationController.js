@@ -82,7 +82,7 @@ router.put('/read-all', async (req, res) => {
 
     try {
         const [updatedCount] = await Notification.update(
-            { status: 'read', isRead: true },
+            { status: 'read', read: true },
             {
                 where: {
                     userId: userId,

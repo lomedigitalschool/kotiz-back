@@ -53,7 +53,8 @@ class NotificationService {
         try {
             const notification = await Notification.findByPk(notificationId);
             if (notification) {
-                notification.isRead = true;
+                notification.read = true;
+                notification.status = 'read';
                 await notification.save();
                 console.log(`✅ Notification ${notificationId} marquée comme lue.`);
                 return true;
@@ -81,7 +82,7 @@ class NotificationService {
             const offset = (page - 1) * limit;
 
             const where = { userId };
-            if (status) where.isRead = status === 'read';
+            if (status) where.read = status === 'read';
 
             const notifications = await Notification.findAndCountAll({
                 where,
@@ -115,7 +116,7 @@ class NotificationService {
             const unreadCount = await Notification.count({
                 where: {
                     userId,
-                    isRead: false
+                    read: false
                 }
             });
             return unreadCount;

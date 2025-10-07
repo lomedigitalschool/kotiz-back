@@ -1,6 +1,24 @@
 import { Model, DataTypes } from 'sequelize';
+import bcrypt from 'bcrypt';
 
 class User extends Model {
+  // Méthode pour valider le mot de passe - requise par AdminJS
+  async validPassword(password) {
+    try {
+      if (!this.passwordHash) {
+        console.log('❌ Pas de hash de mot de passe trouvé');
+        return false;
+      }
+      console.log('📝 Test du mot de passe avec hash:', this.passwordHash);
+      const isValid = await bcrypt.compare(password, this.passwordHash);
+      console.log('🔐 Résultat de la validation:', isValid ? '✅' : '❌');
+      return isValid;
+    } catch (error) {
+      console.error('❌ Erreur lors de la validation du mot de passe:', error);
+      return false;
+    }
+  }
+
   static associate(models) {
     User.hasMany(models.Pull, { foreignKey: 'userId', as: 'pulls' });
     User.hasMany(models.Contribution, { foreignKey: 'userId', as: 'contributions' });
@@ -76,6 +94,16 @@ function initUser(sequelize) {
       mustHaveUniqueIdentifier() {
         if (!this.email && !this.phone && !this.firebaseUid) {
           throw new Error('Un utilisateur doit avoir soit un e-mail, soit un numéro de téléphone, soit un UID Firebase.');
+        }
+      }
+    },
+    hooks: {
+      // Hash le mot de passe avant la sauvegarde si c'est un mot de passe brut
+      beforeSave: async (user) => {
+        if (user.changed('passwordHash') && user.passwordHash && !user.passwordHash.startsWith('$2')) {
+          console.log('🔒 Hachage du mot de passe brut...');
+          const salt = await bcrypt.genSalt(10);
+          user.passwordHash = await bcrypt.hash(user.passwordHash, salt);
         }
       }
     }

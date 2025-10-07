@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, H1, H2, H3, Text, Button, Table, TableHead, TableBody,
-  TableRow, TableCell, Badge
+  TableRow, TableCell, Badge, Select
 } from '@adminjs/design-system';
 
 const AdminDashboard = () => {
@@ -18,6 +18,11 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [dataChanged, setDataChanged] = useState(false);
+  const [exportConfig, setExportConfig] = useState({
+    dataType: 'contributions',
+    format: 'csv'
+  });
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -54,7 +59,7 @@ const AdminDashboard = () => {
       const newMetrics = {
         totalUsers: usersData.total || 0,
         totalCollected: contributionsData.totalCollected || 0,
-        activeCagnottes: cagnottesData.activeCount || 0,
+        activeCagnottes: cagnottesData.activeCount || cagnottesData.active || 0,
         monthlyContributions: contributionsData.monthlyAmount || 0,
         monthlyContributionCount: contributionsData.monthlyCount || 0,
         topCagnottes: cagnottesData.topCagnottes || [],
@@ -77,6 +82,43 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
       setLoading(false);
+    }
+  };
+
+  const handleQuickExport = async () => {
+    if (!exportConfig.dataType || !exportConfig.format) {
+      alert('Veuillez sélectionner un type de données et un format');
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      const baseUrl = window.location.origin;
+      const endpoint = `/api/v1/admin/export/${exportConfig.dataType}?format=${exportConfig.format}&dateRange=30&status=all`;
+      
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${exportConfig.dataType}_${new Date().toISOString().split('T')[0]}.${exportConfig.format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        alert('Export terminé avec succès !');
+      } else {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Erreur export:', error);
+      alert(`Erreur lors de l'export: ${error.message}`);
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -262,14 +304,56 @@ const AdminDashboard = () => {
         </Box>
       </Box>
 
+      {/* Export rapide */}
+      <Box mt="xl" p="lg" bg="white" borderRadius="lg" boxShadow="card" border="1px solid" borderColor="grey20">
+        <H3 mb="md" style={{ color: '#4CA260' }}>📤 Export rapide</H3>
+        <Box display="grid" gridTemplateColumns="1fr 1fr 1fr" gap="md" alignItems="end">
+          <Box>
+            <Text fontWeight="bold" mb="sm">Type de données</Text>
+            <Select
+              value={exportConfig.dataType}
+              onChange={(value) => setExportConfig(prev => ({ ...prev, dataType: value }))}
+              options={[
+                { value: 'contributions', label: 'Contributions' },
+                { value: 'users', label: 'Utilisateurs' },
+                { value: 'pulls', label: 'Cagnottes' },
+                { value: 'transactions', label: 'Transactions' }
+              ]}
+            />
+          </Box>
+          <Box>
+            <Text fontWeight="bold" mb="sm">Format</Text>
+            <Select
+              value={exportConfig.format}
+              onChange={(value) => setExportConfig(prev => ({ ...prev, format: value }))}
+              options={[
+                { value: 'csv', label: 'CSV' },
+                { value: 'excel', label: 'Excel' },
+                { value: 'pdf', label: 'PDF' }
+              ]}
+            />
+          </Box>
+          <Box>
+            <Button
+              variant="primary"
+              onClick={handleQuickExport}
+              disabled={exportLoading}
+              style={{ width: '100%' }}
+            >
+              {exportLoading ? '⏳ Export...' : '🚀 Exporter'}
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+
       {/* Actions rapides */}
-      <Box mt="xl" p="lg" bg="grey0" borderRadius="lg" border="1px solid" borderColor="grey20">
+      <Box mt="lg" p="lg" bg="grey0" borderRadius="lg" border="1px solid" borderColor="grey20">
         <H3 mb="md">Actions rapides</H3>
         <Box display="flex" gap="md" flexWrap="wrap">
           <Button variant="primary" as="a" href="/admin/resources/User">
             Gérer les utilisateurs
           </Button>
-          <Button variant="secondary" as="a" href="/admin/resources/Pulls">
+          <Button variant="secondary" as="a" href="/admin/resources/Pull">
             Gérer les cagnottes
           </Button>
           <Button variant="success" as="a" href="/admin/resources/Report">

@@ -269,20 +269,44 @@ export const update = async (req, res) => {
   }
 };
 
-// Supprimer un Pull (uniquement si l'utilisateur est propriétaire)
+// Supprimer un Pull et ses contributions (uniquement si l'utilisateur est propriétaire et que la cagnotte est fermée)
 export const remove = async (req, res) => {
   try {
-    const deleted = await Pull.destroy({
+    // Vérifier que la cagnotte existe et appartient à l'utilisateur
+    const pull = await Pull.findOne({
       where: {
         id: req.params.id,
-        userId: req.user.id // ✅ Vérifier que l'utilisateur est propriétaire
+        userId: req.user.id
       }
     });
-    if (!deleted) return res.status(404).json({ message: "Pull introuvable ou accès non autorisé" });
 
-    res.json({ message: "Pull supprimé" });
+    if (!pull) {
+      return res.status(404).json({ message: "Cagnotte introuvable ou accès non autorisé" });
+    }
+
+    // Permettre la suppression des cagnottes actives (avec avertissement)
+    // if (pull.status !== 'closed') {
+    //   return res.status(400).json({ message: "Seules les cagnottes fermées peuvent être supprimées" });
+    // }
+
+    // Supprimer les contributions associées
+    await Contribution.destroy({
+      where: {
+        pullId: req.params.id
+      }
+    });
+
+    // Supprimer la cagnotte
+    await Pull.destroy({
+      where: {
+        id: req.params.id,
+        userId: req.user.id
+      }
+    });
+
+    res.json({ message: "Cagnotte et ses contributions supprimées avec succès" });
   } catch (err) {
-    console.error(err);
+    console.error('Erreur lors de la suppression:', err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -858,10 +882,25 @@ export const withdrawFunds = async (req, res) => {
    const isDeadlinePassed = pull.deadline && new Date() > new Date(pull.deadline);
    const isClosed = pull.status === 'closed';
 
+   console.log('Conditions de retrait:', {
+     isClosed,
+     isGoalReached,
+     isDeadlinePassed,
+     totalCollected,
+     goalAmount: pull.goalAmount
+   });
+
+   // Permettre le retrait si la cagnotte est fermée OU si l'objectif est atteint OU si la date limite est dépassée
    if (!isClosed && !isGoalReached && !isDeadlinePassed) {
      return res.status(400).json({
        success: false,
-       error: "Conditions de retrait non remplies. La cagnotte doit être fermée, l'objectif atteint ou la date limite dépassée."
+       error: "Conditions de retrait non remplies",
+       message: "La cagnotte doit être fermée, l'objectif atteint ou la date limite dépassée pour effectuer un retrait.",
+       conditions: {
+         isClosed,
+         isGoalReached,
+         isDeadlinePassed
+       }
      });
    }
 
@@ -1000,6 +1039,64 @@ export const getWithdrawalsByPullId = async (req, res) => {
 };
 
 // ====================
+// 🔒 FERMER UNE CAGNOTTE
+// ====================
+export const closePull = async (req, res) => {
+ try {
+   const { id } = req.params;
+   const userId = req.user.id;
+
+   console.log(`=== FERMETURE CAGNOTTE ${id} ===`);
+
+   // Vérifier que la cagnotte existe et appartient à l'utilisateur
+   const pull = await Pull.findOne({
+     where: {
+       id: parseInt(id),
+       userId: userId
+     }
+   });
+
+   if (!pull) {
+     return res.status(404).json({
+       success: false,
+       error: "Cagnotte non trouvée ou accès non autorisé"
+     });
+   }
+
+   if (pull.status === 'closed') {
+     return res.status(400).json({
+       success: false,
+       error: "Cette cagnotte est déjà fermée"
+     });
+   }
+
+   // Fermer la cagnotte
+   pull.status = 'closed';
+   await pull.save();
+
+   console.log(`✅ Cagnotte ${id} fermée avec succès`);
+
+   res.json({
+     success: true,
+     message: "Cagnotte fermée avec succès",
+     pull: {
+       id: pull.id,
+       title: pull.title,
+       status: pull.status
+     }
+   });
+
+ } catch (err) {
+   console.error(`❌ Erreur lors de la fermeture de la cagnotte ${req.params.id}:`, err);
+   res.status(500).json({
+     success: false,
+     error: "Erreur lors de la fermeture de la cagnotte",
+     details: err.message
+   });
+ }
+};
+
+// ====================
 // 📋 RÉCUPÉRER LES CONTRIBUTIONS D'UNE CAGNOTTE PAR ID
 // ====================
 export const getContributionsByPullId = async (req, res) => {
@@ -1037,19 +1134,14 @@ export const getContributionsByPullId = async (req, res) => {
 
     // Pour les cagnottes privées, seuls les propriétaires peuvent voir les contributions
     if (isPrivate && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        error: "Accès refusé - Cette cagnotte est privée"
+      console.log(`Accès refusé aux contributions de la cagnotte privée ${id} - Utilisateur non propriétaire`);
+      return res.json({
+        success: true,
+        data: [],
+        message: "Aucune contribution accessible"
       });
     }
 
-    // Pour les cagnottes privées, seuls les propriétaires peuvent voir les contributions
-    if (isPrivate && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        error: "Accès refusé - Cette cagnotte est privée"
-      });
-    }
 
     // Les propriétaires peuvent toujours voir les contributions de leurs cagnottes (même fermées)
     // Les cagnottes publiques fermées permettent à tout le monde de voir les contributions finales

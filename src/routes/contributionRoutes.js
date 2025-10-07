@@ -20,4 +20,7 @@ router.get('/:id/status', authenticate, contributionController.checkContribution
 // Mes contributions
 router.get('/my', authenticate, contributionController.getMyContributions);
 
+// Moyenne des dons
+router.get('/average-donation', authenticate, contributionController.getAverageDonation);
+
 export default router;

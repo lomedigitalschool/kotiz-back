@@ -2,37 +2,41 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Ajouter la colonne currency
-    await queryInterface.addColumn('contributions', 'currency', {
-      type: Sequelize.ENUM('XOF','EUR','USD'),
-      defaultValue: 'XOF',
-      allowNull: false
-    });
+    const tableDescription = await queryInterface.describeTable('contributions');
 
-    // Ajouter la colonne status
-    await queryInterface.addColumn('contributions', 'status', {
-      type: Sequelize.ENUM('pending','completed','failed'),
-      defaultValue: 'pending',
-      allowNull: false
-    });
+    // Ajouter la colonne currency si elle n'existe pas
+    if (!tableDescription.currency) {
+      await queryInterface.addColumn('contributions', 'currency', {
+        type: Sequelize.ENUM('XOF','EUR','USD'),
+        defaultValue: 'XOF',
+        allowNull: false
+      });
+    }
 
-    // Ajouter la colonne contributorName
-    await queryInterface.addColumn('contributions', 'contributorName', {
-      type: Sequelize.STRING,
-      allowNull: true,
-      validate: {
-        len: [0, 255]
-      }
-    });
+    // Ajouter la colonne status si elle n'existe pas
+    if (!tableDescription.status) {
+      await queryInterface.addColumn('contributions', 'status', {
+        type: Sequelize.ENUM('pending','completed','failed'),
+        defaultValue: 'pending',
+        allowNull: false
+      });
+    }
 
-    // Ajouter la colonne contributorEmail
-    await queryInterface.addColumn('contributions', 'contributorEmail', {
-      type: Sequelize.STRING,
-      allowNull: true,
-      validate: {
-        isEmail: true
-      }
-    });
+    // Ajouter la colonne contributorName si elle n'existe pas
+    if (!tableDescription.contributorName) {
+      await queryInterface.addColumn('contributions', 'contributorName', {
+        type: Sequelize.STRING,
+        allowNull: true
+      });
+    }
+
+    // Ajouter la colonne contributorEmail si elle n'existe pas
+    if (!tableDescription.contributorEmail) {
+      await queryInterface.addColumn('contributions', 'contributorEmail', {
+        type: Sequelize.STRING,
+        allowNull: true
+      });
+    }
   },
 
   down: async (queryInterface, Sequelize) => {

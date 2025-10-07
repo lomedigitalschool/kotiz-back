@@ -1,5 +1,4 @@
 import React from 'react';
-import Select from 'react-select';
 
 const SelectField = (props) => {
   const { property, record, onChange } = props;
@@ -9,20 +8,33 @@ const SelectField = (props) => {
     label: value.label
   })) || [];
 
-  const value = options.find(option => option.value === record.params[property.name]);
+  const currentValue = record.params?.[property.name] || record?.[property.name] || '';
 
-  const handleChange = (selectedOption) => {
-    onChange(property.name, selectedOption?.value || '');
+  const handleChange = (event) => {
+    onChange(property.name, event.target.value || '');
   };
 
   return (
-    <Select
-      value={value}
+    <select
+      value={currentValue}
       onChange={handleChange}
-      options={options}
-      placeholder="Sélectionner..."
-      isClearable
-    />
+      style={{
+        width: '100%',
+        padding: '8px 12px',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        fontSize: '14px',
+        backgroundColor: 'white',
+        minHeight: '36px'
+      }}
+    >
+      <option value="">Sélectionner...</option>
+      {options.map(option => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 };
 

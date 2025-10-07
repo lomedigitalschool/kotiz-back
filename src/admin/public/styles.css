@@ -1,0 +1,21 @@
+.adminjs-login {
+  background: #f5f5f5;
+}
+
+.adminjs-login__logo {
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.adminjs-dashboard {
+  padding: 2rem;
+}
+
+.adminjs-sidebar {
+  background: #2c3e50;
+}
+
+.adminjs-topbar {
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}

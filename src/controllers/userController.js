@@ -143,56 +143,11 @@ const getDashboard = async (req, res) => {
     const userId = req.user.id;
     console.log('📊 DASHBOARD - Requête pour user ID:', userId, req.user.name);
 
-    // Mes cagnottes avec enrichissement des données
-    const myPullsRaw = await Pull.findAll({
-      where: { userId },
-      include: [
-        {
-          model: Contribution,
-          as: 'contributions',
-          attributes: ['id', 'amount', 'contributorName', 'createdAt'],
-          where: { status: 'completed' },
-          required: false,
-          include: [{
-            model: User,
-            as: 'contributor',
-            attributes: ['id', 'name', 'email']
-          }]
-        },
-        {
-          model: User,
-          as: 'owner',
-          attributes: ['id', 'name', 'email']
-        }
-      ]
+    // Mes cagnottes
+    const myPulls = await Pull.findAll({
+      where: { userId }
     });
 
-    // Enrichir les données des cagnottes comme dans getAllCagnottes
-    const myPulls = myPullsRaw.map(pull => {
-      const totalCollected = pull.contributions?.reduce((sum, contrib) => {
-        return sum + parseFloat(contrib.amount || 0);
-      }, 0) || 0;
-
-      return {
-        id: pull.id,
-        title: pull.title,
-        description: pull.description,
-        goalAmount: parseFloat(pull.goalAmount),
-        currentAmount: totalCollected,
-        currency: pull.currency,
-        deadline: pull.deadline,
-        type: pull.type,
-        imageUrl: pull.imageUrl,
-        status: pull.status,
-        createdAt: pull.createdAt,
-        userId: pull.userId,
-        owner: pull.owner,
-        contributionCount: pull.contributions?.length || 0,
-        progressPercentage: pull.goalAmount > 0 ?
-          Math.round((totalCollected / parseFloat(pull.goalAmount)) * 100) : 0,
-        recentContributions: pull.contributions?.slice(-5) || []
-      };
-    });
 
     // Nombre de cagnottes actives
     const activePullsCount = await Pull.count({

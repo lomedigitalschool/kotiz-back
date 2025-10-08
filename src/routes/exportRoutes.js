@@ -39,7 +39,7 @@ const formatData = (data, type) => {
 };
 
 // Route d'export générique
-router.get('/export/:type', isAdmin, async (req, res) => {
+router.get('/:type', isAdmin, async (req, res) => {
   try {
     console.log('📦 Export demandé:', {
       params: req.params,
@@ -170,6 +170,35 @@ router.get('/export/:type', isAdmin, async (req, res) => {
     }
   } catch (error) {
     console.error('Erreur lors de l\'export:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Routes spécifiques pour les exports
+router.get('/users/csv', isAdmin, async (req, res) => {
+  try {
+    const users = await User.findAll();
+    const formattedData = formatData(users, 'users');
+    const parser = new json2csv.Parser();
+    const csv = parser.parse(formattedData);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=users.csv');
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/transactions/csv', isAdmin, async (req, res) => {
+  try {
+    const transactions = await Transaction.findAll();
+    const formattedData = formatData(transactions, 'transactions');
+    const parser = new json2csv.Parser();
+    const csv = parser.parse(formattedData);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
+    res.send(csv);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

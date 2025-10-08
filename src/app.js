@@ -136,6 +136,7 @@ import exportRoutes from './routes/exportRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import testRoutes from './routes/testRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import adminApiRoutes from './routes/adminApiRoutes.js';
 
 // AdminJS
 import initSimpleAdmin from './config/adminSimple.js';
@@ -165,6 +166,7 @@ app.use('/api/v1/transactions', firebaseAuth, transactionRoutes);
 app.use('/api/v1/notifications', firebaseAuth, notificationRoutes);
 app.use('/api/v1/admin', adminJSAuth, isAdmin, adminRoutes);
 app.use('/api/v1/admin', adminJSAuth, isAdmin, exportRoutes);
+app.use('/admin/api', adminApiRoutes);
 app.use('/api/v1', statsRoutes);
 app.use('/api/v1/kyc', kycRoutes);
 app.use('/api/v1/otp', otpRoutes);

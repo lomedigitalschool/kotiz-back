@@ -22,13 +22,19 @@ const initAdmin = async () => {
   console.log('🔧 Initialisation AdminJS...');
   
   const componentLoader = new ComponentLoader();
+  
+  // Chargement des composants avec vérification
   const dashboardComponent = componentLoader.add('AdminDashboard', join(__dirname, '../config/components/AdminDashboard.jsx'));
+  const exportComponent = componentLoader.add('Export', join(__dirname, '../config/components/Export.jsx'));
+  const moderationComponent = componentLoader.add('Moderation', join(__dirname, '../config/components/Moderation.jsx'));
+  const statsComponent = componentLoader.add('Stats', join(__dirname, '../config/components/Stats.jsx'));
   
   const admin = new AdminJS({
     databases: [sequelize],
     rootPath: '/admin',
     loginPath: '/admin/login',
     logoutPath: '/admin/logout',
+    componentLoader,
     env: {
       IS_PRODUCTION: process.env.NODE_ENV === 'production'
     },
@@ -273,17 +279,24 @@ const initAdmin = async () => {
       }
     ],
     pages: {
-      'Dashboard': { component: dashboardComponent, icon: 'Home' },
+      'Dashboard': { 
+        component: dashboardComponent, 
+        icon: 'Home',
+        handler: async () => {
+          const stats = await calculateDashboardStats();
+          return { stats };
+        }
+      },
       'Modération': {
-        component: componentLoader.add('Moderation', join(__dirname, '../config/components/Moderation.jsx')),
+        component: moderationComponent,
         icon: 'Shield'
       },
       'Statistiques Détaillées': {
-        component: componentLoader.add('Stats', join(__dirname, '../config/components/Stats.jsx')),
+        component: statsComponent,
         icon: 'Analytics'
       },
       'Exports': {
-        component: componentLoader.add('Export', join(__dirname, '../config/components/Export.jsx')),
+        component: exportComponent,
         icon: 'Download'
       }
     }

@@ -92,4 +92,37 @@ router.get('/pulls/stats', async (req, res) => {
   }
 });
 
+// Activité récente pour le dashboard admin
+router.get('/admin/recent-activity', async (req, res) => {
+  try {
+    const { Log } = db;
+    
+    const activities = await Log.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 10,
+      include: [{
+        model: User,
+        attributes: ['name', 'email'],
+        required: false
+      }]
+    });
+
+    const formattedActivities = activities.map(activity => ({
+      id: activity.id,
+      action: activity.action,
+      description: activity.details || activity.action,
+      createdAt: activity.createdAt,
+      user: activity.User ? {
+        name: activity.User.name,
+        email: activity.User.email
+      } : null
+    }));
+
+    res.json({ activities: formattedActivities });
+  } catch (error) {
+    console.error('Erreur récupération activité récente:', error);
+    res.json({ activities: [] });
+  }
+});
+
 export default router;

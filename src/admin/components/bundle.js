@@ -3,8 +3,8 @@ import { ComponentLoader } from 'adminjs'
 const componentLoader = new ComponentLoader()
 
 const bundle = async () => {
-  // Temporarily disable custom dashboard to avoid bundle issues
-  // componentLoader.add('Dashboard', './Dashboard.jsx')
+  componentLoader.add('Dashboard', './Dashboard.jsx')
+  componentLoader.add('SimpleDashboard', './SimpleDashboard.jsx')
   const components = await componentLoader.load()
   return { components, componentLoader }
 }

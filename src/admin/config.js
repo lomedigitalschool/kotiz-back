@@ -17,9 +17,9 @@ const getAdminJSConfig = async (mongoose) => {
     loginPath: '/admin/login',
     logoutPath: '/admin/logout',
     componentLoader,
-    dashboard: {
-      component: components.Dashboard,
-    },
+    // dashboard: {
+    //   component: components.Dashboard,
+    // },
     branding: {
       companyName: 'Kotiz Admin',
       logo: '/admin/logo.png',
@@ -39,6 +39,19 @@ const getAdminJSConfig = async (mongoose) => {
     },
     assets: {
       styles: ['/admin/styles.css'],
+    },
+    pages: {
+      simpleDashboard: {
+        label: 'Dashboard Simplifié',
+        handler: async (request, response, context) => {
+          const { calculateDashboardStats } = await import('../services/statsService.js');
+          const stats = await calculateDashboardStats();
+          return {
+            stats,
+          };
+        },
+        component: components.SimpleDashboard,
+      },
     },
     resources: [
       {

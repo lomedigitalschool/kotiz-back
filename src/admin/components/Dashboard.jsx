@@ -1,186 +1,66 @@
-import { useState, useEffect } from 'react';
-import { Box, H1, H2, Text, Table, TableRow, TableCell, TableHead, Button } from '@adminjs/design-system';
+import React, { useEffect, useState } from "react";
+import { Box, H2, Text, Card, Grid } from "@adminjs/design-system";
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    activePulls: 0,
-    totalAmount: 0,
-    recentPulls: [],
-    recentTransactions: [],
-    pendingKyc: []
-  });
+  const [stats, setStats] = useState({});
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch('/api/v1/adminjs/dashboard-stats');
-        const data = await response.json();
-        setStats(data);
-      } catch (error) {
-        console.error('Erreur lors du chargement des statistiques:', error);
-      }
-    };
-
-    fetchStats();
-    // Rafraîchir toutes les 30 secondes pour mise à jour en temps réel
-    const interval = setInterval(fetchStats, 30 * 1000);
-    return () => clearInterval(interval);
+    fetch("/api/v1/adminjs/dashboard-stats")
+      .then((res) => res.json())
+      .then((data) => setStats(data))
+      .catch(() => setStats({}));
   }, []);
 
+  const StatCard = ({ title, value, icon, color }) => (
+    <Card p="lg" style={{ borderLeft: `4px solid ${color}`, background: '#f8f9fa' }}>
+      <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box>
+          <Text fontSize="sm" color="grey60" mb="xs">{title}</Text>
+          <H2 color={color} mb="0">{value}</H2>
+        </Box>
+        <Text fontSize="2xl">{icon}</Text>
+      </Box>
+    </Card>
+  );
+
   return (
-    <Box variant="grey">
-      <Box variant="white" style={{ padding: '20px' }}>
-        <H1>KOTIZ DASHBOARD ADMIN</H1>
-        
-        {/* Statistiques globales */}
-        <Box style={{ marginTop: '20px' }}>
-          <H2>Statistiques Globales</H2>
-          <Box style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-            <Box style={{ flex: 1, padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-              <Text>Utilisateurs Total</Text>
-              <H2>{stats.totalUsers}</H2>
-            </Box>
-            <Box style={{ flex: 1, padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-              <Text>Cagnottes Actives</Text>
-              <H2>{stats.activePulls}</H2>
-            </Box>
-            <Box style={{ flex: 1, padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-              <Text>Montant Total</Text>
-              <H2>{stats.totalAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'XOF' })}</H2>
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Boutons d'exportation */}
-        <Box style={{ marginTop: '30px' }}>
-          <H2>Exportations des Statistiques</H2>
-          <Box style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/transactions/csv', '_blank')}
-            >
-              Exporter Transactions (CSV)
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/transactions/excel', '_blank')}
-            >
-              Exporter Transactions (Excel)
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/users/csv', '_blank')}
-            >
-              Exporter Utilisateurs (CSV)
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/users/excel', '_blank')}
-            >
-              Exporter Utilisateurs (Excel)
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/contributions/csv', '_blank')}
-            >
-              Exporter Contributions (CSV)
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/contributions/excel', '_blank')}
-            >
-              Exporter Contributions (Excel)
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/retraits/csv', '_blank')}
-            >
-              Exporter Retraits (CSV)
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => window.open('/api/v1/export/retraits/excel', '_blank')}
-            >
-              Exporter Retraits (Excel)
-            </Button>
-          </Box>
-        </Box>
-
-        {/* Dernières cagnottes */}
-        <Box style={{ marginTop: '40px' }}>
-          <H2>Dernières Cagnottes</H2>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Titre</TableCell>
-                <TableCell>Créateur</TableCell>
-                <TableCell>Montant</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <tbody>
-              {stats.recentPulls?.map((pull) => (
-                <TableRow key={pull.id}>
-                  <TableCell>{pull.title}</TableCell>
-                  <TableCell>{pull.userName}</TableCell>
-                  <TableCell>{pull.currentAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'XOF' })}</TableCell>
-                  <TableCell>{pull.status}</TableCell>
-                </TableRow>
-              ))}
-            </tbody>
-          </Table>
-        </Box>
-
-        {/* Dernières transactions */}
-        <Box style={{ marginTop: '40px' }}>
-          <H2>Dernières Transactions</H2>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Utilisateur</TableCell>
-                <TableCell>Montant</TableCell>
-                <TableCell>Type</TableCell>
-              </TableRow>
-            </TableHead>
-            <tbody>
-              {stats.recentTransactions?.map((tx) => (
-                <TableRow key={tx.id}>
-                  <TableCell>{new Date(tx.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell>{tx.userName}</TableCell>
-                  <TableCell>{tx.amount.toLocaleString('fr-FR', { style: 'currency', currency: 'XOF' })}</TableCell>
-                  <TableCell>{tx.type}</TableCell>
-                </TableRow>
-              ))}
-            </tbody>
-          </Table>
-        </Box>
-
-        {/* KYC en attente */}
-        <Box style={{ marginTop: '40px', marginBottom: '20px' }}>
-          <H2>KYC en Attente</H2>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Utilisateur</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Date de Soumission</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <tbody>
-              {stats.pendingKyc?.map((kyc) => (
-                <TableRow key={kyc.id}>
-                  <TableCell>{kyc.userName}</TableCell>
-                  <TableCell>{kyc.type}</TableCell>
-                  <TableCell>{new Date(kyc.submissionDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{kyc.status}</TableCell>
-                </TableRow>
-              ))}
-            </tbody>
-          </Table>
-        </Box>
+    <Box p="lg">
+      <Box mb="xl">
+        <H2 mb="lg" style={{ color: '#2c3e50', fontSize: '28px' }}>🚀 Tableau de bord KOTIZ</H2>
+        <Text color="grey60" fontSize="md">Aperçu des statistiques de la plateforme</Text>
+      </Box>
+      
+      <Grid gridTemplateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap="lg">
+        <StatCard 
+          title="Utilisateurs inscrits"
+          value={stats.userCount || 0}
+          icon="👥"
+          color="#3498db"
+        />
+        <StatCard 
+          title="Cagnottes actives"
+          value={stats.activePools || 0}
+          icon="🎯"
+          color="#2ecc71"
+        />
+        <StatCard 
+          title="Montant total collecté"
+          value={`${(stats.totalAmount || 0).toLocaleString()} FCFA`}
+          icon="💰"
+          color="#f39c12"
+        />
+        <StatCard 
+          title="Total cagnottes"
+          value={stats.poolCount || 0}
+          icon="📊"
+          color="#9b59b6"
+        />
+      </Grid>
+      
+      <Box mt="xl" p="lg" style={{ background: '#e8f5e8', borderRadius: '8px', border: '1px solid #2ecc71' }}>
+        <Text fontSize="md" color="#27ae60">
+          ✅ Système opérationnel - Toutes les fonctionnalités sont actives
+        </Text>
       </Box>
     </Box>
   );

@@ -119,7 +119,14 @@ try {
   const { default: AdminJSExpress } = await import('@adminjs/express');
   console.log('📦 Modules AdminJS chargés');
 
-  const admin = await createAdminConfig();
+  const { default: initSimpleAdmin } = await import('./config/adminSimple.js');
+  const { admin, adminRouter: simpleAdminRouter } = await initSimpleAdmin();
+  
+  app.use(admin.options.rootPath, simpleAdminRouter);
+  console.log('✅ AdminJS simple configuré sur', admin.options.rootPath);
+  
+  // Remplacer la configuration précédente
+  /*const admin = await createAdminConfig();
   const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
     admin,
     {
@@ -180,8 +187,9 @@ try {
     next();
   });
 
-  app.use(admin.options.rootPath, adminRouter);
-  console.log('✅ AdminJS monté sur:', admin.options.rootPath);
+  // app.use(admin.options.rootPath, adminRouter);
+  // console.log('✅ AdminJS monté sur:', admin.options.rootPath);
+  */
   console.log('🔑 AdminJS prêt pour connexion');
 } catch (error) {
   console.error('❌ Erreur lors du chargement d\'AdminJS:', error);
@@ -294,8 +302,7 @@ const adminJSAuth = async (req, res, next) => {
           const secret = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
           const decoded = jwt.verify(token, secret);
           if (decoded && decoded.id) {
-            const { User } = db;
-            const user = await User.findByPk(decoded.id);
+            const user = await db.User.findByPk(decoded.id);
             if (user && user.role === 'admin') {
               req.user = user;
               console.log('🔐 AdminJS Auth - Utilisateur admin connecté (JWT):', user.email);
@@ -316,6 +323,67 @@ const adminJSAuth = async (req, res, next) => {
 };
 
 // ✅ ROUTES ADMINJS PROTÉGÉES AVEC AUTHENTIFICATION
+app.get('/admin/simple-dashboard',
+  adminJSAuth, isAdmin,
+  async (req, res) => {
+    try {
+      const { calculateDashboardStats } = await import('./services/statsService.js');
+      const stats = await calculateDashboardStats();
+      const html = `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Kotiz Dashboard</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }
+            .stats { display: flex; gap: 20px; margin-bottom: 30px; }
+            .stat-card { flex: 1; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .export-links { margin-bottom: 30px; }
+            .export-links a { display: inline-block; padding: 10px 15px; margin: 5px; text-decoration: none; border-radius: 4px; color: white; }
+            .export-links a:nth-child(1), .export-links a:nth-child(2) { background: #007bff; }
+            .export-links a:nth-child(3), .export-links a:nth-child(4) { background: #28a745; }
+            .export-links a:nth-child(5), .export-links a:nth-child(6) { background: #ffc107; color: black; }
+          </style>
+        </head>
+        <body>
+          <h1>KOTIZ DASHBOARD ADMIN</h1>
+          <div class="stats">
+            <div class="stat-card">
+              <p>Utilisateurs Total</p>
+              <h2>${stats.totalUsers}</h2>
+            </div>
+            <div class="stat-card">
+              <p>Cagnottes Actives</p>
+              <h2>${stats.activePulls}</h2>
+            </div>
+            <div class="stat-card">
+              <p>Montant Total</p>
+              <h2>${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(stats.totalAmount)}</h2>
+            </div>
+          </div>
+          <div class="export-links">
+            <h2>Exportations</h2>
+            <a href="/api/v1/export/transactions/csv" target="_blank">Transactions CSV</a>
+            <a href="/api/v1/export/transactions/excel" target="_blank">Transactions Excel</a>
+            <a href="/api/v1/export/users/csv" target="_blank">Utilisateurs CSV</a>
+            <a href="/api/v1/export/users/excel" target="_blank">Utilisateurs Excel</a>
+            <a href="/api/v1/export/contributions/csv" target="_blank">Contributions CSV</a>
+            <a href="/api/v1/export/contributions/excel" target="_blank">Contributions Excel</a>
+          </div>
+          <p><a href="/admin">Retour à AdminJS</a></p>
+        </body>
+        </html>
+      `;
+      res.send(html);
+    } catch (error) {
+      console.error('Erreur dashboard HTML:', error);
+      res.status(500).send('Erreur serveur');
+    }
+  }
+);
+
 app.get('/api/v1/adminjs/users/admin-stats',
   adminJSAuth, isAdmin,
   (req, res, next) => {
@@ -400,6 +468,8 @@ import webhookRoutes from './routes/webhookRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 
 app.use('/api/v1/export', adminJSAuth, isAdmin, exportRoutes);
+// Routes pour AdminJS
+app.use('/admin/api/exports', adminJSAuth, isAdmin, exportRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', firebaseAuth, userRoutes);
 app.use('/api/v1/pulls', pullRoutes);

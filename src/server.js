@@ -11,7 +11,6 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import db from './models/index.js';
 import { initSocketService, sendStats } from './services/socketService.js';
-import { createAdminConfig } from './config/admin.config.js';
 import AdminJS from 'adminjs';
 import { default as AdminJSExpress } from '@adminjs/express';
 import bcrypt from 'bcrypt';
@@ -40,6 +39,13 @@ if (process.env.NODE_ENV === 'test') {
 // 4️⃣ Création du serveur HTTP pour Socket.io
 const server = createServer(app);
 
+// Fichiers statiques AdminJS (AVANT tout autre middleware)
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/assets/admin', express.static(path.join(__dirname, 'admin/public')));
+
 // 5️⃣ Configuration de Socket.io
 // Initialisation de Socket.io avec le service personnalisé
 const io = initSocketService(server);
@@ -47,9 +53,20 @@ const io = initSocketService(server);
 // Import du middleware CSP
 import { cspMiddleware } from './middleware/cspMiddleware.js';
 
-// Configuration des middlewares
+// Configuration des middlewares avec CSP corrigée
 app.use(helmet({
-    contentSecurityPolicy: false, // Désactiver CSP de helmet car nous utilisons notre propre middleware
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:"],
+      "style-src": ["'self'", "'unsafe-inline'", "https:", "fonts.googleapis.com"],
+      "font-src": ["'self'", "https:", "fonts.gstatic.com"],
+      "img-src": ["'self'", "data:", "https:", "blob:"],
+      "connect-src": ["'self'", "https:", "ws:", "wss:"],
+      "frame-src": ["'self'", "https:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
 }));
 
 // Servir les fichiers statiques
@@ -115,87 +132,21 @@ try {
   await ensureDefaultAdmin();
   console.log('✅ Admin par défaut vérifié');
 
-  const { default: AdminJS } = await import('adminjs');
-  const { default: AdminJSExpress } = await import('@adminjs/express');
-  console.log('📦 Modules AdminJS chargés');
+  // Utiliser la nouvelle configuration unifiée AdminJS
+  const { adminJs, router } = await import('./admin/index.js');
+  app.use(adminJs.options.rootPath, router);
+  console.log('✅ AdminJS configuré sur', adminJs.options.rootPath);
 
-  const { default: initSimpleAdmin } = await import('./config/adminSimple.js');
-  const { admin, adminRouter: simpleAdminRouter } = await initSimpleAdmin();
-  
-  app.use(admin.options.rootPath, simpleAdminRouter);
-  console.log('✅ AdminJS simple configuré sur', admin.options.rootPath);
-  
-  // Remplacer la configuration précédente
-  /*const admin = await createAdminConfig();
-  const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
-    admin,
-    {
-      authenticate: async (email, password) => {
-        try {
-          console.log('🔐 AdminJS Auth - Email:', email);
-          const user = await db.User.findOne({ 
-            where: { 
-              email,
-              role: 'admin'
-            }
-          });
-
-          if (!user) {
-            console.log('❌ AdminJS Auth échouée - Utilisateur non trouvé');
-            return null;
-          }
-
-          const isValid = await user.validPassword(password);
-          if (!isValid) {
-            console.log('❌ AdminJS Auth échouée - Mot de passe incorrect');
-            return null;
-          }
-
-          console.log('✅ AdminJS Auth réussie');
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-          };
-        } catch (error) {
-          console.error('❌ AdminJS Auth error:', error);
-          return null;
-        }
-      },
-      cookieName: 'kotiz-admin',
-      cookiePassword: process.env.SESSION_SECRET || 'kotiz-admin-session-secret-2024'
-    },
-    null,
-    {
-      resave: false,
-      saveUninitialized: false,
-      secret: process.env.SESSION_SECRET || 'kotiz-admin-session-secret-2024',
-      cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production'
-      }
-    }
-  );
-  console.log('🚀 AdminJS initialisé avec succès');
-
-  // Middleware pour logger les requêtes POST /admin/login
-  app.use('/admin/login', (req, res, next) => {
-    if (req.method === 'POST') {
-      console.log('🔐 POST /admin/login reçu:', req.body);
-    }
-    next();
-  });
-
-  // app.use(admin.options.rootPath, adminRouter);
-  // console.log('✅ AdminJS monté sur:', admin.options.rootPath);
-  */
-  console.log('🔑 AdminJS prêt pour connexion');
 } catch (error) {
   console.error('❌ Erreur lors du chargement d\'AdminJS:', error);
   console.error('📋 Détails de l\'erreur:', error.stack);
   // Ne pas arrêter le serveur pour AdminJS, mais logger clairement
   console.log('⚠️ Le serveur continue sans AdminJS');
+}
+
+// Vérification rapide des routes AdminJS
+if (!app._router.stack.some(r => r.route && r.route.path === '/admin')) {
+  console.warn('⚠️ Aucune route /admin active - AdminJS non monté !');
 }
 
 // 8️⃣ CORS (APRÈS AdminJS)
@@ -217,17 +168,7 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// 9️⃣ Sécurité (APRÈS AdminJS)
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: true,
-    directives: {
-      "script-src": ["'self'", "'unsafe-inline'", "https:"],
-      "style-src": ["'self'", "'unsafe-inline'", "https:"],
-      "img-src": ["'self'", "data:", "https:"],
-    },
-  },
-}));
+// Configuration Helmet déjà appliquée plus haut
 
 // 🔟 Rate limiting (APRÈS AdminJS)
 const limiter = rateLimit({
@@ -277,6 +218,13 @@ import * as PullController from './controllers/pullController.js';
 // Import des middlewares d'authentification
 import firebaseAuth from './middleware/firebaseAuth.js';
 import { isAdmin } from './middleware/auth.js';
+
+// Middleware Firebase Auth avec exclusion AdminJS
+const conditionalFirebaseAuth = (req, res, next) => {
+  // Exclure AdminJS et ses routes internes de la vérification Firebase
+  if (req.url.startsWith('/admin')) return next();
+  firebaseAuth(req, res, next);
+};
 
 // Middleware spécial pour AdminJS - permet l'accès aux routes admin si connecté via AdminJS
 // Et accepte aussi un JWT local (Authorization: Bearer <token>) signé avec JWT_SECRET
@@ -468,14 +416,15 @@ import webhookRoutes from './routes/webhookRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 
 app.use('/api/v1/export', adminJSAuth, isAdmin, exportRoutes);
-// Routes pour AdminJS
-app.use('/admin/api/exports', adminJSAuth, isAdmin, exportRoutes);
+// Routes d'export AdminJS (sans middleware adminJSAuth qui cause des conflits)
+import adminExportRoutes from './admin/routes/exports.js';
+app.use('/admin/api/exports', adminExportRoutes);
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', firebaseAuth, userRoutes);
+app.use('/api/v1/users', conditionalFirebaseAuth, userRoutes);
 app.use('/api/v1/pulls', pullRoutes);
-app.use('/api/v1/contributions', firebaseAuth, contributionRoutes);
-app.use('/api/v1/transactions', firebaseAuth, transactionRoutes);
-app.use('/api/v1/notifications', firebaseAuth, notificationRoutes);
+app.use('/api/v1/contributions', conditionalFirebaseAuth, contributionRoutes);
+app.use('/api/v1/transactions', conditionalFirebaseAuth, transactionRoutes);
+app.use('/api/v1/notifications', conditionalFirebaseAuth, notificationRoutes);
 app.use('/api/v1/admin', adminJSAuth, isAdmin, adminRoutes);
 // Alias pour compatibilité avec les attentes du frontend
 app.use('/api/admin', adminJSAuth, isAdmin, adminRoutes);
@@ -489,7 +438,267 @@ app.use('/api/v1/webhooks', webhookRoutes);
 // Les routes de test sont maintenant dans le .gitignore
 
 // 1️⃣6️⃣ Route racine
-app.get('/', (req, res) => res.send('🚀 API Kotiz OK - Interface Admin disponible sur /admin'));
+// API pour le dashboard AdminJS
+app.get('/admin/api/dashboard-stats', async (req, res) => {
+  try {
+    const stats = {
+      users: await db.User.count(),
+      pools: await db.Pull.count({ where: { status: 'active' } }),
+      collected: await db.Contribution.sum('amount', { where: { status: 'completed' } }) || 0,
+      recentTransactions: await db.Transaction.findAll({
+        limit: 5,
+        order: [['createdAt', 'DESC']],
+        attributes: ['id', 'amount', 'status', 'createdAt']
+      })
+    };
+    res.json(stats);
+  } catch (error) {
+    res.json({ users: 0, pools: 0, collected: 0, recentTransactions: [] });
+  }
+});
+
+// Page de statistiques simple
+app.get('/admin/stats', async (req, res) => {
+  try {
+    const stats = {
+      users: await db.User.count(),
+      pools: await db.Pull.count({ where: { status: 'active' } }),
+      collected: await db.Contribution.sum('amount', { where: { status: 'completed' } }) || 0,
+      transactions: await db.Transaction.count()
+    };
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>KOTIZ Stats</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+          .header { background: #4CAF50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+          .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+          .card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+          .card h3 { margin: 10px 0; font-size: 2rem; }
+          .exports { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+          .btn { display: inline-block; padding: 10px 15px; margin: 5px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🏠 Dashboard KOTIZ</h1>
+          <p>Statistiques et exports - <a href="/admin" style="color: white;">Retour AdminJS</a></p>
+        </div>
+        
+        <div class="stats">
+          <div class="card" style="border-top: 4px solid #2196F3;">
+            <div style="font-size: 2rem;">👥</div>
+            <h3 style="color: #2196F3;">${stats.users}</h3>
+            <p>Utilisateurs</p>
+          </div>
+          
+          <div class="card" style="border-top: 4px solid #FF9800;">
+            <div style="font-size: 2rem;">🎯</div>
+            <h3 style="color: #FF9800;">${stats.pools}</h3>
+            <p>Cagnottes actives</p>
+          </div>
+          
+          <div class="card" style="border-top: 4px solid #4CAF50;">
+            <div style="font-size: 2rem;">💰</div>
+            <h3 style="color: #4CAF50;">${stats.collected.toLocaleString()} F CFA</h3>
+            <p>Montant collecté</p>
+          </div>
+          
+          <div class="card" style="border-top: 4px solid #9C27B0;">
+            <div style="font-size: 2rem;">💳</div>
+            <h3 style="color: #9C27B0;">${stats.transactions}</h3>
+            <p>Transactions</p>
+          </div>
+        </div>
+        
+        <div class="exports">
+          <h2>📊 Exports CSV</h2>
+          <a href="/admin/export-users" class="btn" style="background: #2196F3;">👥 Utilisateurs</a>
+          <a href="/admin/export-pulls" class="btn" style="background: #FF9800;">🎯 Cagnottes</a>
+          <a href="/admin/export-transactions" class="btn" style="background: #4CAF50;">💳 Transactions</a>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    res.status(500).send('Erreur: ' + error.message);
+  }
+});
+
+// Routes d'export multiples pour AdminJS
+app.get('/admin/export-users', async (req, res) => {
+  try {
+    const format = req.query.format || 'csv';
+    const users = await db.User.findAll({ limit: 1000 });
+    
+    if (format === 'csv') {
+      const csv = 'ID,Nom,Email,Téléphone,Rôle,Vérifié,Date inscription\n' + 
+        users.map(u => `${u.id},"${u.name || ''}","${u.email || ''}","${u.phone || ''}","${u.role || 'user'}","${u.isVerified ? 'Oui' : 'Non'}","${u.createdAt}"`).join('\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="utilisateurs.csv"');
+      res.send(csv);
+    } else if (format === 'excel') {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.default.Workbook();
+      const worksheet = workbook.addWorksheet('Utilisateurs');
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 10 },
+        { header: 'Nom', key: 'name', width: 20 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Téléphone', key: 'phone', width: 15 },
+        { header: 'Rôle', key: 'role', width: 10 },
+        { header: 'Vérifié', key: 'isVerified', width: 10 },
+        { header: 'Date inscription', key: 'createdAt', width: 20 }
+      ];
+      users.forEach(u => {
+        worksheet.addRow({
+          id: u.id,
+          name: u.name || '',
+          email: u.email || '',
+          phone: u.phone || '',
+          role: u.role || 'user',
+          isVerified: u.isVerified ? 'Oui' : 'Non',
+          createdAt: u.createdAt
+        });
+      });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="utilisateurs.xlsx"');
+      await workbook.xlsx.write(res);
+      res.end();
+    } else if (format === 'pdf') {
+      const PDFDocument = await import('pdfkit');
+      const doc = new PDFDocument.default();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="utilisateurs.pdf"');
+      doc.pipe(res);
+      doc.fontSize(16).text('Liste des Utilisateurs KOTIZ', 50, 50);
+      doc.fontSize(12);
+      let y = 100;
+      users.slice(0, 50).forEach(u => {
+        doc.text(`${u.id} - ${u.name || ''} - ${u.email || ''}`, 50, y);
+        y += 20;
+      });
+      doc.end();
+    }
+  } catch (error) {
+    res.status(500).send('Erreur export utilisateurs');
+  }
+});
+
+app.get('/admin/export-pulls', async (req, res) => {
+  try {
+    const format = req.query.format || 'csv';
+    const pulls = await db.Pull.findAll({ limit: 1000 });
+    
+    if (format === 'csv') {
+      const csv = 'ID,Titre,Objectif,Montant actuel,Statut,Type,Date création\n' + 
+        pulls.map(p => `${p.id},"${p.title || ''}","${p.goalAmount || 0}","${p.currentAmount || 0}","${p.status || 'active'}","${p.type || 'public'}","${p.createdAt}"`).join('\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="cagnottes.csv"');
+      res.send(csv);
+    } else if (format === 'excel') {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.default.Workbook();
+      const worksheet = workbook.addWorksheet('Cagnottes');
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 10 },
+        { header: 'Titre', key: 'title', width: 30 },
+        { header: 'Objectif', key: 'goalAmount', width: 15 },
+        { header: 'Montant actuel', key: 'currentAmount', width: 15 },
+        { header: 'Statut', key: 'status', width: 10 },
+        { header: 'Type', key: 'type', width: 10 },
+        { header: 'Date création', key: 'createdAt', width: 20 }
+      ];
+      pulls.forEach(p => worksheet.addRow(p));
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="cagnottes.xlsx"');
+      await workbook.xlsx.write(res);
+      res.end();
+    } else if (format === 'pdf') {
+      const PDFDocument = await import('pdfkit');
+      const doc = new PDFDocument.default();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="cagnottes.pdf"');
+      doc.pipe(res);
+      doc.fontSize(16).text('Liste des Cagnottes KOTIZ', 50, 50);
+      doc.fontSize(12);
+      let y = 100;
+      pulls.slice(0, 30).forEach(p => {
+        doc.text(`${p.title || ''} - Objectif: ${(p.goalAmount || 0).toLocaleString()} F CFA`, 50, y);
+        y += 20;
+      });
+      doc.end();
+    }
+  } catch (error) {
+    res.status(500).send('Erreur export cagnottes');
+  }
+});
+
+app.get('/admin/export-transactions', async (req, res) => {
+  try {
+    const format = req.query.format || 'csv';
+    const transactions = await db.Transaction.findAll({ limit: 1000 });
+    
+    if (format === 'csv') {
+      const csv = 'ID,Montant,Statut,Type,Date\n' + 
+        transactions.map(t => `${t.id},"${t.amount || 0}","${t.status || 'pending'}","${t.type || 'transaction'}","${t.createdAt}"`).join('\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="transactions.csv"');
+      res.send(csv);
+    } else if (format === 'excel') {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.default.Workbook();
+      const worksheet = workbook.addWorksheet('Transactions');
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 10 },
+        { header: 'Montant', key: 'amount', width: 15 },
+        { header: 'Statut', key: 'status', width: 15 },
+        { header: 'Type', key: 'type', width: 15 },
+        { header: 'Date', key: 'createdAt', width: 20 }
+      ];
+      transactions.forEach(t => worksheet.addRow(t));
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="transactions.xlsx"');
+      await workbook.xlsx.write(res);
+      res.end();
+    } else if (format === 'pdf') {
+      const PDFDocument = await import('pdfkit');
+      const doc = new PDFDocument.default();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="transactions.pdf"');
+      doc.pipe(res);
+      doc.fontSize(16).text('Historique des Transactions KOTIZ', 50, 50);
+      doc.fontSize(12);
+      let y = 100;
+      transactions.slice(0, 40).forEach(t => {
+        doc.text(`${t.id} - ${(t.amount || 0).toLocaleString()} F CFA - ${t.status || 'pending'}`, 50, y);
+        y += 20;
+      });
+      doc.end();
+    }
+  } catch (error) {
+    res.status(500).send('Erreur export transactions');
+  }
+});
+
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+    <head><title>KOTIZ API</title></head>
+    <body style="font-family: Arial; padding: 40px; text-align: center;">
+      <h1>🚀 API Kotiz</h1>
+      <div style="margin: 30px 0;">
+        <a href="/admin" style="display: inline-block; padding: 15px 30px; background: #4CAF50; color: white; text-decoration: none; border-radius: 8px; margin: 10px;">🔑 AdminJS</a>
+        <a href="/admin/stats" style="display: inline-block; padding: 15px 30px; background: #2196F3; color: white; text-decoration: none; border-radius: 8px; margin: 10px;">📊 Dashboard</a>
+      </div>
+      <p>Login AdminJS : admin@kotiz.com / Admin123!@#</p>
+    </body>
+    </html>
+  `);
+});
 
 // 1️⃣7️⃣ Gestionnaire d'erreurs centralisé
 import errorHandler from './middleware/errorHandler.js';
@@ -587,7 +796,10 @@ const PORT = process.env.PORT || 5000; // Port pour production (Render) ou déve
 
     // 1️⃣8️⃣ Route 404 (APRÈS AdminJS)
     app.use('*', (req, res) => {
-      console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
+      // Filtrer les requêtes des extensions Chrome DevTools
+      if (!req.originalUrl.startsWith('/.well-known')) {
+        console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
+      }
       res.status(404).json({ error: 'Route non trouvée', path: req.originalUrl });
     });
 

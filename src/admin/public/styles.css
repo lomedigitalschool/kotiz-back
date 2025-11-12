@@ -1,21 +1,46 @@
-.adminjs-login {
-  background: #f5f5f5;
+/* Styles personnalisés pour AdminJS KOTIZ */
+
+/* Ajout d'un bouton Dashboard dans le header */
+.adminjs-sidebar::before {
+  content: "📊 Dashboard KOTIZ";
+  display: block;
+  padding: 12px 16px;
+  margin: 10px;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-.adminjs-login__logo {
-  max-width: 200px;
-  margin: 0 auto;
+.adminjs-sidebar::before:hover {
+  transform: scale(1.05);
 }
 
-.adminjs-dashboard {
-  padding: 2rem;
+/* Style pour le titre avec lien */
+.adminjs-branding h1::after {
+  content: " → Ouvrir Dashboard";
+  font-size: 12px;
+  color: #4CAF50;
+  display: block;
+  margin-top: 5px;
+  cursor: pointer;
 }
 
-.adminjs-sidebar {
-  background: #2c3e50;
-}
-
-.adminjs-topbar {
-  background: #fff;
-  border-bottom: 1px solid #eee;
+/* Message d'information */
+.adminjs-dashboard::before {
+  content: "💡 Pour accéder au dashboard complet avec statistiques et exports, allez sur: /admin/stats";
+  display: block;
+  padding: 15px;
+  margin: 20px;
+  background: #e3f2fd;
+  border: 1px solid #2196F3;
+  border-radius: 8px;
+  color: #1976d2;
+  font-weight: bold;
+  text-align: center;
 }

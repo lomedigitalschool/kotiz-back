@@ -85,11 +85,11 @@ function initPull(sequelize) {
       }
     },
     status: {
-      type: DataTypes.ENUM('pending','active','closed'),
+      type: DataTypes.ENUM('pending','active','closed','suspended'),
       defaultValue: 'pending',
       validate: {
         isIn: {
-          args: [['pending','active','closed']],
+          args: [['pending','active','closed','suspended']],
           msg: 'Statut invalide.'
         }
       }

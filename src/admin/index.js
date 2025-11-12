@@ -1,15 +1,7 @@
-import AdminJS from 'adminjs'
-import { buildAdminRouter } from './auth.js'
-import { getAdminJSConfig } from './config.js'
+// Ancienne configuration - REMPLACÉE par src/admin/admin.options.js
+// Ce fichier est conservé temporairement pour compatibilité
+// TODO: Supprimer après migration complète
 
-const setupAdminJS = async (app, db) => {
-  const config = await getAdminJSConfig(mongoose)
-  const admin = new AdminJS(config)
-  const router = await buildAdminRouter(admin)
-  
-  app.use(admin.options.rootPath, router)
-  
-  return admin
-}
+import { adminJs, router } from './admin.options.js';
 
-export default setupAdminJS
+export { adminJs, router };

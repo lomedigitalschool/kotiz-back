@@ -1,0 +1,240 @@
+/* Thème personnalisé KOTIZ pour AdminJS */
+
+/* Variables CSS pour le thème KOTIZ */
+:root {
+  --kotiz-primary: #1e40af; /* Bleu nuit */
+  --kotiz-secondary: #fbbf24; /* Doré */
+  --kotiz-accent: #dc2626; /* Rouge pour les erreurs */
+  --kotiz-success: #10b981; /* Vert succès */
+  --kotiz-grey-50: #f8fafc;
+  --kotiz-grey-100: #f1f5f9;
+  --kotiz-grey-200: #e2e8f0;
+  --kotiz-grey-300: #cbd5e1;
+  --kotiz-grey-400: #94a3b8;
+  --kotiz-grey-500: #64748b;
+  --kotiz-grey-600: #475569;
+  --kotiz-grey-700: #334155;
+  --kotiz-grey-800: #1e293b;
+  --kotiz-grey-900: #0f172a;
+}
+
+/* Header AdminJS personnalisé */
+.adminjs-Header {
+  background: linear-gradient(135deg, var(--kotiz-primary) 0%, #3b82f6 100%) !important;
+  border-bottom: 3px solid var(--kotiz-secondary) !important;
+}
+
+.adminjs-Header-Logo {
+  font-weight: 700 !important;
+  color: white !important;
+}
+
+/* Navigation latérale */
+.adminjs-Sidebar {
+  background: var(--kotiz-grey-800) !important;
+  border-right: 2px solid var(--kotiz-secondary) !important;
+}
+
+.adminjs-Sidebar-Item {
+  color: var(--kotiz-grey-200) !important;
+  border-radius: 8px !important;
+  margin: 4px 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.adminjs-Sidebar-Item:hover {
+  background: var(--kotiz-primary) !important;
+  color: white !important;
+  transform: translateX(4px) !important;
+}
+
+.adminjs-Sidebar-Item.active {
+  background: var(--kotiz-secondary) !important;
+  color: var(--kotiz-grey-900) !important;
+  font-weight: 600 !important;
+}
+
+/* Boutons principaux */
+.adminjs-Button {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.adminjs-Button--primary {
+  background: var(--kotiz-primary) !important;
+  border-color: var(--kotiz-primary) !important;
+}
+
+.adminjs-Button--primary:hover {
+  background: #1d4ed8 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3) !important;
+}
+
+.adminjs-Button--secondary {
+  background: var(--kotiz-secondary) !important;
+  color: var(--kotiz-grey-900) !important;
+  border-color: var(--kotiz-secondary) !important;
+}
+
+.adminjs-Button--secondary:hover {
+  background: #f59e0b !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Cartes et conteneurs */
+.adminjs-Card {
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid var(--kotiz-grey-200) !important;
+  transition: all 0.2s ease !important;
+}
+
+.adminjs-Card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Tableaux */
+.adminjs-Table {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.adminjs-Table-Header {
+  background: var(--kotiz-grey-100) !important;
+  border-bottom: 2px solid var(--kotiz-primary) !important;
+}
+
+.adminjs-Table-Row {
+  transition: background-color 0.2s ease !important;
+}
+
+.adminjs-Table-Row:hover {
+  background: var(--kotiz-grey-50) !important;
+}
+
+/* Formulaires */
+.adminjs-Form {
+  background: white !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.adminjs-Form-Group {
+  margin-bottom: 20px !important;
+}
+
+.adminjs-Form-Label {
+  color: var(--kotiz-grey-700) !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+}
+
+.adminjs-Form-Input,
+.adminjs-Form-Select,
+.adminjs-Form-Textarea {
+  border: 2px solid var(--kotiz-grey-200) !important;
+  border-radius: 6px !important;
+  padding: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.adminjs-Form-Input:focus,
+.adminjs-Form-Select:focus,
+.adminjs-Form-Textarea:focus {
+  border-color: var(--kotiz-primary) !important;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1) !important;
+}
+
+/* Badges et statuts */
+.adminjs-Badge {
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  padding: 4px 12px !important;
+}
+
+.adminjs-Badge--success {
+  background: var(--kotiz-success) !important;
+  color: white !important;
+}
+
+.adminjs-Badge--error {
+  background: var(--kotiz-accent) !important;
+  color: white !important;
+}
+
+.adminjs-Badge--warning {
+  background: var(--kotiz-secondary) !important;
+  color: var(--kotiz-grey-900) !important;
+}
+
+/* Dashboard personnalisé */
+.kotiz-dashboard {
+  background: linear-gradient(135deg, var(--kotiz-grey-50) 0%, white 100%) !important;
+}
+
+.kotiz-stat-card {
+  background: white !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid var(--kotiz-grey-200) !important;
+  transition: all 0.3s ease !important;
+}
+
+.kotiz-stat-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.kotiz-stat-icon {
+  opacity: 0.1 !important;
+  font-size: 48px !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.adminjs-Page-fade-in {
+  animation: fadeIn 0.3s ease-out !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .adminjs-Sidebar {
+    width: 60px !important;
+  }
+
+  .adminjs-Header {
+    padding: 12px !important;
+  }
+
+  .adminjs-Card {
+    margin: 8px !important;
+  }
+}
+
+/* Logo KOTIZ personnalisé */
+.kotiz-logo {
+  font-family: 'Arial Black', sans-serif !important;
+  font-size: 24px !important;
+  background: linear-gradient(45deg, var(--kotiz-primary), var(--kotiz-secondary)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* Footer AdminJS */
+.adminjs-Footer {
+  background: var(--kotiz-grey-100) !important;
+  border-top: 1px solid var(--kotiz-grey-200) !important;
+  color: var(--kotiz-grey-600) !important;
+  text-align: center !important;
+  padding: 16px !important;
+}

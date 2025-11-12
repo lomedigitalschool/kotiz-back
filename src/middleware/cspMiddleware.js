@@ -1,31 +1,47 @@
 import crypto from 'crypto';
 
 export const cspMiddleware = (req, res, next) => {
+    // Disable CSP completely for AdminJS routes
+    if (req.path.startsWith('/admin')) {
+        return next();
+    }
+
     // Générer un nonce unique pour chaque requête
     const nonce = crypto.randomBytes(16).toString('base64');
     
     // Stocker le nonce dans res.locals pour l'utiliser dans les vues
     res.locals.nonce = nonce;
 
-    // Configurer CSP avec le nonce
+    // Configurer CSP avec des règles plus permissives
     const cspHeader = {
         directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: [
+            "default-src": ["'self'"],
+            "script-src": [
                 "'self'",
-                `'nonce-${nonce}'`, // Utiliser le nonce pour les scripts
-                // Ajouter des hashes spécifiques si nécessaire
-                "'sha256-iHAA4btJN+7QfoSRhqGbhYbEZqBuyesONp0wfyXWcqo='",
-                "'sha256-QEvPYBVC4/elBmqZMNgsmK/t4fbYlYlKFHMNgtbQhug='",
-                "'sha256-s3awwLVKIlkpRfkaaj52BR2uN8hCzlzb6MchVuAUdaM='"
+                "'unsafe-inline'",
+                "'unsafe-eval'",
+                `'nonce-${nonce}'`,
+                "https://fonts.googleapis.com",
+                "https://cdnjs.cloudflare.com"
             ],
-            styleSrc: ["'self'", "'unsafe-inline'"], // Styles peuvent rester unsafe-inline pour le moment
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "ws:", "wss:"],
-            fontSrc: ["'self'", "data:", "https:"],
-            objectSrc: ["'none'"],
-            mediaSrc: ["'self'"],
-            frameSrc: ["'self'"]
+            "style-src": [
+                "'self'", 
+                "'unsafe-inline'", 
+                "https://fonts.googleapis.com",
+                "https://fonts.gstatic.com"
+            ],
+            "img-src": ["'self'", "data:", "https:", "blob:"],
+            "connect-src": ["'self'", "ws:", "wss:"],
+            "font-src": [
+                "'self'", 
+                "data:", 
+                "https:", 
+                "https://fonts.gstatic.com",
+                "https://fonts.googleapis.com"
+            ],
+            "object-src": ["'none'"],
+            "media-src": ["'self'"],
+            "frame-src": ["'self'"]
         }
     };
 

@@ -8,9 +8,36 @@ const { User } = db;
 const firebaseSync = async (req, res) => {
   try {
     // req.user est déjà rempli par firebaseAuth.js
+    const user = req.user;
+
+    // Synchroniser le statut de vérification d'email depuis Firebase
+    if (user.firebaseUid && admin) {
+      try {
+        const firebaseUser = await admin.auth().getUser(user.firebaseUid);
+        if (firebaseUser.emailVerified !== user.isVerified) {
+          console.log(`🔄 Synchronisation email vérifié: ${user.isVerified} → ${firebaseUser.emailVerified}`);
+          await User.update(
+            { isVerified: firebaseUser.emailVerified },
+            { where: { id: user.id } }
+          );
+          // Recharger l'utilisateur mis à jour
+          const updatedUser = await User.findByPk(user.id, {
+            attributes: { exclude: ['passwordHash'] }
+          });
+          return res.json({
+            message: "Utilisateur Firebase synchronisé",
+            user: updatedUser
+          });
+        }
+      } catch (firebaseError) {
+        console.warn('⚠️ Erreur lors de la vérification Firebase:', firebaseError.message);
+        // Continuer sans mettre à jour le statut
+      }
+    }
+
     return res.json({
       message: "Utilisateur Firebase synchronisé",
-      user: req.user
+      user: user
     });
   } catch (err) {
     res.status(500).json({ error: "Erreur lors de la synchro Firebase" });

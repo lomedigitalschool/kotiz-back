@@ -32,6 +32,7 @@
     "security:adminjs": "node -e \"console.log('🔒 Voir ADMINJS_SECURITY_FIXES.js pour les corrections')\""
   },
   "dependencies": {
+    "@adminjs/bundler": "^3.0.0",
     "@adminjs/design-system": "4.0.0-beta-v4.18",
     "@adminjs/express": "^6.1.1",
     "@adminjs/mongoose": "^4.0.0",

@@ -18,6 +18,7 @@ import {
   H1,
   H2,
   H3,
+  H4,
   Badge,
   Loader,
 } from '@adminjs/design-system';
@@ -83,48 +84,64 @@ const Dashboard = () => {
     // Header avec branding KOTIZ
     React.createElement(Box, { mb: "xl", key: "header" }, [
       React.createElement(Header, { key: "header-content" }, [
-        React.createElement(H1, { key: "title" }, "Dashboard KOTIZ"),
+        React.createElement(H2, { key: "title" }, "Dashboard KOTIZ"),
         React.createElement(Text, { variant: "sm", color: "grey60", key: "subtitle" }, "Interface d'administration - Données en temps réel")
       ])
     ]),
 
-    // Cartes de statistiques
-    React.createElement(Box, { display: "flex", gap: "lg", mb: "xl", flexWrap: "wrap", key: "stats" }, [
-      React.createElement(Box, { flex: "1", minWidth: "250px", key: "users" }, [
-        React.createElement(Box, { p: "lg", bg: "white", shadow: "sm", key: "users-card" }, [
-          React.createElement(Box, { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "md", key: "users-content" }, [
-            React.createElement(Box, { key: "users-text" }, [
-              React.createElement(Text, { variant: "sm", color: "grey60", mb: "sm", key: "users-label" }, "UTILISATEURS INSCRITS"),
-              React.createElement(H2, { color: "text", key: "users-value" }, (stats.users ?? 0).toLocaleString())
-            ]),
-            React.createElement(Icon, { icon: "User", size: 32, color: "grey40", key: "users-icon" })
-          ])
-        ])
-      ]),
+    // Cartes de statistiques - pleine largeur
+    React.createElement(Box, {
+      mb: "xl",
+      width: "calc(100vw - 64px)",
+      ml: "-32px",
+      mr: "-32px",
+      key: "stats-section"
+    }, [
+      React.createElement(Box, {
+        p: "lg",
+        bg: "white",
+        shadow: "sm",
+        width: "100%",
+        key: "stats"
+      }, [
+        React.createElement(Box, { display: "flex", gap: "lg", flexWrap: "wrap", key: "stats-grid" }, [
+          React.createElement(Box, { flex: "1", minWidth: "250px", key: "users" }, [
+            React.createElement(Box, { p: "lg", bg: "white", shadow: "sm", key: "users-card" }, [
+              React.createElement(Box, { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "md", key: "users-content" }, [
+                React.createElement(Box, { key: "users-text" }, [
+                  React.createElement(Text, { variant: "sm", color: "grey60", mb: "sm", key: "users-label" }, "UTILISATEURS INSCRITS"),
+                  React.createElement(H2, { color: "text", key: "users-value" }, (stats.users ?? 0).toLocaleString())
+                ]),
+                React.createElement(Icon, { icon: "User", size: 32, color: "grey40", key: "users-icon" })
+              ])
+            ])
+          ]),
 
-      React.createElement(Box, { flex: "1", minWidth: "250px", key: "pools" }, [
-        React.createElement(Box, { p: "lg", bg: "white", shadow: "sm", key: "pools-card" }, [
-          React.createElement(Box, { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "md", key: "pools-content" }, [
-            React.createElement(Box, { key: "pools-text" }, [
-              React.createElement(Text, { variant: "sm", color: "grey60", mb: "sm", key: "pools-label" }, "CAGNOTTES ACTIVES"),
-              React.createElement(H2, { color: "text", key: "pools-value" }, (stats.pools ?? 0).toLocaleString())
-            ]),
-            React.createElement(Icon, { icon: "Target", size: 32, color: "grey40", key: "pools-icon" })
-          ])
-        ])
-      ]),
+          React.createElement(Box, { flex: "1", minWidth: "250px", key: "pools" }, [
+            React.createElement(Box, { p: "lg", bg: "white", shadow: "sm", key: "pools-card" }, [
+              React.createElement(Box, { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "md", key: "pools-content" }, [
+                React.createElement(Box, { key: "pools-text" }, [
+                  React.createElement(Text, { variant: "sm", color: "grey60", mb: "sm", key: "pools-label" }, "CAGNOTTES ACTIVES"),
+                  React.createElement(H2, { color: "text", key: "pools-value" }, (stats.pools ?? 0).toLocaleString())
+                ]),
+                React.createElement(Icon, { icon: "Target", size: 32, color: "grey40", key: "pools-icon" })
+              ])
+            ])
+          ]),
 
-      React.createElement(Box, { flex: "1", minWidth: "250px", key: "collected" }, [
-        React.createElement(Box, { p: "lg", bg: "white", shadow: "sm", key: "collected-card" }, [
-          React.createElement(Box, { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "md", key: "collected-content" }, [
-            React.createElement(Box, { key: "collected-text" }, [
-              React.createElement(Text, { variant: "sm", color: "grey60", mb: "sm", key: "collected-label" }, "MONTANT COLLECTES"),
-              React.createElement(H2, { color: "text", key: "collected-value" }, `${(stats.collected || 0).toLocaleString()} F CFA`)
-            ]),
-            React.createElement(Icon, { icon: "DollarSign", size: 32, color: "grey40", key: "collected-icon" })
+          React.createElement(Box, { flex: "1", minWidth: "250px", key: "collected" }, [
+            React.createElement(Box, { p: "lg", bg: "white", shadow: "sm", key: "collected-card" }, [
+              React.createElement(Box, { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "md", key: "collected-content" }, [
+                React.createElement(Box, { key: "collected-text" }, [
+                  React.createElement(Text, { variant: "sm", color: "grey60", mb: "sm", key: "collected-label" }, "MONTANT COLLECTES"),
+                  React.createElement(H2, { color: "text", key: "collected-value" }, `${(stats.collected || 0).toLocaleString()} F CFA`)
+                ]),
+                React.createElement(Icon, { icon: "DollarSign", size: 32, color: "grey40", key: "collected-icon" })
+              ])
+            ])
           ])
         ])
-      ]),
+      ])
     ]),
 
     // Section exports - pleine largeur
@@ -147,7 +164,7 @@ const Dashboard = () => {
           // Export Utilisateurs
           React.createElement(Box, { flex: "1", minWidth: "250px", key: "export-users" }, [
             React.createElement(Box, { p: "md", bg: "grey10", borderRadius: "default", key: "export-users-card" }, [
-              React.createElement(H3, { variant: "sm", mb: "sm", key: "export-users-title" }, "Utilisateurs"),
+              React.createElement(H4, { variant: "sm", mb: "sm", key: "export-users-title" }, "Utilisateurs"),
               React.createElement(Text, { variant: "sm", color: "grey60", mb: "md", key: "export-users-desc" }, "Exporter la liste des utilisateurs inscrits"),
               React.createElement(Box, { display: "flex", gap: "sm", flexWrap: "wrap", key: "export-users-buttons" }, [
                 React.createElement(Button, {
@@ -169,7 +186,7 @@ const Dashboard = () => {
           // Export Cagnottes
           React.createElement(Box, { flex: "1", minWidth: "250px", key: "export-pulls" }, [
             React.createElement(Box, { p: "md", bg: "grey10", borderRadius: "default", key: "export-pulls-card" }, [
-              React.createElement(H3, { variant: "sm", mb: "sm", key: "export-pulls-title" }, "Cagnottes"),
+              React.createElement(H4, { variant: "sm", mb: "sm", key: "export-pulls-title" }, "Cagnottes"),
               React.createElement(Text, { variant: "sm", color: "grey60", mb: "md", key: "export-pulls-desc" }, "Exporter les données des cagnottes"),
               React.createElement(Box, { display: "flex", gap: "sm", flexWrap: "wrap", key: "export-pulls-buttons" }, [
                 React.createElement(Button, {
@@ -191,7 +208,7 @@ const Dashboard = () => {
           // Export Transactions
           React.createElement(Box, { flex: "1", minWidth: "250px", key: "export-transactions" }, [
             React.createElement(Box, { p: "md", bg: "grey10", borderRadius: "default", key: "export-transactions-card" }, [
-              React.createElement(H3, { variant: "sm", mb: "sm", key: "export-transactions-title" }, "Transactions"),
+              React.createElement(H4, { variant: "sm", mb: "sm", key: "export-transactions-title" }, "Transactions"),
               React.createElement(Text, { variant: "sm", color: "grey60", mb: "md", key: "export-transactions-desc" }, "Exporter l'historique des transactions"),
               React.createElement(Box, { display: "flex", gap: "sm", flexWrap: "wrap", key: "export-transactions-buttons" }, [
                 React.createElement(Button, {

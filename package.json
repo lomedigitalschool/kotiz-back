@@ -10,9 +10,6 @@
     }
   },
   "main": "src/server.js",
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
     "start": "node --max-old-space-size=400 --optimize-for-size src/server.js",
     "dev": "nodemon src/server.js",
@@ -89,7 +86,6 @@
     "tough-cookie": "^6.0.0"
   },
   "devDependencies": {
-    "@adminjs/bundler": "^3.0.0",
     "@babel/core": "^7.28.4",
     "@babel/plugin-transform-runtime": "^7.28.3",
     "@babel/preset-env": "^7.28.3",

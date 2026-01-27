@@ -570,21 +570,11 @@ export const getAllCagnottes = async (req, res) => {
       ];
     }
 
-    const { count, rows: pulls } = await Pull.findAndCountAll({
+    // Optimisation : Récupérer d'abord les IDs des cagnottes pour calculer les stats séparément
+    const pullsQuery = await Pull.findAndCountAll({
       where: whereConditions,
+      attributes: ['id', 'userId', 'title', 'description', 'goalAmount', 'currency', 'deadline', 'type', 'imageUrl', 'status', 'createdAt'],
       include: [
-        {
-          model: Contribution,
-          as: 'contributions',
-          attributes: ['id', 'amount', 'contributorName', 'createdAt'],
-          where: { status: 'completed' },
-          required: false,
-          include: [{
-            model: User,
-            as: 'contributor',
-            attributes: ['id', 'name', 'email']
-          }]
-        },
         {
           model: User,
           as: 'owner',
@@ -593,17 +583,41 @@ export const getAllCagnottes = async (req, res) => {
       ],
       limit: parseInt(limit),
       offset: offset,
-      order: [['createdAt', 'DESC']],
-      distinct: true
+      order: [['createdAt', 'DESC']]
     });
 
-    // Calculer le montant total collecté pour chaque cagnotte
-    const pullsWithStats = pulls.map(pull => {
-      const totalCollected = pull.contributions?.reduce((sum, contrib) => {
-        return sum + parseFloat(contrib.amount || 0);
-      }, 0) || 0;
+    const pullIds = pullsQuery.rows.map(pull => pull.id);
 
-      // Vérifier si l'utilisateur est le propriétaire
+    // Calculer les montants collectés en une seule requête optimisée
+    let contributionsStats = {};
+    if (pullIds.length > 0) {
+      const statsResult = await sequelize.query(
+        `SELECT
+          c."pullId",
+          COUNT(c.id) as contribution_count,
+          COALESCE(SUM(CAST(c.amount AS DECIMAL(12,2))), 0) as total_collected
+        FROM contributions c
+        WHERE c."pullId" IN (${pullIds.map(id => '?').join(',')})
+          AND c.status = 'completed'
+        GROUP BY c."pullId"`,
+        {
+          replacements: pullIds,
+          type: QueryTypes.SELECT
+        }
+      );
+
+      contributionsStats = statsResult.reduce((acc, stat) => {
+        acc[stat.pullId] = {
+          count: parseInt(stat.contribution_count),
+          total: parseFloat(stat.total_collected)
+        };
+        return acc;
+      }, {});
+    }
+
+    // Construire la réponse avec les stats calculées
+    const pullsWithStats = pullsQuery.rows.map(pull => {
+      const stats = contributionsStats[pull.id] || { count: 0, total: 0 };
       const isOwner = req.user && req.user.id === pull.userId;
       const isPrivate = pull.type === 'private';
 
@@ -641,11 +655,11 @@ export const getAllCagnottes = async (req, res) => {
         return {
           ...cagnotteData,
           goalAmount: parseFloat(pull.goalAmount),
-          currentAmount: totalCollected,
-          contributionCount: pull.contributions?.length || 0,
+          currentAmount: stats.total,
+          contributionCount: stats.count,
           progressPercentage: pull.goalAmount > 0 ?
-            Math.round((totalCollected / parseFloat(pull.goalAmount)) * 100) : 0,
-          recentContributions: pull.contributions?.slice(-5) || []
+            Math.round((stats.total / parseFloat(pull.goalAmount)) * 100) : 0,
+          recentContributions: [] // On ne charge pas les contributions détaillées pour optimiser
         };
       }
     });
@@ -657,8 +671,8 @@ export const getAllCagnottes = async (req, res) => {
       data: pullsWithStats,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(count / parseInt(limit)),
-        totalItems: count,
+        totalPages: Math.ceil(pullsQuery.count / parseInt(limit)),
+        totalItems: pullsQuery.count,
         itemsPerPage: parseInt(limit)
       },
       message: `${pullsWithStats.length} cagnottes trouvées`

@@ -14,6 +14,21 @@ const firebaseSync = async (req, res) => {
     if (user.firebaseUid && admin) {
       try {
         const firebaseUser = await admin.auth().getUser(user.firebaseUid);
+
+        // Vérifier les conflits d'email
+        const existingUserWithEmail = await User.findOne({
+          where: {
+            email: firebaseUser.email,
+            firebaseUid: { [Op.ne]: user.firebaseUid }
+          }
+        });
+
+        if (existingUserWithEmail) {
+          return res.status(409).json({
+            error: "Cet email est déjà utilisé par un autre compte"
+          });
+        }
+
         if (firebaseUser.emailVerified !== user.isVerified) {
           console.log(`🔄 Synchronisation email vérifié: ${user.isVerified} → ${firebaseUser.emailVerified}`);
           await User.update(
